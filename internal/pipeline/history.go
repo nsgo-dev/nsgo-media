@@ -211,7 +211,7 @@ const noTime = time.Duration(math.MinInt64)
 // n < 0. Steps asked for before the last ones showed add up, and stepping
 // stops at the first and the last frame.
 func (p *Pipeline) Step(n int) {
-	if p.Paused() && p.videoStream >= 0 {
+	if p.Paused() && p.video() >= 0 {
 		p.steps += n
 	}
 }

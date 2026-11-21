@@ -25,7 +25,7 @@ func (p *Pipeline) demux(d *input) {
 		}
 		req := d.seekReq
 		d.seekReq = nil
-		gen, audio := p.gen, p.audioStream
+		gen, video, audio := p.gen, p.videoStream, p.audioStream
 		feedsAudio := p.audioInput() == d
 		p.mu.Unlock()
 
@@ -60,7 +60,7 @@ func (p *Pipeline) demux(d *input) {
 			}
 			p.mu.Unlock()
 			eof := item{eof: true, gen: gen}
-			if main && p.videoStream >= 0 {
+			if main && video >= 0 {
 				p.vq.put(eof)
 			}
 			if feedsAudio && audio >= 0 {
@@ -70,7 +70,7 @@ func (p *Pipeline) demux(d *input) {
 		}
 		idx := pkt.StreamIndex()
 		id := d.base + idx
-		if ts := packetTime(pkt); ts != ffmpeg.NoPTS && (id == p.videoStream || id == audio) && idx < len(streams) {
+		if ts := packetTime(pkt); ts != ffmpeg.NoPTS && (id == video || id == audio) && idx < len(streams) {
 			t := streams[idx].TimeBase().Duration(ts)
 			p.mu.Lock()
 			if p.gen == gen {
@@ -79,7 +79,7 @@ func (p *Pipeline) demux(d *input) {
 			p.mu.Unlock()
 		}
 		switch {
-		case id == p.videoStream:
+		case main && id == video:
 			p.vq.put(item{pkt: pkt, gen: gen})
 		case id == audio:
 			p.aq.put(item{pkt: pkt, gen: gen})
@@ -130,10 +130,23 @@ func (p *Pipeline) doSeek(d *input, req *seekRequest) {
 	}
 	if main || req.back == nil {
 		f := d.in.Format
-		us := int64(req.target / time.Microsecond)
-		if err := f.Seek(-1, math.MinInt64, us, us, 0); err != nil {
+		idx, ts := -1, int64(req.target/time.Microsecond)
+		if main && p.adaptive != nil {
+			// HLS and DASH seek by the playing track's segments, finding
+			// its keyframes; the default stream may be another variant's.
+			p.mu.Lock()
+			idx = p.videoStream
+			if idx < 0 && p.audioStream >= 0 && p.audioStream < len(f.Streams()) {
+				idx = p.audioStream
+			}
+			p.mu.Unlock()
+			if idx >= 0 {
+				ts = f.Streams()[idx].TimeBase().Units(req.target)
+			}
+		}
+		if err := f.Seek(idx, math.MinInt64, ts, ts, 0); err != nil {
 			// Some inputs seek only forward of the target.
-			f.Seek(-1, math.MinInt64, us, math.MaxInt64, 0)
+			f.Seek(idx, math.MinInt64, ts, math.MaxInt64, 0)
 		}
 	}
 	marker := item{flush: true, gen: req.gen, target: req.target, exact: req.exact, vdrop: req.vdrop, back: req.back}

@@ -210,6 +210,7 @@ var (
 	avformatVersion         func() uint32
 	avformatAllocContext    func() *FormatContext
 	avformatOpenInput       func(c **FormatContext, url string, fmt ptr, opts *ptr) int32
+	avFindInputFormat       func(name string) ptr
 	avformatFindStreamInfo  func(c *FormatContext, opts ptr) int32
 	avformatCloseInput      func(c **FormatContext)
 	avReadFrame             func(c *FormatContext, p *Packet) int32
@@ -296,6 +297,7 @@ var symbols = []sym{
 	{"avformat", "avformat_version", &avformatVersion},
 	{"avformat", "avformat_alloc_context", &avformatAllocContext},
 	{"avformat", "avformat_open_input", &avformatOpenInput},
+	{"avformat", "av_find_input_format", &avFindInputFormat},
 	{"avformat", "avformat_find_stream_info", &avformatFindStreamInfo},
 	{"avformat", "avformat_close_input", &avformatCloseInput},
 	{"avformat", "av_read_frame", &avReadFrame},

@@ -1,6 +1,8 @@
 package player
 
 import (
+	"cmp"
+	"slices"
 	"time"
 
 	"github.com/oneo-me/nsgo-media/internal/pipeline"
@@ -71,7 +73,7 @@ const (
 
 // Track is one stream of the source, or an external subtitle file.
 type Track struct {
-	// ID names the track to SelectAudio and SelectSubtitle.
+	// ID names the track to SelectAudio, SelectSubtitle and SelectVariant.
 	ID       int
 	Kind     Kind
 	Codec    string
@@ -93,6 +95,9 @@ type Track struct {
 
 	SampleRate, Channels int
 	BitRate              int64
+	// Bandwidth is the bit rate an HLS or DASH manifest gives the variant
+	// the track belongs to; 0 for a track of no single variant.
+	Bandwidth int64
 }
 
 // Chapter is a named span of the source.
@@ -103,7 +108,13 @@ type Chapter struct {
 
 // Info is what opening tells about the source.
 type Info struct {
+	// Duration is 0 when unknown, as for a live stream's sliding window.
 	Duration time.Duration
+	// Live is an HLS or DASH stream whose end is not published yet.
+	Live bool
+	// Seekable is false for a source Seek cannot move in, such as a live
+	// stream keeping only a sliding window.
+	Seekable bool
 	// Format is the container's short names, such as "matroska,webm".
 	Format   string
 	BitRate  int64
@@ -123,12 +134,25 @@ func trackOf(t pipeline.Track) Track {
 		ID: t.ID, Kind: Kind(t.Kind), Codec: t.Codec, Language: t.Language, Title: t.Title,
 		Default: t.Default, Forced: t.Forced, External: t.External,
 		Width: t.Width, Height: t.Height, Rotation: t.Rotation, AspectRatio: t.AspectRatio, FrameRate: t.FrameRate,
-		SampleRate: t.SampleRate, Channels: t.Channels, BitRate: t.BitRate,
+		SampleRate: t.SampleRate, Channels: t.Channels, BitRate: t.BitRate, Bandwidth: t.Bandwidth,
 	}
 }
 
+// Variants are the video tracks of an HLS or DASH stream's variants, by
+// bandwidth from the lowest, for SelectVariant; none for other sources.
+func (i *Info) Variants() []Track {
+	var vs []Track
+	for _, t := range i.Tracks {
+		if t.Kind == Video && t.Bandwidth > 0 {
+			vs = append(vs, t)
+		}
+	}
+	slices.SortStableFunc(vs, func(a, b Track) int { return cmp.Compare(a.Bandwidth, b.Bandwidth) })
+	return vs
+}
+
 func infoOf(i *pipeline.Info) *Info {
-	info := &Info{Duration: i.Duration, Format: i.Format, BitRate: i.BitRate, Metadata: i.Metadata}
+	info := &Info{Duration: i.Duration, Live: i.Live, Seekable: i.Seekable, Format: i.Format, BitRate: i.BitRate, Metadata: i.Metadata}
 	for _, t := range i.Tracks {
 		info.Tracks = append(info.Tracks, trackOf(t))
 	}

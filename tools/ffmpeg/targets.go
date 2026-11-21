@@ -50,14 +50,15 @@ var macFlags = []string{
 
 // commonFlags keep FFmpeg to its LGPL 2.1 parts and to what playback uses:
 // every demuxer, parser and decoder, the file protocol (HTTP is read in Go
-// through a custom AVIOContext, so no TLS library is linked) and the
-// filters audio rate changes use. Nothing is detected from the build host.
+// through a custom AVIOContext, so no TLS library is linked), libxml2 for
+// the DASH demuxer and the filters audio rate changes use. Nothing is
+// detected from the build host.
 var commonFlags = []string{
 	"--enable-shared", "--disable-static",
 	"--disable-gpl", "--disable-nonfree", "--disable-version3",
 	"--disable-autodetect",
 	"--disable-programs", "--disable-doc", "--disable-debug",
-	"--disable-avdevice", "--disable-network", "--disable-iconv",
+	"--disable-avdevice", "--disable-network", "--disable-iconv", "--enable-libxml2",
 	"--disable-encoders", "--disable-muxers", "--disable-devices",
 	"--disable-protocols", "--enable-protocol=file",
 	"--disable-filters", "--enable-filter=abuffer,abuffersink,atempo,aformat,aresample,anull",

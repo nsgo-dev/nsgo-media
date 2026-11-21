@@ -22,6 +22,9 @@ func (p *Pipeline) Tick() Status {
 	if p.in == nil || p.stopped() {
 		return st
 	}
+	if p.adaptive != nil {
+		p.adapt(time.Now())
+	}
 	gen := p.genA.Load()
 	// The frame shown before the last one went out in a commit that ran,
 	// so its pixels may be written again.
@@ -29,8 +32,8 @@ func (p *Pipeline) Tick() Status {
 		p.release(p.retired)
 		p.retired = nil
 	}
-	hasVideo := p.videoStream >= 0
 	p.mu.Lock()
+	hasVideo := p.videoStream >= 0
 	hasAudio := p.audioStream >= 0
 	paused, demuxEOF, loop := p.paused, p.demuxEOF(), p.loop
 	p.mu.Unlock()
@@ -240,7 +243,7 @@ func (p *Pipeline) Shown() *Frame { return p.shown }
 // buffering.
 func (p *Pipeline) enoughQueued() bool {
 	ok := true
-	if p.videoStream >= 0 {
+	if p.video() >= 0 {
 		_, _, d := p.vq.stats()
 		ok = ok && d >= resumeTime
 	}

@@ -62,8 +62,8 @@ func ccArgs(triple string, args []string) []string {
 }
 
 // pkgConfig answers configure's pkg-config questions from the unpacked
-// libva packages under root, and for nothing else, so no library of the
-// build host is found.
+// libva packages under root and the libxml2 the builder made, and for
+// nothing else, so no library of the build host is found.
 func pkgConfig(root string, args []string) int {
 	var mode string
 	var pkgs []string
@@ -90,7 +90,17 @@ func pkgConfig(root string, args []string) int {
 	}
 	lib := filepath.Join(root, "usr", "lib", "x86_64-linux-gnu")
 	var flags []string
+	version := "1.17.0"
 	for _, p := range pkgs {
+		if p == "libxml-2.0" {
+			cflags, libs := os.Getenv("NSGO_MEDIA_LIBXML2_CFLAGS"), os.Getenv("NSGO_MEDIA_LIBXML2_LIBS")
+			if libs == "" {
+				return 1
+			}
+			flags = append(flags, strings.Fields(cflags+" "+libs)...)
+			version = "2.15.4"
+			continue
+		}
 		if root == "" {
 			return 1
 		}
@@ -105,11 +115,11 @@ func pkgConfig(root string, args []string) int {
 	}
 	switch mode {
 	case "--cflags":
-		fmt.Println(strings.Join(filter(flags, "-I"), " "))
+		fmt.Println(strings.Join(filter(flags, "-I", "-D"), " "))
 	case "--libs":
 		fmt.Println(strings.Join(filter(flags, "-L", "-l"), " "))
 	case "--modversion":
-		fmt.Println("1.17.0")
+		fmt.Println(version)
 	}
 	return 0
 }

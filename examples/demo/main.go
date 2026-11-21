@@ -2,8 +2,9 @@
 // drives NSGo Media's core: the core draws the picture, the app everything
 // else.
 //
-//	go tool nsgo dev examples/demo              # pick a file in the app
+//	go tool nsgo dev examples/demo              # pick a file or enter a URL in the app
 //	go run ./examples/demo movie.mkv            # or open one at start
+//	go run ./examples/demo https://…/index.m3u8 # an HLS or DASH stream
 package main
 
 import (
@@ -276,6 +277,20 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) co
 				Style:       core.Style{Width: core.Pt(150)},
 			},
 			ui.Select[int]{
+				TestID:      "quality",
+				Label:       "Quality",
+				Placeholder: "Quality",
+				OptionsFunc: func() []ui.Option[int] { return variantOptions(p) },
+				Value: func() int {
+					if p.AutoVariant() {
+						return -1
+					}
+					return p.VideoTrack()
+				},
+				OnChange: func(id int) { p.SelectVariant(id) },
+				Style:    core.Style{Width: core.Pt(150)},
+			},
+			ui.Select[int]{
 				TestID:      "subtitle",
 				Label:       "Subtitles",
 				Placeholder: "Subtitles",
@@ -359,6 +374,19 @@ func trackOptions(p *player.Player, kind player.Kind, none string) []ui.Option[i
 			label += " (" + t.Language + ")"
 		}
 		opts = append(opts, ui.Option[int]{Value: t.ID, Label: label})
+	}
+	return opts
+}
+
+// variantOptions are Auto and an HLS or DASH stream's variants.
+func variantOptions(p *player.Player) []ui.Option[int] {
+	info := p.Info()
+	if info == nil || len(info.Variants()) == 0 {
+		return nil
+	}
+	opts := []ui.Option[int]{{Value: -1, Label: "Auto"}}
+	for _, v := range info.Variants() {
+		opts = append(opts, ui.Option[int]{Value: v.ID, Label: fmt.Sprintf("%dp · %d kbit/s", v.Height, v.Bandwidth/1000)})
 	}
 	return opts
 }

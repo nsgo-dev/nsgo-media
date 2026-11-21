@@ -52,14 +52,15 @@ const (
 	DiscardDefault = 0
 	DiscardAll     = 48
 
-	pktFlagKey      = 1
-	frameFlagKey    = 1 << 1
-	pktDataDisplay  = 5 // AV_PKT_DATA_DISPLAYMATRIX
-	hwConfigMethodD = 1 // AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX
-	fmtFlagCustomIO = 0x80
-	optSearchChild  = 1
-	seekSize        = 0x10000 // AVSEEK_SIZE
-	seekForce       = 0x20000 // AVSEEK_FORCE
+	pktFlagKey        = 1
+	frameFlagKey      = 1 << 1
+	pktDataDisplay    = 5 // AV_PKT_DATA_DISPLAYMATRIX
+	hwConfigMethodD   = 1 // AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX
+	fmtFlagCustomIO   = 0x80
+	ctxFlagUnseekable = 2 // AVFMTCTX_UNSEEKABLE
+	optSearchChild    = 1
+	seekSize          = 0x10000 // AVSEEK_SIZE
+	seekForce         = 0x20000 // AVSEEK_FORCE
 
 	colorRangeJPEG      = 2
 	ColorSpaceBT709     = 1
@@ -164,6 +165,11 @@ func (c *FormatContext) StartTime() time.Duration {
 		return 0
 	}
 	return time.Duration(d) * time.Microsecond
+}
+
+// Seekable reports the demuxer able to seek, which a live stream's is not.
+func (c *FormatContext) Seekable() bool {
+	return i32(c.p(), offAVFormatContextCtxFlags)&ctxFlagUnseekable == 0
 }
 
 // BitRate is the input's total bit rate, 0 when unknown.

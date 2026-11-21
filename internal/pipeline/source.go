@@ -41,6 +41,8 @@ func (p *Pipeline) open(src Source, base int) (*input, error) {
 		return nil, errClosed
 	}
 	var source ffmpeg.Source
+	var opts ffmpeg.InputOptions
+	name := src.Location
 	if isURL(src.Location) {
 		h, err := newHTTPSource(p.ctx, src.Location, src.Header)
 		if err != nil {
@@ -49,9 +51,22 @@ func (p *Pipeline) open(src Source, base int) (*input, error) {
 			}
 			return nil, err
 		}
-		d.http, source = h, h
+		if kind := manifestKind(h.finalURL, h.contentType); kind != "" && base == 0 {
+			// An HLS or DASH manifest: its demuxer opens the rest in Go.
+			a := newAdaptiveStream(p.ctx, kind, src.Header)
+			m, err := a.manifest(h, h.finalURL)
+			h.Close()
+			if err != nil {
+				return nil, err
+			}
+			p.adaptive = a
+			source, name = m, mapURL(h.finalURL)
+			opts = ffmpeg.InputOptions{Format: kind, Options: demuxerOptions[kind], Open: a.open}
+		} else {
+			d.http, source = h, h
+		}
 	}
-	in, err := ffmpeg.Open(src.Location, source, &d.interrupt)
+	in, err := ffmpeg.OpenInput(name, source, &d.interrupt, opts)
 	if err != nil {
 		if p.closing.Load() {
 			return nil, errClosed

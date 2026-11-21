@@ -53,7 +53,40 @@ func newBuilder(work, out string, jobs int) (*builder, error) {
 	if b.ffmpeg, err = b.unpack(ffmpegSource, "ffmpeg-"+FFmpegVersion); err != nil {
 		return nil, err
 	}
+	if err := b.patchFFmpeg(); err != nil {
+		return nil, err
+	}
 	return b, nil
+}
+
+// ffmpegPatches are changes to FFmpeg's source, each an old text and its
+// replacement, which BUILD.txt lists.
+var ffmpegPatches = []struct{ file, why, old, new string }{{
+	file: "libavformat/dashdec.c",
+	why:  "an interrupted dash_read_packet returns AVERROR_EXIT instead of 0 with no packet, which av_read_frame calls again without end",
+	old:  "    }\n    return ret;\n}\n\nstatic int dash_close(",
+	new:  "    }\n    if (!ret)\n        ret = AVERROR_EXIT;\n    return ret;\n}\n\nstatic int dash_close(",
+}}
+
+// patchFFmpeg applies ffmpegPatches to the unpacked source once.
+func (b *builder) patchFFmpeg() error {
+	for _, p := range ffmpegPatches {
+		path := filepath.Join(b.ffmpeg, p.file)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		switch {
+		case strings.Contains(string(data), p.new):
+		case strings.Contains(string(data), p.old):
+			if err := os.WriteFile(path, []byte(strings.Replace(string(data), p.old, p.new, 1)), 0o644); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("%s: the patch no longer applies", p.file)
+		}
+	}
+	return nil
 }
 
 // copyTool puts this executable at a fixed path without spaces, as the
@@ -135,7 +168,12 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("xcrun --show-sdk-path: %w; install Xcode", err)
 		}
-		return args, append(env, "SDKROOT="+strings.TrimSpace(string(sdk))), nil
+		env = append(env, "SDKROOT="+strings.TrimSpace(string(sdk)))
+		xml, err := b.buildLibxml2(t, clang+" -arch "+t.arch+" -mmacosx-version-min="+macOSMin, env)
+		if err != nil {
+			return nil, nil, err
+		}
+		return args, append(env, libxml2Env(t, xml)...), nil
 	}
 	if err := b.ensureZig(); err != nil {
 		return nil, nil, err
@@ -149,6 +187,11 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 		"NSGO_MEDIA_ZIG_TARGET="+t.zig,
 		"ZIG_GLOBAL_CACHE_DIR="+filepath.Join(b.work, "zig-cache"),
 	)
+	xml, err := b.buildLibxml2(t, b.zig+" cc -target "+t.zig, env)
+	if err != nil {
+		return nil, nil, err
+	}
+	env = append(env, libxml2Env(t, xml)...)
 	if t.os == "linux" {
 		root, err := b.unpackLibva()
 		if err != nil {
@@ -213,8 +256,17 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 	if err := addFile(zw, "COPYING.LGPLv2.1", filepath.Join(b.ffmpeg, "COPYING.LGPLv2.1"), 0o644); err != nil {
 		return "", err
 	}
-	note := fmt.Sprintf("FFmpeg %s, built for %s by NSGo Media's tools/ffmpeg under the LGPL 2.1 or later.\n\nSource: %s\nSHA-256: %s\n\nConfigured with:\n  %s\n",
-		FFmpegVersion, t.name, ffmpegSource.url, ffmpegSource.sha256, strings.Join(args, "\n  "))
+	xmlSrc := filepath.Join(b.work, "src", strings.TrimSuffix(libxml2Source.name, ".tar.xz"))
+	if err := addFile(zw, "COPYING.libxml2", filepath.Join(xmlSrc, "Copyright"), 0o644); err != nil {
+		return "", err
+	}
+	var patches strings.Builder
+	for _, p := range ffmpegPatches {
+		fmt.Fprintf(&patches, "  %s: %s\n", p.file, p.why)
+	}
+	note := fmt.Sprintf("FFmpeg %s, built for %s by NSGo Media's tools/ffmpeg under the LGPL 2.1 or later.\n\nSource: %s\nSHA-256: %s\n\nChanged:\n%s\nConfigured with:\n  %s\n\n"+
+		"libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.\nSource: %s\nSHA-256: %s\n",
+		FFmpegVersion, t.name, ffmpegSource.url, ffmpegSource.sha256, patches.String(), strings.Join(args, "\n  "), libxml2Source.url, libxml2Source.sha256)
 	w, err := zw.Create("BUILD.txt")
 	if err != nil {
 		return "", err
@@ -369,6 +421,95 @@ func (b *builder) buildZlib(t target) (string, error) {
 		}
 	}
 	return dest, nil
+}
+
+// buildLibxml2 compiles libxml2's smallest configuration, which the DASH
+// demuxer's parsing needs, into a static library for t with cc. Its
+// xmlCleanupParser, which the demuxer calls after each manifest, is made a
+// no-op: it frees the library's global state under other players parsing
+// at the same time, and the library frees that state itself at exit.
+func (b *builder) buildLibxml2(t target, cc string, env []string) (string, error) {
+	src, err := b.unpack(libxml2Source, strings.TrimSuffix(libxml2Source.name, ".tar.xz"))
+	if err != nil {
+		return "", err
+	}
+	dest := filepath.Join(b.work, "deps", t.name, "libxml2")
+	lib := filepath.Join(dest, "lib", "libxml2.a")
+	if _, err := os.Stat(lib); err == nil {
+		return dest, nil
+	}
+	threads := filepath.Join(src, "threads.c")
+	data, err := os.ReadFile(threads)
+	if err != nil {
+		return "", err
+	}
+	if cleanup := "xmlCleanupParser(void) {\n"; !strings.Contains(string(data), cleanup+"    return;") {
+		if err := replaceInFile(threads, cleanup, cleanup+"    return;\n"); err != nil {
+			return "", err
+		}
+	}
+	dir := filepath.Join(b.work, "build", t.name+"-libxml2")
+	if err := os.RemoveAll(dir); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	ar, ranlib := "ar", "ranlib"
+	if t.zig != "" {
+		ar, ranlib = b.zig+" ar", b.zig+" ranlib"
+	}
+	if err := run(dir, env, filepath.Join(src, "configure"),
+		"--host="+libxml2Host(t), "--prefix="+dest,
+		"CC="+cc, "AR="+ar, "RANLIB="+ranlib, "CFLAGS=-O2 -fPIC",
+		"--enable-static", "--disable-shared", "--with-minimum", "--with-threads", "--without-python",
+	); err != nil {
+		return "", fmt.Errorf("libxml2 configure: %w", err)
+	}
+	if t.os == "windows" {
+		// libtool takes Zig's MinGW compiler for MSVC's and archives with lib.exe.
+		if err := replaceInFile(filepath.Join(dir, "libtool"), `old_archive_cmds="lib -OUT:\$oldlib\$oldobjs\$old_deplibs"`, `old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs~\$RANLIB \$tool_oldlib"`); err != nil {
+			return "", err
+		}
+	}
+	if err := run(dir, env, "make", fmt.Sprintf("-j%d", b.jobs)); err != nil {
+		return "", fmt.Errorf("libxml2 make: %w", err)
+	}
+	if err := run(dir, env, "make", "install"); err != nil {
+		return "", fmt.Errorf("libxml2 install: %w", err)
+	}
+	if t.os == "windows" {
+		if err := os.Rename(filepath.Join(dest, "lib", "libxml2.lib"), lib); err != nil {
+			return "", err
+		}
+	}
+	return dest, nil
+}
+
+func libxml2Host(t target) string {
+	switch t.os {
+	case "darwin":
+		return t.arch + "-apple-darwin"
+	case "windows":
+		return "x86_64-w64-mingw32"
+	}
+	return "x86_64-linux-gnu"
+}
+
+// libxml2Env is what the pkg-config wrapper answers for libxml-2.0 from
+// the library buildLibxml2 made in dir.
+func libxml2Env(t target, dir string) []string {
+	inc := filepath.Join(dir, "include")
+	cflags := "-I" + inc + " -I" + filepath.Join(inc, "libxml2")
+	libs := "-L" + filepath.Join(dir, "lib") + " -lxml2"
+	switch t.os {
+	case "windows":
+		cflags += " -DLIBXML_STATIC"
+		libs += " -lbcrypt"
+	case "linux":
+		libs += " -lm"
+	}
+	return []string{"NSGO_MEDIA_LIBXML2_CFLAGS=" + cflags, "NSGO_MEDIA_LIBXML2_LIBS=" + libs}
 }
 
 // unpackLibva extracts the libva packages into a root of their files.

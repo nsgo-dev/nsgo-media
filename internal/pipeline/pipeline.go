@@ -73,10 +73,11 @@ type Pipeline struct {
 	openMu  sync.Mutex
 	wg      sync.WaitGroup
 
-	in     *ffmpeg.Input // the main input's
-	inputs []*input      // the main source, then an external audio one
-	info   *Info
-	start  time.Duration // the first timestamp, which positions count from
+	in       *ffmpeg.Input   // the main input's
+	inputs   []*input        // the main source, then an external audio one
+	adaptive *adaptiveStream // an HLS or DASH main source's resources
+	info     *Info
+	start    time.Duration // the first timestamp, which positions count from
 
 	vq, aq      *packetQueue
 	pool        *framePool
@@ -85,11 +86,9 @@ type Pipeline struct {
 	subs        map[int]*ffmpeg.Decoder // the demuxer's subtitle decoders
 	ring        *audioRing
 	out         audioout.Output
-	videoStream int // -1 for none
-	videoTB     ffmpeg.Rational
-	videoRot    int
-	videoSAR    float64
+	vp          atomic.Pointer[videoParams]
 	hwDevice    atomic.Value // string
+	reopenVideo atomic.Bool
 
 	genA atomic.Uint64 // gen, for workers to read without the lock
 	rate atomic.Uint64 // float64 bits
@@ -97,7 +96,9 @@ type Pipeline struct {
 	mu          sync.Mutex
 	cond        *sync.Cond // the demuxer waits on it
 	gen         uint64
-	audioStream int // -1 for none
+	videoStream int  // -1 for none
+	audioStream int  // -1 for none
+	auto        bool // the variant follows the bandwidth
 	paused      bool
 	loop        bool
 	outW, outH  int
@@ -118,6 +119,8 @@ type Pipeline struct {
 	dropped, empty int
 	lead           time.Duration // how early a frame shows
 	reopenAudio    atomic.Bool
+	adaptAt        time.Time // when the variant was last weighed, and changed
+	switchedAt     time.Time
 
 	// Stepping, on the engine's goroutine.
 	hist        *frameHistory
@@ -143,6 +146,14 @@ type seekRequest struct {
 	gen    uint64
 }
 
+// videoParams are what decoding and converting the playing video track
+// need of it; they change with the variant.
+type videoParams struct {
+	tb  ffmpeg.Rational
+	rot int
+	sar float64
+}
+
 // New makes a pipeline; Open opens its source.
 func New(opts Options) *Pipeline {
 	// Generation 1 is the first; 0 marks no generation.
@@ -152,12 +163,14 @@ func New(opts Options) *Pipeline {
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 	p.rate.Store(math.Float64bits(1))
 	p.hwDevice.Store("")
+	p.vp.Store(&videoParams{tb: ffmpeg.Rational{Num: 1, Den: 1}, sar: 1})
 	return p
 }
 
 var errClosed = errors.New("pipeline: closed")
 
-// Open opens src, a file path or an HTTP(S) URL, reads its information and
+// Open opens src, a file path or an HTTP(S) URL, which may be an HLS or
+// DASH manifest, reads its information and
 // starts decoding, paused at the start. Close from another goroutine makes
 // it return.
 func (p *Pipeline) Open(src string) (*Info, error) {
@@ -181,12 +194,25 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 	in := main.in
 	p.in = in
 	p.info = readInfo(in.Format)
+	p.info.Seekable = in.Format.Seekable()
+	if p.adaptive != nil && p.adaptive.live.Load() {
+		p.info.Live = true
+		// The DASH demuxer seeks in no live stream, though it does not say.
+		p.info.Seekable = p.info.Seekable && p.adaptive.kind != "dash"
+		if !p.info.Seekable {
+			p.info.Duration = 0 // a sliding window's length is no duration
+		}
+	}
 	p.start = in.Format.StartTime()
 	p.externalID = len(in.Format.Streams())
 
 	streams := in.Format.Streams()
 	p.videoStream = pickTrack(p.info.Tracks, Video)
-	p.audioStream = pickTrack(p.info.Tracks, Audio)
+	if vs := p.info.Variants(); len(vs) > 1 {
+		p.auto = true
+		p.videoStream = chooseVariant(vs, p.adaptive.bw.estimate()).ID
+	}
+	p.audioStream = p.audioFor(p.videoStream, pickTrack(p.info.Tracks, Audio))
 	if audio != nil {
 		ext, err := p.open(*audio, p.externalID)
 		if err != nil {
@@ -235,13 +261,7 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 
 	var vdec *ffmpeg.Decoder
 	if p.videoStream >= 0 {
-		s := streams[p.videoStream]
-		p.videoTB = s.TimeBase()
-		p.vq.setTimeBase(p.videoTB)
-		t := p.track(p.videoStream)
-		p.videoRot, p.videoSAR = t.Rotation, t.AspectRatio
-		p.halfFrame = p.frameDuration() / 2
-		p.lead = min(p.halfFrame, 8*time.Millisecond)
+		p.setVideoParams(p.videoStream)
 		vdec, err = p.openVideoDecoder(!p.opts.Software)
 		if err != nil {
 			p.videoStream = -1
@@ -286,9 +306,20 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 	for _, d := range p.inputs {
 		go p.demux(d)
 	}
-	go p.decodeVideo(vdec)
+	go p.decodeVideo(vdec, p.videoStream)
 	go p.decodeAudio(adec)
 	return p.info, nil
+}
+
+// setVideoParams makes track id the one frames are decoded and converted
+// for, and the presenter times them by.
+func (p *Pipeline) setVideoParams(id int) {
+	s := p.in.Format.Streams()[id]
+	t := p.track(id)
+	p.vp.Store(&videoParams{tb: s.TimeBase(), rot: t.Rotation, sar: t.AspectRatio})
+	p.vq.setTimeBase(s.TimeBase())
+	p.halfFrame = p.frameDurationOf(id) / 2
+	p.lead = min(p.halfFrame, 8*time.Millisecond)
 }
 
 // pickTrack is the first default track of kind, or the first of it.
@@ -340,8 +371,15 @@ func hardwareDevice() string {
 	return ""
 }
 
+// video is the playing video track's ID, -1 for none.
+func (p *Pipeline) video() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.videoStream
+}
+
 func (p *Pipeline) openVideoDecoder(hardware bool) (*ffmpeg.Decoder, error) {
-	s := p.in.Format.Streams()[p.videoStream]
+	s := p.in.Format.Streams()[p.video()]
 	if hardware {
 		if dev := hardwareDevice(); dev != "" {
 			if d, err := ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 0, dev); err == nil {
@@ -455,8 +493,17 @@ func (p *Pipeline) Paused() bool {
 }
 
 // Seek moves to t from the start: to the keyframe at or before it, or
-// with exact to the frame showing at t.
+// with exact to the frame showing at t. A source that cannot seek, such as
+// a live stream's sliding window, stays where it plays.
 func (p *Pipeline) Seek(t time.Duration, exact bool) {
+	if p.info.Seekable {
+		p.seek(t, exact)
+	}
+}
+
+// seek is Seek, which on a source that cannot seek still restarts the
+// decoders where the demuxer reads.
+func (p *Pipeline) seek(t time.Duration, exact bool) {
 	if p.info.Duration > 0 {
 		t = min(t, p.info.Duration)
 	}
@@ -527,7 +574,7 @@ func (p *Pipeline) SetOutputSize(w, h int) {
 }
 
 // VideoTrack is the playing video track's ID, -1 for none.
-func (p *Pipeline) VideoTrack() int { return p.videoStream }
+func (p *Pipeline) VideoTrack() int { return p.video() }
 
 // AudioTrack is the playing audio track's ID, -1 for none.
 func (p *Pipeline) AudioTrack() int {
@@ -552,7 +599,7 @@ func (p *Pipeline) SelectAudio(id int) error {
 	p.setDiscards()
 	p.mu.Unlock()
 	p.reopenAudio.Store(true)
-	p.Seek(pos, true)
+	p.seek(pos, true)
 	return nil
 }
 

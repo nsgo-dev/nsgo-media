@@ -55,6 +55,7 @@ const (
 	offAVDictionaryEntryValue             = 8
 	offAVFormatContextIformat             = 8
 	offAVFormatContextPb                  = 32
+	offAVFormatContextCtxFlags            = 40
 	offAVFormatContextNbStreams           = 44
 	offAVFormatContextStreams             = 48
 	offAVFormatContextNbChapters          = 72
@@ -66,6 +67,9 @@ const (
 	offAVFormatContextFlags               = 128
 	offAVFormatContextMetadata            = 192
 	offAVFormatContextInterruptCallback   = 216
+	offAVFormatContextOpaque              = 416
+	offAVFormatContextIoOpen              = 448
+	offAVFormatContextIoClose2            = 456
 	offAVFrameData                        = 0
 	offAVFrameLinesize                    = 64
 	offAVFrameExtendedData                = 96
@@ -87,6 +91,7 @@ const (
 	offAVFrameColorTrc                    = 288
 	offAVFrameColorPrimaries              = 284
 	offAVIOContextBuffer                  = 8
+	offAVIOContextPos                     = 72
 	sizeAVIOInterruptCB                   = 16
 	offAVIOInterruptCBCallback            = 0
 	offAVIOInterruptCBOpaque              = 8

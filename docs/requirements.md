@@ -28,6 +28,12 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 | Players | Several players at once, each with its own view |
 | Distribution | FFmpeg shared libraries this repository builds locally, LGPL components only; nothing is published online |
 
+## After the first version
+
+| Area | Included |
+| --- | --- |
+| Adaptive streams | HLS and DASH over HTTP(S), on demand and live: a live stream reports no duration and, keeping only a sliding window, no seeking. The variant follows the measured bandwidth unless the app lists the variants and chooses one. HLS segments encrypted with AES-128 |
+
 ## Out of scope
 
 - Any control UI: play buttons, progress bars, menus, gestures and keyboard shortcuts belong to the app.

@@ -1,6 +1,9 @@
 package pipeline
 
 import (
+	"cmp"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
@@ -39,6 +42,9 @@ type Track struct {
 
 	SampleRate, Channels int
 	BitRate              int64
+	// Bandwidth is the bit rate an HLS or DASH manifest gives the variant
+	// the track belongs to; 0 for a track of no single variant.
+	Bandwidth int64
 }
 
 // Chapter is a named span of the source.
@@ -49,7 +55,13 @@ type Chapter struct {
 
 // Info is what opening a source tells about it.
 type Info struct {
+	// Duration is 0 when unknown, as for a live stream's sliding window.
 	Duration time.Duration
+	// Live is an HLS or DASH stream whose end is not published yet.
+	Live bool
+	// Seekable is false for a source that cannot seek, such as a live
+	// stream keeping no more than a sliding window.
+	Seekable bool
 	Format   string
 	BitRate  int64
 	Metadata map[string]string
@@ -85,6 +97,7 @@ func readInfo(f *ffmpeg.FormatContext) *Info {
 			Forced:   s.Forced(),
 			BitRate:  par.BitRate(),
 		}
+		t.Bandwidth, _ = strconv.ParseInt(md["variant_bitrate"], 10, 64)
 		switch par.Type() {
 		case ffmpeg.MediaVideo:
 			if s.AttachedPicture() {
@@ -126,4 +139,17 @@ func readInfo(f *ffmpeg.FormatContext) *Info {
 		})
 	}
 	return info
+}
+
+// Variants are the video tracks of an HLS or DASH stream's variants, by
+// bandwidth from the lowest.
+func (info *Info) Variants() []Track {
+	var vs []Track
+	for _, t := range info.Tracks {
+		if t.Kind == Video && t.Bandwidth > 0 {
+			vs = append(vs, t)
+		}
+	}
+	slices.SortStableFunc(vs, func(a, b Track) int { return cmp.Compare(a.Bandwidth, b.Bandwidth) })
+	return vs
 }

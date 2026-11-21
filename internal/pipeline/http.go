@@ -5,11 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
+
+// httpClient gives up on a server that does not connect or answer in
+// time; a body that stalls is ended by the pipeline's context.
+var httpClient = &http.Client{Transport: func() *http.Transport {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.DialContext = (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext
+	t.ResponseHeaderTimeout = 15 * time.Second
+	return t
+}()}
 
 // httpSource reads an HTTP(S) resource for FFmpeg, as one ranged GET from
 // the position read, and another after a seek moves away from it. Every
@@ -27,10 +38,14 @@ type httpSource struct {
 	size    int64 // -1 when unknown
 	rangeOK bool
 	opened  bool
+	// The first response's media type and the URL it came from after
+	// redirects.
+	contentType string
+	finalURL    string
 }
 
 func newHTTPSource(ctx context.Context, url string, header http.Header) (*httpSource, error) {
-	s := &httpSource{ctx: ctx, client: http.DefaultClient, url: url, header: header.Clone(), size: -1}
+	s := &httpSource{ctx: ctx, client: httpClient, url: url, header: header.Clone(), size: -1}
 	if err := s.open(0); err != nil {
 		return nil, err
 	}
@@ -64,6 +79,10 @@ func (s *httpSource) open(off int64) error {
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
+	}
+	if !s.opened {
+		s.contentType = resp.Header.Get("Content-Type")
+		s.finalURL = resp.Request.URL.String()
 	}
 	switch resp.StatusCode {
 	case http.StatusPartialContent:

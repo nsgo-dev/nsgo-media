@@ -17,9 +17,9 @@ import (
 // layoutFields are the struct fields the binding reads or writes, by C
 // struct. A struct listed with no fields has only its size generated.
 var layoutFields = map[string][]string{
-	"AVFormatContext":   {"iformat", "pb", "nb_streams", "streams", "nb_chapters", "chapters", "url", "start_time", "duration", "bit_rate", "flags", "metadata", "interrupt_callback"},
+	"AVFormatContext":   {"iformat", "pb", "ctx_flags", "nb_streams", "streams", "nb_chapters", "chapters", "url", "start_time", "duration", "bit_rate", "flags", "metadata", "interrupt_callback", "opaque", "io_open", "io_close2"},
 	"AVInputFormat":     {"name", "long_name", "flags"},
-	"AVIOContext":       {"buffer"},
+	"AVIOContext":       {"buffer", "pos"},
 	"AVStream":          {"index", "id", "codecpar", "time_base", "start_time", "duration", "nb_frames", "disposition", "discard", "sample_aspect_ratio", "metadata", "avg_frame_rate", "r_frame_rate"},
 	"AVCodecParameters": {"codec_type", "codec_id", "format", "bit_rate", "profile", "width", "height", "sample_aspect_ratio", "framerate", "ch_layout", "sample_rate", "coded_side_data", "nb_coded_side_data"},
 	"AVPacketSideData":  {"data", "size", "type"},

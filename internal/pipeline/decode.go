@@ -10,8 +10,9 @@ import (
 	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
 )
 
-// decodeVideo decodes the video queue into RGBA frames for the presenter.
-func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
+// decodeVideo decodes the video queue, of track stream, into RGBA frames
+// for the presenter.
+func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder, stream int) {
 	defer p.wg.Done()
 	defer func() {
 		if dec != nil {
@@ -85,7 +86,7 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 			if ts == ffmpeg.NoPTS {
 				ts = frame.PTS()
 			}
-			pts := p.videoTB.Duration(ts)
+			pts := p.vp.Load().tb.Duration(ts)
 			if back != nil {
 				if err := fill(pts); err != nil {
 					return err
@@ -117,11 +118,22 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 			return
 		}
 		if it.flush {
+			// Another variant plays from the seek on.
+			if p.reopenVideo.Swap(false) {
+				if d, err := p.openVideoDecoder(dec.HWDevice != ""); err == nil {
+					dec.Close()
+					dec, stream = d, p.video()
+					scaler.Close()
+					scaler = ffmpeg.Scaler{}
+				}
+			}
 			dec.Flush()
 			gen, vdrop, back, backDone = it.gen, it.vdrop, it.back, false
 			continue
 		}
-		if it.gen != gen || backDone {
+		// A packet of a track the decoder is not for came in as the
+		// variant changed.
+		if it.gen != gen || backDone || it.pkt != nil && it.pkt.StreamIndex() != stream {
 			freeItem(it)
 			continue
 		}
@@ -180,8 +192,10 @@ func (p *Pipeline) endFill(back *backFill, gen uint64) {
 
 var errHardware = errors.New("pipeline: hardware frame transfer failed")
 
-func (p *Pipeline) frameDuration() time.Duration {
-	if fr := p.track(p.videoStream).FrameRate; fr > 0 {
+func (p *Pipeline) frameDuration() time.Duration { return p.frameDurationOf(p.video()) }
+
+func (p *Pipeline) frameDurationOf(id int) time.Duration {
+	if fr := p.track(id).FrameRate; fr > 0 {
 		return time.Duration(float64(time.Second) / fr)
 	}
 	return 40 * time.Millisecond
@@ -195,7 +209,7 @@ func (p *Pipeline) seekForFallback() {
 	p.gen++
 	gen := p.gen
 	p.genA.Store(gen)
-	p.requestSeek(&seekRequest{target: t, exact: true, vdrop: t - p.frameDuration()/2, gen: gen})
+	p.requestSeek(&seekRequest{target: t, exact: true, vdrop: t - p.frameDurationOf(p.videoStream)/2, gen: gen})
 	p.mu.Unlock()
 	p.ring.flush(gen, t)
 }
@@ -204,7 +218,7 @@ func (p *Pipeline) seekForFallback() {
 // output size: the displayed size, shrunk to cover the view's.
 func (p *Pipeline) convert(s *ffmpeg.Scaler, f *ffmpeg.Frame, pts time.Duration, gen uint64) *Frame {
 	ow, oh := p.outputSize(f.Width(), f.Height())
-	rot := p.videoRot
+	rot := p.vp.Load().rot
 	// The converter writes the unrotated picture.
 	cw, ch := turned(ow, oh, rot)
 	stale := func() bool { return p.genA.Load() != gen || p.stopped() }
@@ -241,11 +255,12 @@ func (p *Pipeline) convert(s *ffmpeg.Scaler, f *ffmpeg.Frame, pts time.Duration,
 // displayed is the shape a w×h picture shows at: its pixels' aspect
 // ratio, then its rotation.
 func (p *Pipeline) displayed(w, h int) (dw, dh float64) {
-	dw, dh = float64(w)*p.videoSAR, float64(h)
-	if p.videoSAR <= 0 {
+	vp := p.vp.Load()
+	dw, dh = float64(w)*vp.sar, float64(h)
+	if vp.sar <= 0 {
 		dw = float64(w)
 	}
-	if p.videoRot == 90 || p.videoRot == 270 {
+	if vp.rot == 90 || vp.rot == 270 {
 		dw, dh = dh, dw
 	}
 	return dw, dh
@@ -276,7 +291,7 @@ func turned(w, h, deg int) (int, int) {
 // paint converts f to RGBA of ow×oh, rotated, in memory from
 // ffmpeg.Alloc the caller frees.
 func (p *Pipeline) paint(s *ffmpeg.Scaler, f *ffmpeg.Frame, ow, oh int) (unsafe.Pointer, error) {
-	rot := p.videoRot
+	rot := p.vp.Load().rot
 	cw, ch := turned(ow, oh, rot)
 	out := ffmpeg.Alloc(ow * oh * 4)
 	if out == nil {
@@ -364,9 +379,10 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 	gen := p.genA.Load()
 	dropBefore := time.Duration(-1)
 	var tb ffmpeg.Rational
+	streamIdx := -1 // the audio stream's index in its input
 	if dec != nil {
 		_, s := p.stream(p.AudioTrack())
-		tb = s.TimeBase()
+		tb, streamIdx = s.TimeBase(), s.Index()
 	}
 	anchored := false
 	idle := false          // a history fill needs no sound
@@ -448,7 +464,7 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 					if d, err := p.openAudioDecoder(id); err == nil {
 						dec = d
 						_, s := p.stream(id)
-						tb = s.TimeBase()
+						tb, streamIdx = s.TimeBase(), s.Index()
 					}
 				}
 			}
@@ -467,7 +483,7 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 			}
 			continue
 		}
-		if dec == nil || it.gen != gen || idle {
+		if dec == nil || it.gen != gen || idle || it.pkt != nil && it.pkt.StreamIndex() != streamIdx {
 			freeItem(it)
 			continue
 		}

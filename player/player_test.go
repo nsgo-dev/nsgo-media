@@ -213,3 +213,38 @@ func TestPlayerStepsAndSnapshots(t *testing.T) {
 		t.Errorf("snapshot in 80×80 is %v", img.Bounds())
 	}
 }
+
+func TestPlayerChoosesVariants(t *testing.T) {
+	srv := httptest.NewServer(http.FileServer(http.Dir(filepath.Dir(fixture(t, "hls")))))
+	defer srv.Close()
+	var p *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.Open(srv.URL + "/hls/master.m3u8")
+		p.Play()
+		return View{Player: p, TestID: "video", Style: core.Style{Width: core.Pt(320), Height: core.Pt(180)}}
+	})
+	play(t, app, 5*time.Second, func() bool { return p.State() == Playing })
+	info := p.Info()
+	vs := info.Variants()
+	if len(vs) != 2 || info.Live || !info.Seekable || !p.AutoVariant() {
+		t.Fatalf("variants %+v, live %v, seekable %v, auto %v", vs, info.Live, info.Seekable, p.AutoVariant())
+	}
+	if err := p.SelectVariant(vs[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if p.AutoVariant() || p.VideoTrack() != vs[0].ID {
+		t.Fatalf("auto %v, video track %d after choosing %d", p.AutoVariant(), p.VideoTrack(), vs[0].ID)
+	}
+	play(t, app, 5*time.Second, func() bool {
+		f := p.frame.GetUntracked()
+		return f.img != nil && f.img.Rect.Dx() == vs[0].Width
+	})
+	if w, _ := p.VideoSize(); w != vs[0].Width {
+		t.Errorf("video width %d, want the variant's %d", w, vs[0].Width)
+	}
+	if err := p.SelectVariant(-1); err != nil || !p.AutoVariant() {
+		t.Errorf("auto: %v, %v", err, p.AutoVariant())
+	}
+}

@@ -30,6 +30,10 @@ Measured playback of 1080p and 4K at 60 fps on each desktop ([performance](perfo
 
 Stepping one frame backward while paused, from a bounded history of recent decoded frames or by decoding again from the keyframe before, and snapshots of the frame showing at the source's size.
 
+## 7. Adaptive streams
+
+HLS and DASH, on demand and live, with the variant chosen by the bandwidth or by the app, and HLS' AES-128 encryption. Their manifests, segments and keys are read in Go; FFmpeg gains libxml2 for DASH.
+
 ## Later
 
 | Goal | Depends on |
@@ -37,4 +41,4 @@ Stepping one frame backward while paused, from a bounded history of recent decod
 | Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
 | HDR output and tone mapping | GPU rendering |
 | iOS and Android | FFmpeg builds for them and a loader for their app packages |
-| HLS and DASH adaptive streams, bitmap subtitles, audio passthrough | Requests from apps |
+| Bitmap subtitles, audio passthrough | Requests from apps |

@@ -33,6 +33,13 @@ var (
 		url:    "https://zlib.net/fossils/zlib-1.3.1.tar.gz",
 		sha256: "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
 	}
+	// libxml2 parses DASH manifests. It is linked statically into
+	// Windows' and Linux' libraries; macOS uses the system's.
+	libxml2Source = download{
+		name:   "libxml2-2.15.4.tar.xz",
+		url:    "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz",
+		sha256: "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+	}
 	// libva's headers and libraries are what Linux' libraries link VAAPI
 	// against; at run time the system's libva.so.2 is loaded.
 	libvaPackages = []download{

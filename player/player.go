@@ -49,6 +49,7 @@ type Player struct {
 	frame      *core.Signal[frameRef]
 	audioTrack *core.Signal[int]
 	videoTrack *core.Signal[int]
+	auto       *core.Signal[bool]
 	subTrack   *core.Signal[int]
 	cues       *core.Signal[[]Cue]
 	rate       *core.Signal[float64]
@@ -91,6 +92,7 @@ func New(cx *core.Scope, opts ...Option) *Player {
 		frame:      core.NewSignal(cx, frameRef{}),
 		audioTrack: core.NewSignal(cx, -1),
 		videoTrack: core.NewSignal(cx, -1),
+		auto:       core.NewSignal(cx, false),
 		subTrack:   core.NewSignal(cx, -1),
 		cues:       core.NewSignalFunc[[]Cue](cx, nil, sameCues),
 		rate:       core.NewSignal(cx, 1.0),
@@ -148,6 +150,7 @@ func (p *Player) Open(source string, opts ...OpenOption) {
 	p.cues.Set(nil)
 	p.audioTrack.Set(-1)
 	p.videoTrack.Set(-1)
+	p.auto.Set(false)
 	p.subtitleID = -1
 	p.subTrack.Set(-1)
 	p.hardware.Set("")
@@ -187,6 +190,7 @@ func (p *Player) opened(pl *pipeline.Pipeline, info *pipeline.Info) {
 	p.info.Set(infoOf(info))
 	p.audioTrack.Set(pl.AudioTrack())
 	p.videoTrack.Set(pl.VideoTrack())
+	p.auto.Set(pl.AutoVariant())
 	p.hardware.Set(pl.HardwareDevice())
 	pl.SetRate(p.rateV)
 	pl.SetVolume(p.volumeV)
@@ -253,6 +257,9 @@ func (p *Player) tick() {
 	}
 	p.position.Set(st.Position)
 	p.buffered.Set(max(p.pl.Buffered(), st.Position))
+	// The bandwidth may have changed the variant.
+	p.videoTrack.Set(p.pl.VideoTrack())
+	p.audioTrack.Set(p.pl.AudioTrack())
 	if id := p.subtitleID; id >= 0 {
 		p.cues.Set(cuesOf(p.pl.Cues(id)))
 	}
@@ -296,7 +303,9 @@ func (p *Player) Stop() {
 	p.Seek(0, Fast)
 }
 
-// Seek moves to t from the start.
+// Seek moves to t from the start. A source that is not Info.Seekable,
+// such as a live stream keeping only a sliding window, stays where it
+// plays.
 func (p *Player) Seek(t time.Duration, mode SeekMode) {
 	if !p.ready() {
 		p.pendSeek = &pendingSeek{t, mode}
@@ -383,6 +392,24 @@ func (p *Player) SelectAudio(id int) error {
 	if err := p.pl.SelectAudio(id); err != nil {
 		return err
 	}
+	p.audioTrack.Set(p.pl.AudioTrack())
+	return nil
+}
+
+// SelectVariant plays the variant of an HLS or DASH stream whose video
+// track is id, one of Info.Variants, from the position; with -1 the
+// estimated bandwidth chooses it as it plays, as it does when the source
+// opens. Changing the variant decodes again from the keyframe before the
+// position, so the picture holds for a moment.
+func (p *Player) SelectVariant(id int) error {
+	if !p.ready() {
+		return errors.New("player: no source is open")
+	}
+	if err := p.pl.SelectVariant(id); err != nil {
+		return err
+	}
+	p.auto.Set(p.pl.AutoVariant())
+	p.videoTrack.Set(p.pl.VideoTrack())
 	p.audioTrack.Set(p.pl.AudioTrack())
 	return nil
 }
@@ -485,9 +512,15 @@ func (p *Player) Position() time.Duration { return p.position.Get() }
 // range runs from Position to it.
 func (p *Player) Buffered() time.Duration { return p.buffered.Get() }
 
-// AudioTrack and SubtitleTrack are the chosen tracks' IDs, -1 for none.
+// AudioTrack, VideoTrack and SubtitleTrack are the playing tracks' IDs,
+// -1 for none. For an HLS or DASH stream VideoTrack is the variant's.
 func (p *Player) AudioTrack() int    { return p.audioTrack.Get() }
+func (p *Player) VideoTrack() int    { return p.videoTrack.Get() }
 func (p *Player) SubtitleTrack() int { return p.subTrack.Get() }
+
+// AutoVariant reports the estimated bandwidth choosing an HLS or DASH
+// stream's variant, until SelectVariant chooses one.
+func (p *Player) AutoVariant() bool { return p.auto.Get() }
 
 // Cues are the chosen subtitle track's cues showing now, for the app to
 // draw.

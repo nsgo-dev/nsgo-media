@@ -20,8 +20,14 @@ It runs on macOS with Xcode and Go alone. Every download is pinned with its SHA-
 
 - The tool runs itself as the compiler, archiver and `pkg-config` configure calls (`-as`), so it adapts MinGW's linker flags to Zig's and answers only for libva, whose headers and link libraries come from Debian 12's packages. Nothing on the build host is detected (`--disable-autodetect`).
 - Only LGPL 2.1 parts are configured: every demuxer, parser and decoder, the file protocol, and the audio filters rate changes use. There are no encoders, muxers, devices or network protocols; HTTP(S) is read in Go through a custom `AVIOContext`, so no TLS library is linked. zlib is linked statically on Windows and Linux.
-- Each archive, `ffmpeg-<version>-<target>.zip`, holds the six libraries under their run-time names (`libavutil.61.dylib`, `avutil-61.dll`, `libavutil.so.61`), `COPYING.LGPLv2.1` and `BUILD.txt` with the source and the configure line, which the LGPL asks to ship with them.
+- libxml2 (MIT), which the DASH demuxer parses manifests with, is built in its smallest configuration and linked statically into libavformat on every target, adding about 1 MB. Its `xmlCleanupParser` is made a no-op: the DASH demuxer calls it after each manifest, and it would free the library's state under another player parsing.
+- One line of FFmpeg is patched (`ffmpegPatches` in `build.go`): an interrupted `dash_read_packet` returns `AVERROR_EXIT`, where it returned 0 with no packet and `av_read_frame` called it again without end, so a seek or `Close` during a DASH read hung.
+- Each archive, `ffmpeg-<version>-<target>.zip`, holds the six libraries under their run-time names (`libavutil.61.dylib`, `avutil-61.dll`, `libavutil.so.61`), `COPYING.LGPLv2.1`, `COPYING.libxml2` and `BUILD.txt` with the sources, the patch and the configure line, which the LGPL asks to ship with them.
 - macOS libraries have `@rpath` install names and an `@loader_path` run path; Linux ones a `$ORIGIN` run path, so each finds its siblings wherever they are.
+
+## Adaptive streams
+
+The HLS and DASH demuxers open playlists, segments and keys themselves, and only by URLs of a protocol FFmpeg has. So the core gives FFmpeg every HTTP(S) URL as a path under `/nsgo-media/` (`https://cdn.example/a.m3u8` becomes `/nsgo-media/https/cdn.example/a.m3u8`), which it takes for a file and resolves relative references against, and its `io_open` and `io_close2` hand each one back to Go. Go rewrites every manifest it serves so that absolute and root-relative references are such paths, downloads segments with their byte ranges, decrypts AES-128, and measures the bandwidth. Libraries without libxml2, such as Homebrew's, play HLS but not DASH.
 
 ## Packaging an app
 

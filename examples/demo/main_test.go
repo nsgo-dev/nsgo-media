@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -59,4 +61,23 @@ func TestControlsDriveThePlayer(t *testing.T) {
 	// Stop goes back to the start.
 	app.Press("id:stop")
 	play(t, app, 2*time.Second, func() bool { return timeText() == "0:00 / 0:02" })
+}
+
+func TestQualityChoosesTheVariant(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", "testdata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.FileServer(http.Dir(root)))
+	defer srv.Close()
+	t.Setenv("NSGO_MEDIA_DEMO_SOURCE", srv.URL+"/hls/master.m3u8")
+	app := nsgotest.Start(t, Root)
+	play(t, app, 10*time.Second, func() bool { return app.Find("id:time").Text == "0:01 / 0:06" })
+
+	app.Press("id:quality")
+	app.Press("role:option 90p · 112 kbit/s")
+	play(t, app, 5*time.Second, func() bool { return app.Exists("text:90p · 112 kbit/s") && !app.Exists("text:Auto") })
+	app.Press("id:quality")
+	app.Press("role:option Auto")
+	play(t, app, 5*time.Second, func() bool { return app.Exists("text:Auto") })
 }
