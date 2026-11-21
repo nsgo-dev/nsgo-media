@@ -137,6 +137,7 @@ func (p *Pipeline) Tick() Status {
 // dropping what precedes t.
 func (p *Pipeline) begin(t time.Duration, paused bool) {
 	p.running = true
+	p.smooth.valid = false
 	p.wall.set(t)
 	p.wall.setRunning(!paused, p.Rate())
 	p.ring.start(t)
@@ -147,11 +148,36 @@ func (p *Pipeline) clock(hasAudio bool) time.Duration {
 	if p.waitFirst {
 		return p.target
 	}
-	if hasAudio {
-		return p.ring.position(p.out.Played())
+	if !hasAudio {
+		return p.wall.now()
 	}
-	return p.wall.now()
+	// Devices tell their played position in steps of a buffer or a poll.
+	// Between steps the clock runs on at the rate, and it eases toward
+	// the device's position, jumping to it only when far off.
+	a := p.ring.position(p.out.Played())
+	now := time.Now()
+	if !p.smooth.valid || !p.running || p.Paused() {
+		p.smooth = smoothClock{pos: a, at: now, valid: true}
+		return a
+	}
+	pred := p.smooth.pos + time.Duration(float64(now.Sub(p.smooth.at))*p.Rate())
+	if diff := a - pred; diff > maxClockDrift || diff < -maxClockDrift {
+		pred = a
+	} else {
+		pred += diff / 8
+	}
+	p.smooth = smoothClock{pos: pred, at: now, valid: true}
+	return pred
 }
+
+// smoothClock is the clock's last reading, which the next extends.
+type smoothClock struct {
+	pos   time.Duration
+	at    time.Time
+	valid bool
+}
+
+const maxClockDrift = 40 * time.Millisecond
 
 // take removes the first queued frame and shows it.
 func (p *Pipeline) take() *Frame {
@@ -163,18 +189,29 @@ func (p *Pipeline) take() *Frame {
 	return f
 }
 
-// due shows the newest queued frame at or before pos, dropping the ones
-// before it.
+// due shows the newest queued frame due by pos, dropping the ones before
+// it.
 func (p *Pipeline) due(pos time.Duration) *Frame {
-	const early = 2 * time.Millisecond
+	// A frame shows a little before its time. When the display's frames
+	// fall at the frames' boundaries, jitter makes two frames due in one
+	// display frame and none in the next, so each such skip moves the
+	// lead by a few milliseconds, around a frame, until the phases part.
+	early := p.lead
 	p.frames.mu.Lock()
 	var f *Frame
 	for len(p.frames.frames) > 0 && p.frames.frames[0].PTS <= pos+early {
 		if f != nil {
 			p.pool.put(f)
+			p.dropped++
+			if p.halfFrame > 0 {
+				p.lead = (p.lead + 3*time.Millisecond) % (2 * p.halfFrame)
+			}
 		}
 		f = p.frames.frames[0]
 		p.frames.frames = p.frames.frames[1:]
+	}
+	if f == nil && len(p.frames.frames) == 0 && p.shown != nil && pos > p.shown.PTS+2*p.halfFrame+early {
+		p.empty++
 	}
 	p.frames.mu.Unlock()
 	if f != nil {
@@ -182,6 +219,10 @@ func (p *Pipeline) due(pos time.Duration) *Frame {
 	}
 	return f
 }
+
+// Drops counts the frames skipped because a later one was due too, and
+// the display frames that found no decoded frame when one was due.
+func (p *Pipeline) Drops() (late, empty int) { return p.dropped, p.empty }
 
 func (p *Pipeline) show(f *Frame) {
 	if p.shown != nil {

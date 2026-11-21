@@ -119,6 +119,10 @@ type Pipeline struct {
 	ended          bool
 	wall           wallClock
 	lastPos        time.Duration
+	smooth         smoothClock
+	halfFrame      time.Duration
+	dropped, empty int
+	lead           time.Duration // how early a frame shows
 	reopenAudio    atomic.Bool
 }
 
@@ -201,6 +205,8 @@ func (p *Pipeline) Open(src string) (*Info, error) {
 		p.vq.setTimeBase(p.videoTB)
 		t := p.track(p.videoStream)
 		p.videoRot, p.videoSAR = t.Rotation, t.AspectRatio
+		p.halfFrame = p.frameDuration() / 2
+		p.lead = min(p.halfFrame, 8*time.Millisecond)
 		vdec, err = p.openVideoDecoder(!p.opts.Software)
 		if err != nil {
 			p.videoStream = -1
@@ -431,6 +437,7 @@ func (p *Pipeline) Seek(t time.Duration, exact bool) {
 	p.ring.flush(gen, t)
 	p.waitFirst, p.stepReq, p.running, p.buffering = true, false, false, false
 	p.target, p.exact, p.lastPos = t, exact, t
+	p.smooth.valid = false
 	p.wall.set(t)
 }
 
