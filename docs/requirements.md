@@ -26,7 +26,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 | State | Playing, paused, buffering, ended and error states, position, buffered range and the chosen tracks, as NSGo signals the app's views read |
 | Decoding | Hardware decoding through FFmpeg where the platform offers it, falling back to software decoding on failure |
 | Players | Several players at once, each with its own view |
-| Distribution | FFmpeg shared libraries this repository builds, LGPL components only, uploaded to each release |
+| Distribution | FFmpeg shared libraries this repository builds locally, LGPL components only; nothing is published online |
 
 ## Out of scope
 

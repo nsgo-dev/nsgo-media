@@ -18,7 +18,7 @@
 
 ## 状态
 
-开发中：播放、声音、定位、字幕和硬件解码已在 macOS、Windows 和 Linux 上可用，但还没有发布版本。[需求](docs/requirements.md)定义了首个版本，[路线图](docs/roadmap.md)给出了剩余工作的顺序。
+开发中：播放、声音、定位、字幕和硬件解码已在 macOS、Windows 和 Linux 上可供本地使用，不发布线上版本。[需求](docs/requirements.md)定义了首个版本，[路线图](docs/roadmap.md)记录了之后的工作。
 
 ## 用法
 

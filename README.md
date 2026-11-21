@@ -18,7 +18,7 @@
 
 ## Status
 
-In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows and Linux, but there is no release yet. The [requirements](docs/requirements.md) define the first version and the [roadmap](docs/roadmap.md) orders what remains.
+In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows and Linux for local use, with no published release. The [requirements](docs/requirements.md) define the first version and the [roadmap](docs/roadmap.md) records what comes later.
 
 ## Usage
 

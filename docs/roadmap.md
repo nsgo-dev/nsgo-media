@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones run in order. The [requirements](requirements.md#first-version) define the first version; milestones 0 to 4 are built, and the first release waits for the libraries' upload.
+Milestones run in order. The [requirements](requirements.md#first-version) define the first version; all of them are built, for local use: nothing is published online.
 
 ## 0. Skeleton
 
@@ -8,7 +8,7 @@ The Go module, its package layout, a demo app, and the check and test commands r
 
 ## 1. FFmpeg libraries
 
-A command that builds FFmpeg's LGPL shared libraries for each desktop target at one pinned version, uploaded to a release by the same command, and the loader that finds them.
+A command that builds FFmpeg's LGPL shared libraries for each desktop target at one pinned version, and the loader that finds them.
 
 ## 2. Playback without sound
 
@@ -22,9 +22,9 @@ Audio output on CoreAudio, WASAPI and PulseAudio, the audio clock driving the pi
 
 Hardware decoding with its fallback, exact seeking and frame stepping, HTTP buffering and its range, subtitle cues, chapters, looping and several players at once.
 
-## 5. First release
+## 5. Local use
 
-Measured playback of 1080p and 4K at 60 fps on each desktop ([done](performance.md)), the demo app as the usage example, a step putting the libraries into an app's packages ([done](ffmpeg.md#packaging-an-app)), and a tagged release with its libraries.
+Measured playback of 1080p and 4K at 60 fps on each desktop ([performance](performance.md)), the demo app as the usage example, and a step putting locally built libraries into an app's packages ([packaging](ffmpeg.md#packaging-an-app)).
 
 ## Later
 
