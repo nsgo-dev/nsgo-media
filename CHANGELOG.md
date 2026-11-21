@@ -5,6 +5,7 @@
 ### Added
 
 - `player.Player` plays local files and HTTP(S) URLs with sound, on macOS, Windows and Linux, and `player.View` draws its picture with contain, cover or fill, following the stream's rotation.
+- `Open` takes `player.Headers` for the HTTP requests of a source and `player.ExternalAudio` for a separate audio source, as DASH sites serve them, kept in sync with the picture.
 - Play, pause, stop, fast and exact seeking, stepping one frame forward or backward, rates from 0.25× to 4× keeping the pitch, looping, volume, mute and choosing the audio track.
 - The source's information, tracks and chapters, and the state, position and buffered range as NSGo signals.
 - `Player.Snapshot` gives the frame showing at the source's size and rotation, or shrunk to a size, from software and hardware decoding.

@@ -1,6 +1,8 @@
 package player
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -117,6 +119,43 @@ func TestPlayerSubtitlesAndTracks(t *testing.T) {
 	if c := p.Cues(); len(c) != 1 || c[0].Text != "World" {
 		t.Errorf("cues at %v: %+v", p.Position(), c)
 	}
+}
+
+func TestPlayerExternalAudioWithHeaders(t *testing.T) {
+	header := http.Header{"Referer": {"https://www.example.com/"}}
+	files := http.FileServer(http.Dir(filepath.Join("..", "testdata")))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Referer") != header.Get("Referer") {
+			http.Error(w, "no referer", http.StatusForbidden)
+			return
+		}
+		files.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	var p, refused *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.Open(srv.URL+"/dash-video.mp4", Headers(header), ExternalAudio(srv.URL+"/dash-audio.m4a", header))
+		p.Play()
+		refused = New(cx)
+		refused.openOutput = silent
+		refused.Open(srv.URL+"/dash-video.mp4", Headers(header), ExternalAudio(srv.URL+"/dash-audio.m4a", nil))
+		return View{Player: p}
+	})
+	play(t, app, 3*time.Second, func() bool { return p.State() == Playing && refused.State() == Failed })
+	if tr := p.Info().Tracks; len(tr) != 2 || !tr[1].External || tr[1].Kind != Audio || p.AudioTrack() != tr[1].ID {
+		t.Fatalf("tracks %+v, audio %d", tr, p.AudioTrack())
+	}
+	// Turning the sound off and on again moves the clock between sources.
+	if err := p.SelectAudio(-1); err != nil {
+		t.Fatal(err)
+	}
+	play(t, app, 2*time.Second, func() bool { return p.Position() > 600*time.Millisecond })
+	if err := p.SelectAudio(1); err != nil {
+		t.Fatal(err)
+	}
+	play(t, app, 3*time.Second, func() bool { return p.State() == Ended })
 }
 
 func TestPlayerFailsOnMissingFile(t *testing.T) {

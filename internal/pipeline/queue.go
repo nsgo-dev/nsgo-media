@@ -35,6 +35,7 @@ type packetQueue struct {
 	// head and tail are the first queued packet's timestamp and the
 	// latest one's, in tb, which give the time the queue holds.
 	head, tail int64
+	flushed    uint64 // the latest flush's generation
 	closed     bool
 	// wake is called after a get, so the demuxer can read more.
 	wake func()
@@ -68,9 +69,15 @@ func (q *packetQueue) put(it item) {
 	q.mu.Unlock()
 }
 
-// flush drops every packet and queues a flush marker for gen.
+// flush drops every packet and queues a flush marker for its generation,
+// unless a later one flushed already.
 func (q *packetQueue) flush(marker item) {
 	q.mu.Lock()
+	if marker.gen < q.flushed {
+		q.mu.Unlock()
+		return
+	}
+	q.flushed = marker.gen
 	for _, it := range q.items {
 		freeItem(it)
 	}

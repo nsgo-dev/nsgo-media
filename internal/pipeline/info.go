@@ -26,7 +26,8 @@ type Track struct {
 	Title    string
 	Default  bool
 	Forced   bool
-	// External is set for a subtitle file added beside the source.
+	// External is set for a track of an external audio source and for a
+	// subtitle file added beside the source.
 	External bool
 
 	Width, Height int // the picture's size in pixels, before rotation

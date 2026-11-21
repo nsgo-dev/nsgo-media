@@ -10,6 +10,7 @@ package player
 import (
 	"errors"
 	"image"
+	"net/http"
 	"time"
 
 	"github.com/nsgo-dev/nsgo/core"
@@ -105,10 +106,38 @@ func New(cx *core.Scope, opts ...Option) *Player {
 	return p
 }
 
+// OpenOption configures how Open reads a source.
+type OpenOption func(*openConfig)
+
+type openConfig struct {
+	header http.Header
+	audio  *pipeline.Source
+}
+
+// Headers sends h with every HTTP request for the source, such as the
+// Referer, User-Agent and Cookie a CDN asks for.
+func Headers(h http.Header) OpenOption {
+	return func(c *openConfig) { c.header = h }
+}
+
+// ExternalAudio plays the audio of source, a file path or an http(s) URL
+// whose requests send h, with the picture of the source Open opens, as
+// DASH serves them apart. Its audio tracks follow the source's in Info,
+// External, and its first plays. Its sound stays the clock: seeking,
+// rate, pausing and stepping move both sources together, and Buffered is
+// the lesser of the two.
+func ExternalAudio(source string, h http.Header) OpenOption {
+	return func(c *openConfig) { c.audio = &pipeline.Source{Location: source, Header: h} }
+}
+
 // Open opens source, a file path or an http(s) URL, closing what was open.
 // The player is Opening until it can show the first frame, then Paused,
 // or Playing after Play.
-func (p *Player) Open(source string) {
+func (p *Player) Open(source string, opts ...OpenOption) {
+	var cfg openConfig
+	for _, o := range opts {
+		o(&cfg)
+	}
 	p.closePipeline()
 	p.seq++
 	seq := p.seq
@@ -135,7 +164,7 @@ func (p *Player) Open(source string) {
 		},
 	})
 	go func() {
-		info, err := pl.Open(source)
+		info, err := pl.OpenSources(pipeline.Source{Location: source, Header: cfg.header}, cfg.audio)
 		p.cx.Post(func() {
 			if seq != p.seq {
 				go pl.Close()

@@ -12,11 +12,13 @@ import (
 )
 
 // httpSource reads an HTTP(S) resource for FFmpeg, as one ranged GET from
-// the position read, and another after a seek moves away from it.
+// the position read, and another after a seek moves away from it. Every
+// request sends header.
 type httpSource struct {
 	ctx    context.Context
 	client *http.Client
 	url    string
+	header http.Header
 
 	mu      sync.Mutex
 	body    io.ReadCloser
@@ -27,8 +29,8 @@ type httpSource struct {
 	opened  bool
 }
 
-func newHTTPSource(ctx context.Context, url string) (*httpSource, error) {
-	s := &httpSource{ctx: ctx, client: http.DefaultClient, url: url, size: -1}
+func newHTTPSource(ctx context.Context, url string, header http.Header) (*httpSource, error) {
+	s := &httpSource{ctx: ctx, client: http.DefaultClient, url: url, header: header.Clone(), size: -1}
 	if err := s.open(0); err != nil {
 		return nil, err
 	}
@@ -49,6 +51,12 @@ func (s *httpSource) open(off int64) error {
 	req, err := http.NewRequestWithContext(s.ctx, http.MethodGet, s.url, nil)
 	if err != nil {
 		return err
+	}
+	for k, v := range s.header {
+		req.Header[k] = v
+	}
+	if h := s.header.Get("Host"); h != "" {
+		req.Host = h
 	}
 	if off > 0 || !s.opened {
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", off))

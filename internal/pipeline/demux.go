@@ -7,29 +7,31 @@ import (
 	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
 )
 
-// demux reads packets into the queues of the streams being decoded,
-// waiting while they hold enough, and carries out seeks.
-func (p *Pipeline) demux() {
+// demux reads d's packets into the queues of the streams being decoded,
+// waiting while they hold enough or d feeds none, and carries out seeks.
+func (p *Pipeline) demux(d *input) {
 	defer p.wg.Done()
-	f := p.in.Format
+	f := d.in.Format
 	streams := f.Streams()
+	main := d == p.inputs[0]
 	for {
 		p.mu.Lock()
-		for !p.stopped() && p.seekReq == nil && (p.demuxEOF || p.hold || p.queuesFull()) {
+		for !p.stopped() && d.seekReq == nil && (d.eof || d.hold || !p.feeds(d) || p.queuesFull(d)) {
 			p.cond.Wait()
 		}
 		if p.stopped() {
 			p.mu.Unlock()
 			return
 		}
-		req := p.seekReq
-		p.seekReq = nil
+		req := d.seekReq
+		d.seekReq = nil
 		gen, audio := p.gen, p.audioStream
+		feedsAudio := p.audioInput() == d
 		p.mu.Unlock()
 
 		if req != nil {
-			p.interrupt.Store(false)
-			p.doSeek(req)
+			d.interrupt.Store(false)
+			p.doSeek(d, req)
 			continue
 		}
 
@@ -41,50 +43,48 @@ func (p *Pipeline) demux() {
 				return
 			}
 			p.mu.Lock()
-			pending := p.seekReq != nil
+			pending := d.seekReq != nil
 			p.mu.Unlock()
 			if pending {
 				continue // a seek interrupted the read
 			}
 			if !ffmpeg.IsEOF(err) {
-				if rerr := p.in.ReadErr(); rerr != nil {
+				if rerr := d.in.ReadErr(); rerr != nil {
 					err = rerr
 				}
-				p.mu.Lock()
-				p.readErr = err
-				p.mu.Unlock()
 				p.emit(Event{Kind: EventError, Err: err})
 			}
 			p.mu.Lock()
 			if p.gen == gen {
-				p.demuxEOF = true
+				d.eof = true
 			}
 			p.mu.Unlock()
 			eof := item{eof: true, gen: gen}
-			if p.videoStream >= 0 {
+			if main && p.videoStream >= 0 {
 				p.vq.put(eof)
 			}
-			if audio >= 0 {
+			if feedsAudio && audio >= 0 {
 				p.aq.put(eof)
 			}
 			continue
 		}
 		idx := pkt.StreamIndex()
-		if ts := packetTime(pkt); ts != ffmpeg.NoPTS && (idx == p.videoStream || idx == audio) && idx < len(streams) {
+		id := d.base + idx
+		if ts := packetTime(pkt); ts != ffmpeg.NoPTS && (id == p.videoStream || id == audio) && idx < len(streams) {
 			t := streams[idx].TimeBase().Duration(ts)
 			p.mu.Lock()
 			if p.gen == gen {
-				p.buffered = max(p.buffered, t)
+				d.buffered = max(d.buffered, t)
 			}
 			p.mu.Unlock()
 		}
 		switch {
-		case idx == p.videoStream:
+		case id == p.videoStream:
 			p.vq.put(item{pkt: pkt, gen: gen})
-		case idx == audio:
+		case id == audio:
 			p.aq.put(item{pkt: pkt, gen: gen})
-		case p.subs[idx] != nil:
-			p.decodeSubtitle(idx, streams[idx].TimeBase(), pkt)
+		case p.subs[id] != nil:
+			p.decodeSubtitle(id, streams[idx].TimeBase(), pkt)
 			pkt.Free()
 		default:
 			pkt.Free()
@@ -92,46 +92,59 @@ func (p *Pipeline) demux() {
 	}
 }
 
-// queuesFull reports the queues holding enough: too many bytes together,
-// or every queue enough packets and time. It is called with p.mu held.
-func (p *Pipeline) queuesFull() bool {
+// queuesFull reports the queues holding enough for d to wait: too many
+// bytes together, or every queue d feeds enough packets and time. It is
+// called with p.mu held.
+func (p *Pipeline) queuesFull(d *input) bool {
 	var bytes int
 	full := true
-	for _, q := range p.activeQueues() {
-		n, b, d := q.stats()
+	add := func(q *packetQueue, feeder *input) {
+		n, b, dur := q.stats()
 		bytes += b
-		if n < minQueuePackets || d < minQueueTime {
+		if feeder == d && (n < minQueuePackets || dur < minQueueTime) {
 			full = false
 		}
+	}
+	if p.videoStream >= 0 {
+		add(p.vq, p.inputs[0])
+	}
+	if p.audioStream >= 0 {
+		add(p.aq, p.audioInput())
 	}
 	return bytes > maxQueueBytes || full
 }
 
-func (p *Pipeline) activeQueues() []*packetQueue {
-	var qs []*packetQueue
-	if p.videoStream >= 0 {
-		qs = append(qs, p.vq)
+// doSeek seeks d to the keyframe at or before the target and flushes the
+// queues it feeds for the request's generation. An external audio input
+// only flushes for a history fill, which needs no sound.
+func (p *Pipeline) doSeek(d *input, req *seekRequest) {
+	main := d == p.inputs[0]
+	p.mu.Lock()
+	feedsAudio := p.audioInput() == d
+	if !main && req.back != nil && p.gen == req.gen {
+		d.hold = true
 	}
-	if p.audioStream >= 0 {
-		qs = append(qs, p.aq)
+	p.mu.Unlock()
+	if !main && !feedsAudio {
+		return
 	}
-	return qs
-}
-
-// doSeek seeks the demuxer to the keyframe at or before the target and
-// flushes every queue for the request's generation.
-func (p *Pipeline) doSeek(req *seekRequest) {
-	f := p.in.Format
-	us := int64(req.target / time.Microsecond)
-	if err := f.Seek(-1, math.MinInt64, us, us, 0); err != nil {
-		// Some inputs seek only forward of the target.
-		f.Seek(-1, math.MinInt64, us, math.MaxInt64, 0)
+	if main || req.back == nil {
+		f := d.in.Format
+		us := int64(req.target / time.Microsecond)
+		if err := f.Seek(-1, math.MinInt64, us, us, 0); err != nil {
+			// Some inputs seek only forward of the target.
+			f.Seek(-1, math.MinInt64, us, math.MaxInt64, 0)
+		}
 	}
 	marker := item{flush: true, gen: req.gen, target: req.target, exact: req.exact, vdrop: req.vdrop, back: req.back}
-	p.vq.flush(marker)
-	p.aq.flush(marker)
-	for _, d := range p.subs {
-		d.Flush()
+	if main {
+		p.vq.flush(marker)
+		for _, s := range p.subs {
+			s.Flush()
+		}
+	}
+	if feedsAudio {
+		p.aq.flush(marker)
 	}
 }
 

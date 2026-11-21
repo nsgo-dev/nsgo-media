@@ -32,7 +32,7 @@ func (p *Pipeline) Tick() Status {
 	hasVideo := p.videoStream >= 0
 	p.mu.Lock()
 	hasAudio := p.audioStream >= 0
-	paused, demuxEOF, loop := p.paused, p.demuxEOF, p.loop
+	paused, demuxEOF, loop := p.paused, p.demuxEOF(), p.loop
 	p.mu.Unlock()
 
 	queued, firstAudio, haveAudio, audioEOF, starved := p.ring.status()

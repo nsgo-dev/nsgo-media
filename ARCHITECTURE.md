@@ -29,7 +29,7 @@ NSGo Media is a Go module that NSGo apps import. A player reads a source with FF
 
 ## Core flows
 
-**Open.** `Open` starts a goroutine that opens the input, reads its streams and posts the source's information. Files go through FFmpeg's file protocol; HTTP(S) is read in Go (`httpSource`, ranged GETs) through a custom `AVIOContext`. Decoders for the chosen tracks start, video on the platform's hardware device first.
+**Open.** `Open` starts a goroutine that opens the input, reads its streams and posts the source's information. Files go through FFmpeg's file protocol; HTTP(S) is read in Go (`httpSource`, ranged GETs sending the source's headers) through a custom `AVIOContext`. An external audio source, as DASH serves one, is a second input on the same timeline with its own demuxer: its audio tracks follow the source's, its first is chosen, and it feeds only the audio queue. Each demuxer carries out every seek; the buffered range is the lesser of the inputs being read. Decoders for the chosen tracks start, video on the platform's hardware device first.
 
 **Play.** The demuxer fills a packet queue per stream and waits while they hold 2 s and 25 packets each, or 48 MiB together. The audio decoder resamples to the device's format, slows or speeds it with `atempo`, and queues 300 ms for the device. Each device frame it fills is recorded against the media time it plays, so the device's played count is the master clock, eased between the device's updates; without audio a monotonic clock stands in. The video decoder copies hardware frames to memory, converts them to RGBA no larger than the largest view needs, rotates them, and queues 3 in a pool of 7. Each frame keeps its decoded picture, which a snapshot converts again at the source's size.
 
@@ -49,7 +49,7 @@ None now. Packaging the libraries is a step of the core's own after `nsgo build`
 
 ## Verification
 
-Pipeline and player tests decode the clips in `testdata/` headless, through a silent output paced as a device, and check order, seeking, steps both ways at constant and variable rates, snapshots, rate, looping, subtitles, HTTP and `Close`. `internal/audioout`'s test plays a tone on the real device. `nsgotest` drives the demo app. `TestMeasurePlayback` plays a long clip on a real machine; the results are in [Performance](docs/performance.md).
+Pipeline and player tests decode the clips in `testdata/` headless, through a silent output paced as a device, and check order, seeking, steps both ways at constant and variable rates, snapshots, rate, looping, subtitles, HTTP with its headers, external audio in sync and `Close`. `internal/audioout`'s test plays a tone on the real device. `nsgotest` drives the demo app. `TestMeasurePlayback` plays a long clip on a real machine; the results are in [Performance](docs/performance.md).
 
 ## Subjects
 

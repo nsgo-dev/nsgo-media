@@ -166,12 +166,14 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 	}
 }
 
-// endFill ends a history fill and stops the demuxer reading for it.
+// endFill ends a history fill and stops the demuxers reading for it.
 func (p *Pipeline) endFill(back *backFill, gen uint64) {
 	p.hist.finish(back.id)
 	p.mu.Lock()
 	if p.gen == gen {
-		p.hold = true
+		for _, d := range p.inputs {
+			d.hold = true
+		}
 	}
 	p.mu.Unlock()
 }
@@ -193,11 +195,8 @@ func (p *Pipeline) seekForFallback() {
 	p.gen++
 	gen := p.gen
 	p.genA.Store(gen)
-	p.seekReq = &seekRequest{target: t, exact: true, vdrop: t - p.frameDuration()/2, gen: gen}
-	p.demuxEOF, p.hold = false, false
-	p.cond.Broadcast()
+	p.requestSeek(&seekRequest{target: t, exact: true, vdrop: t - p.frameDuration()/2, gen: gen})
 	p.mu.Unlock()
-	p.interrupt.Store(true)
 	p.ring.flush(gen, t)
 }
 
@@ -366,7 +365,8 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 	dropBefore := time.Duration(-1)
 	var tb ffmpeg.Rational
 	if dec != nil {
-		tb = p.in.Format.Streams()[p.AudioTrack()].TimeBase()
+		_, s := p.stream(p.AudioTrack())
+		tb = s.TimeBase()
 	}
 	anchored := false
 	idle := false          // a history fill needs no sound
@@ -447,7 +447,8 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 				if id := p.AudioTrack(); id >= 0 {
 					if d, err := p.openAudioDecoder(id); err == nil {
 						dec = d
-						tb = p.in.Format.Streams()[id].TimeBase()
+						_, s := p.stream(id)
+						tb = s.TimeBase()
 					}
 				}
 			}

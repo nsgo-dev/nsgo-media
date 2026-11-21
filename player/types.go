@@ -79,6 +79,8 @@ type Track struct {
 	Title    string
 	Default  bool
 	Forced   bool
+	// External is set for a track of ExternalAudio's source and for a
+	// subtitle file AddSubtitles added.
 	External bool
 
 	// Width and Height are a video's size in pixels as encoded; Rotation

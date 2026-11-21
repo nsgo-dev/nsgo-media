@@ -66,18 +66,17 @@ type Options struct {
 
 // Pipeline is one opened source.
 type Pipeline struct {
-	opts      Options
-	interrupt atomic.Bool
-	closing   atomic.Bool
-	ctx       context.Context
-	cancel    context.CancelFunc
-	openMu    sync.Mutex
-	wg        sync.WaitGroup
+	opts    Options
+	closing atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	openMu  sync.Mutex
+	wg      sync.WaitGroup
 
-	in    *ffmpeg.Input
-	http  *httpSource
-	info  *Info
-	start time.Duration // the first timestamp, which positions count from
+	in     *ffmpeg.Input // the main input's
+	inputs []*input      // the main source, then an external audio one
+	info   *Info
+	start  time.Duration // the first timestamp, which positions count from
 
 	vq, aq      *packetQueue
 	pool        *framePool
@@ -98,16 +97,11 @@ type Pipeline struct {
 	mu          sync.Mutex
 	cond        *sync.Cond // the demuxer waits on it
 	gen         uint64
-	seekReq     *seekRequest
 	audioStream int // -1 for none
-	demuxEOF    bool
-	readErr     error
 	paused      bool
 	loop        bool
 	outW, outH  int
-	buffered    time.Duration // the latest timestamp demuxed
 	externalID  int
-	hold        bool // a history fill finished: the demuxer reads no more
 
 	// The presenter's state, on the engine's goroutine.
 	shown, retired *Frame
@@ -138,7 +132,7 @@ type Pipeline struct {
 	stepScaler  ffmpeg.Scaler
 }
 
-// seekRequest is a seek for the demuxer and, in its flush marker, what
+// seekRequest is a seek for the demuxers and, in its flush marker, what
 // the decoders drop: audio before target when exact, video before vdrop
 // (none when negative), or with back all but a history fill.
 type seekRequest struct {
@@ -161,38 +155,62 @@ func New(opts Options) *Pipeline {
 	return p
 }
 
+var errClosed = errors.New("pipeline: closed")
+
 // Open opens src, a file path or an HTTP(S) URL, reads its information and
 // starts decoding, paused at the start. Close from another goroutine makes
 // it return.
 func (p *Pipeline) Open(src string) (*Info, error) {
+	return p.OpenSources(Source{Location: src}, nil)
+}
+
+// OpenSources opens src as Open does. With audio, it also opens that
+// source and plays its first audio track with src's picture: the two are
+// demuxed apart on one timeline, as DASH serves them, and their audio
+// tracks follow src's, External.
+func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 	p.openMu.Lock()
 	defer p.openMu.Unlock()
 	if p.closing.Load() {
-		return nil, errors.New("pipeline: closed")
+		return nil, errClosed
 	}
-	var source ffmpeg.Source
-	if isURL(src) {
-		h, err := newHTTPSource(p.ctx, src)
-		if err != nil {
-			return nil, err
-		}
-		p.http, source = h, h
-	}
-	in, err := ffmpeg.Open(src, source, &p.interrupt)
+	main, err := p.open(src, 0)
 	if err != nil {
-		if p.closing.Load() {
-			return nil, errors.New("pipeline: closed")
-		}
 		return nil, err
 	}
+	in := main.in
 	p.in = in
 	p.info = readInfo(in.Format)
 	p.start = in.Format.StartTime()
 	p.externalID = len(in.Format.Streams())
 
 	streams := in.Format.Streams()
-	p.videoStream = pickTrack(p.info, Video)
-	p.audioStream = pickTrack(p.info, Audio)
+	p.videoStream = pickTrack(p.info.Tracks, Video)
+	p.audioStream = pickTrack(p.info.Tracks, Audio)
+	if audio != nil {
+		ext, err := p.open(*audio, p.externalID)
+		if err != nil {
+			return nil, fmt.Errorf("pipeline: external audio: %w", err)
+		}
+		var tracks []Track
+		ai := readInfo(ext.in.Format)
+		for _, t := range ai.Tracks {
+			if t.Kind == Audio {
+				t.ID += ext.base
+				t.External = true
+				tracks = append(tracks, t)
+			}
+		}
+		if len(tracks) == 0 {
+			return nil, errors.New("pipeline: external audio: no audio track")
+		}
+		p.info.Tracks = append(p.info.Tracks, tracks...)
+		if p.info.Duration == 0 {
+			p.info.Duration = ai.Duration
+		}
+		p.audioStream = pickTrack(tracks, Audio)
+		p.externalID += len(ext.in.Format.Streams())
+	}
 	p.subs = map[int]*ffmpeg.Decoder{}
 	for _, t := range p.info.Tracks {
 		if t.Kind == Subtitle {
@@ -258,39 +276,30 @@ func (p *Pipeline) Open(src string) (*Info, error) {
 		if adec != nil {
 			adec.Close()
 		}
-		return nil, errors.New("pipeline: closed")
+		return nil, errClosed
 	}
 	p.waitFirst = true
 	p.target = p.start
 	p.lastPos = p.start
 	p.wall.set(p.start)
-	p.wg.Add(3)
-	go p.demux()
+	p.wg.Add(2 + len(p.inputs))
+	for _, d := range p.inputs {
+		go p.demux(d)
+	}
 	go p.decodeVideo(vdec)
 	go p.decodeAudio(adec)
 	return p.info, nil
 }
 
-func pickTrack(info *Info, kind Kind) int {
-	id := -1
-	for _, t := range info.Tracks {
-		if t.Kind != kind {
-			continue
-		}
-		if id < 0 || t.Default && !info.trackDefault(id) {
-			id = t.ID
+// pickTrack is the first default track of kind, or the first of it.
+func pickTrack(tracks []Track, kind Kind) int {
+	id, def := -1, false
+	for _, t := range tracks {
+		if t.Kind == kind && (id < 0 || t.Default && !def) {
+			id, def = t.ID, t.Default
 		}
 	}
 	return id
-}
-
-func (info *Info) trackDefault(id int) bool {
-	for _, t := range info.Tracks {
-		if t.ID == id {
-			return t.Default
-		}
-	}
-	return false
 }
 
 func (p *Pipeline) track(id int) Track {
@@ -302,14 +311,19 @@ func (p *Pipeline) track(id int) Track {
 	return Track{}
 }
 
-// setDiscards has the demuxer drop the streams nothing decodes.
+// setDiscards has the demuxers drop the streams nothing decodes.
 func (p *Pipeline) setDiscards() {
-	for _, s := range p.in.Format.Streams() {
-		i := s.Index()
-		if i == p.videoStream || i == p.audioStream || p.subs[i] != nil {
-			s.SetDiscard(ffmpeg.DiscardDefault)
-		} else {
-			s.SetDiscard(ffmpeg.DiscardAll)
+	for _, d := range p.inputs {
+		if d.in == nil {
+			continue
+		}
+		for _, s := range d.in.Format.Streams() {
+			i := d.base + s.Index()
+			if i == p.videoStream || i == p.audioStream || p.subs[i] != nil {
+				s.SetDiscard(ffmpeg.DiscardDefault)
+			} else {
+				s.SetDiscard(ffmpeg.DiscardAll)
+			}
 		}
 	}
 }
@@ -341,7 +355,7 @@ func (p *Pipeline) openVideoDecoder(hardware bool) (*ffmpeg.Decoder, error) {
 }
 
 func (p *Pipeline) openAudioDecoder(id int) (*ffmpeg.Decoder, error) {
-	s := p.in.Format.Streams()[id]
+	_, s := p.stream(id)
 	p.aq.setTimeBase(s.TimeBase())
 	return ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 1, "")
 }
@@ -361,19 +375,15 @@ func (p *Pipeline) Close() {
 	if p.closing.Swap(true) {
 		return
 	}
-	p.interrupt.Store(true)
 	p.cancel()
-	p.openMu.Lock()
-	defer p.openMu.Unlock()
-	if p.in == nil {
-		if p.http != nil {
-			p.http.Close()
-		}
-		return
-	}
 	p.mu.Lock()
+	for _, d := range p.inputs {
+		d.interrupt.Store(true)
+	}
 	p.cond.Broadcast()
 	p.mu.Unlock()
+	p.openMu.Lock()
+	defer p.openMu.Unlock()
 	if p.vq != nil {
 		p.vq.close()
 		p.aq.close()
@@ -400,9 +410,13 @@ func (p *Pipeline) Close() {
 	}
 	p.hist.clear()
 	p.stepScaler.Close()
-	p.in.Close()
-	if p.http != nil {
-		p.http.Close()
+	for _, d := range p.inputs {
+		if d.in != nil {
+			d.in.Close()
+		}
+		if d.http != nil {
+			d.http.Close()
+		}
 	}
 }
 
@@ -474,13 +488,10 @@ func (p *Pipeline) restart(target time.Duration, exact bool, vdrop time.Duration
 	p.gen++
 	gen := p.gen
 	p.genA.Store(gen)
-	p.seekReq = &seekRequest{target: target, exact: exact, vdrop: vdrop, back: back, gen: gen}
-	p.demuxEOF, p.hold, p.ended = false, false, false
-	p.buffered = target
-	p.cond.Broadcast()
-	p.mu.Unlock()
 	// A blocking read stops for the seek.
-	p.interrupt.Store(true)
+	p.requestSeek(&seekRequest{target: target, exact: exact, vdrop: vdrop, back: back, gen: gen})
+	p.ended = false
+	p.mu.Unlock()
 	p.frames.drain(p.pool)
 	p.pool.wakeAll()
 	return gen
@@ -575,14 +586,25 @@ func (p *Pipeline) Cues(track int) []Cue {
 	return cues
 }
 
-// Buffered is how far from the start the demuxer has read.
+// Buffered is how far from the start the demuxers have read: the least
+// of the inputs being read.
 func (p *Pipeline) Buffered() time.Duration {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.demuxEOF && p.info.Duration > 0 {
-		return p.info.Duration
+	b := time.Duration(-1)
+	for _, d := range p.inputs {
+		if !p.feeds(d) {
+			continue
+		}
+		v := d.buffered - p.start
+		if d.eof && p.info.Duration > 0 {
+			v = p.info.Duration
+		}
+		if b < 0 || v < b {
+			b = v
+		}
 	}
-	return max(p.buffered-p.start, 0)
+	return max(b, 0)
 }
 
 // Position is the playing position from the start, as of the last Tick.

@@ -17,7 +17,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 
 | Area | Included |
 | --- | --- |
-| Sources | Local files and HTTP(S) URLs, in any container and codec the bundled FFmpeg decodes |
+| Sources | Local files and HTTP(S) URLs with the headers the app gives, such as `Referer`, `User-Agent` and `Cookie`, in any container and codec the bundled FFmpeg decodes; a separate audio source played with a source's picture, as DASH serves them |
 | Information | Duration, tracks (video, audio, subtitle) with their codecs and languages, picture size and rotation, container metadata, chapters |
 | Playback | Play, pause, stop; seek to a time, fast to a keyframe or exact to a frame; step one frame forward while paused; rate from 0.25× to 4× with the pitch kept; loop |
 | Sound | Volume, mute, choosing the audio track; output on the system's default device |
