@@ -59,6 +59,9 @@ func (p *Pipeline) demux(d *input) {
 				d.eof = true
 			}
 			p.mu.Unlock()
+			if main {
+				p.cues.ended(gen)
+			}
 			eof := item{eof: true, gen: gen}
 			if main && video >= 0 {
 				p.vq.put(eof)
@@ -70,6 +73,9 @@ func (p *Pipeline) demux(d *input) {
 		}
 		idx := pkt.StreamIndex()
 		id := d.base + idx
+		if ts := packetTime(pkt); main && ts != ffmpeg.NoPTS && idx < len(streams) {
+			p.cues.read(gen, streams[idx].TimeBase().Duration(ts))
+		}
 		if ts := packetTime(pkt); ts != ffmpeg.NoPTS && (id == video || id == audio) && idx < len(streams) {
 			t := streams[idx].TimeBase().Duration(ts)
 			p.mu.Lock()
@@ -84,7 +90,7 @@ func (p *Pipeline) demux(d *input) {
 		case id == audio:
 			p.aq.put(item{pkt: pkt, gen: gen})
 		case p.subs[id] != nil:
-			p.decodeSubtitle(id, streams[idx].TimeBase(), pkt)
+			p.decodeSubtitle(id, gen, streams[idx].TimeBase(), pkt)
 			pkt.Free()
 		default:
 			pkt.Free()
@@ -161,27 +167,59 @@ func (p *Pipeline) doSeek(d *input, req *seekRequest) {
 	}
 }
 
-// decodeSubtitle turns a text subtitle packet into cues of its track.
-func (p *Pipeline) decodeSubtitle(track int, tb ffmpeg.Rational, pkt *ffmpeg.Packet) {
-	rects, startMS, endMS, err := p.subs[track].DecodeSubtitle(pkt)
-	if err != nil || len(rects) == 0 {
+// decodeSubtitle turns a subtitle packet into cues of its track: any
+// text track's, and the chosen bitmap track's.
+func (p *Pipeline) decodeSubtitle(track int, gen uint64, tb ffmpeg.Rational, pkt *ffmpeg.Packet) {
+	codec := p.track(track).Codec
+	bitmap := bitmapSubtitles[codec]
+	if bitmap && int(p.subTrack.Load()) != track {
+		return
+	}
+	dec := p.subs[track]
+	sub, err := dec.DecodeSubtitle(pkt)
+	if err != nil || sub == nil {
 		return
 	}
 	ts := pkt.PTS()
-	if ts == ffmpeg.NoPTS {
+	if ts == ffmpeg.NoPTS && (!bitmap || sub.PTS == ffmpeg.NoPTS) {
 		return
 	}
-	base := tb.Duration(ts)
-	start := base + time.Duration(startMS)*time.Millisecond
-	end := base + tb.Duration(pkt.DurationTS())
-	if endMS > startMS && endMS != math.MaxUint32 {
-		end = base + time.Duration(endMS)*time.Millisecond
+	dur := tb.Duration(pkt.DurationTS())
+	if codec == "hdmv_pgs_subtitle" {
+		dur = 0 // a PGS cue lasts until the next, whatever a container says
 	}
-	for _, r := range rects {
+	start, end, given := subtitleTimes(sub, tb.Duration(ts), dur)
+	if bitmap {
+		cw, ch := dec.Size()
+		if cw <= 0 || ch <= 0 {
+			cw, ch = p.subtitleCanvas(track, codec)
+		}
+		// A DVB time-out is only the latest a page shows.
+		p.cues.addBitmap(track, bitmapCue(sub, start, end, given && codec != "dvb_subtitle", gen, cw, ch, p.vp.Load().rot))
+		return
+	}
+	if !given {
+		return
+	}
+	for _, r := range sub.Rects {
 		text := r.Text
 		if r.ASS != "" {
 			text = assText(r.ASS, 9)
 		}
 		p.cues.add(track, Cue{Start: start, End: end, Text: text})
 	}
+}
+
+// subtitleCanvas is the canvas of a bitmap track whose decoder has not
+// told it: its stream's size, DVB's default, or the video's.
+func (p *Pipeline) subtitleCanvas(track int, codec string) (w, h int) {
+	par := p.in.Format.Streams()[track].Params()
+	if w, h = par.Width(), par.Height(); w > 0 && h > 0 {
+		return w, h
+	}
+	if codec == "dvb_subtitle" {
+		return 720, 576
+	}
+	v := p.track(p.video())
+	return v.Width, v.Height
 }

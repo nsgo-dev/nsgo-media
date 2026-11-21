@@ -260,9 +260,7 @@ func (p *Player) tick() {
 	// The bandwidth may have changed the variant.
 	p.videoTrack.Set(p.pl.VideoTrack())
 	p.audioTrack.Set(p.pl.AudioTrack())
-	if id := p.subtitleID; id >= 0 {
-		p.cues.Set(cuesOf(p.pl.Cues(id)))
-	}
+	p.updateCues()
 	if p.state.GetUntracked() == Failed {
 		return
 	}
@@ -313,6 +311,7 @@ func (p *Player) Seek(t time.Duration, mode SeekMode) {
 	}
 	p.pl.Seek(t, mode == Exact)
 	p.position.Set(p.pl.Position())
+	p.updateCues()
 	if p.state.GetUntracked() == Ended {
 		p.state.Set(Paused)
 	}
@@ -415,7 +414,9 @@ func (p *Player) SelectVariant(id int) error {
 }
 
 // SelectSubtitle delivers the cues of the subtitle track id, or none for
-// -1.
+// -1. A bitmap track of the source decodes only while it is chosen:
+// choosing one decodes again from the keyframe before the position, so
+// the picture holds for a moment, as SelectAudio's does.
 func (p *Player) SelectSubtitle(id int) error {
 	if id >= 0 {
 		info := p.info.GetUntracked()
@@ -431,16 +432,25 @@ func (p *Player) SelectSubtitle(id int) error {
 	}
 	p.subtitleID = id
 	p.subTrack.Set(id)
-	if id < 0 {
-		p.cues.Set(nil)
-	} else if p.ready() {
-		p.cues.Set(cuesOf(p.pl.Cues(id)))
+	if p.pl != nil {
+		p.pl.SelectSubtitle(id)
 	}
+	p.updateCues()
 	return nil
 }
 
+// updateCues sets the chosen track's cues at the position.
+func (p *Player) updateCues() {
+	if id := p.subtitleID; id >= 0 && p.ready() {
+		p.cues.Set(cuesOf(p.pl.Cues(id)))
+	} else {
+		p.cues.Set(nil)
+	}
+}
+
 // AddSubtitles adds an SRT, WebVTT or ASS file as a subtitle track of the
-// open source, which Info lists and SelectSubtitle selects. It reads the
+// open source, which Info lists and SelectSubtitle selects, or a VobSub
+// .idx, with its .sub beside it, as a track per language. It reads the
 // file at once; before the source opens it waits for it.
 func (p *Player) AddSubtitles(path string) error {
 	if !p.ready() {
@@ -454,12 +464,15 @@ func (p *Player) AddSubtitles(path string) error {
 }
 
 func (p *Player) addSubtitles(path string) error {
-	t, err := p.pl.AddSubtitles(path)
+	ts, err := p.pl.AddSubtitles(path)
 	if err != nil {
 		return err
 	}
 	info := *p.info.GetUntracked()
-	info.Tracks = append(append([]Track(nil), info.Tracks...), trackOf(t))
+	info.Tracks = append([]Track(nil), info.Tracks...)
+	for _, t := range ts {
+		info.Tracks = append(info.Tracks, trackOf(t))
+	}
 	p.info.Set(&info)
 	return nil
 }
@@ -523,7 +536,9 @@ func (p *Player) SubtitleTrack() int { return p.subTrack.Get() }
 func (p *Player) AutoVariant() bool { return p.auto.Get() }
 
 // Cues are the chosen subtitle track's cues showing now, for the app to
-// draw.
+// draw: they hold while paused, change as a bitmap track updates its
+// picture, and are empty when nothing shows. After a seek no cue of the
+// old position stays.
 func (p *Player) Cues() []Cue { return p.cues.Get() }
 
 // Rate, Volume, Muted and Loop are what the setters last set.

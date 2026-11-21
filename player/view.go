@@ -64,12 +64,11 @@ func (v View) Render(cx *core.Scope) core.Node {
 			if v.FitFunc != nil {
 				fit = v.FitFunc()
 			}
-			pw, ph := p.VideoSize()
-			x, y, w, h := fitRect(box.Get(), float64(pw), float64(ph), fit)
+			b := p.PictureBounds(box.Get(), fit)
 			return core.Style{
 				Position: core.Absolute,
-				Left:     core.Pt(core.Points(x)), Top: core.Pt(core.Points(y)),
-				Width: core.Pt(core.Points(w)), Height: core.Pt(core.Points(h)),
+				Left:     core.Pt(b.Origin.X), Top: core.Pt(b.Origin.Y),
+				Width: core.Pt(b.Size.Width), Height: core.Pt(b.Size.Height),
 			}
 		},
 		ElementsHidden: true,
@@ -86,6 +85,19 @@ func (v View) Render(cx *core.Scope) core.Node {
 			size.h = int(math.Ceil(float64(b.Size.Height) * ratio))
 			p.updateOutputSize()
 		},
+	}
+}
+
+// PictureBounds is where a View of size box draws the picture with fit,
+// in its points: what an app draws over the picture, such as a cue's
+// bitmaps placed with Cue.Place, goes in the same box. Cover's bounds
+// overflow the box.
+func (p *Player) PictureBounds(box core.Size, fit Fit) core.Bounds {
+	pw, ph := p.VideoSize()
+	x, y, w, h := fitRect(box, float64(pw), float64(ph), fit)
+	return core.Bounds{
+		Origin: core.Point{X: core.Points(x), Y: core.Points(y)},
+		Size:   core.Size{Width: core.Points(w), Height: core.Points(h)},
 	}
 }
 

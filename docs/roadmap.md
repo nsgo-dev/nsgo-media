@@ -34,6 +34,10 @@ Stepping one frame backward while paused, from a bounded history of recent decod
 
 HLS and DASH, on demand and live, with the variant chosen by the bandwidth or by the app, and HLS' AES-128 encryption. Their manifests, segments and keys are read in Go; FFmpeg gains libxml2 for DASH.
 
+## 8. Bitmap subtitles
+
+PGS, DVD and DVB tracks and external VobSub files decoded to RGBA bitmaps on their canvas, in the cues text subtitles use, with the placement of a canvas over the view's picture.
+
 ## Later
 
 | Goal | Depends on |
@@ -41,4 +45,4 @@ HLS and DASH, on demand and live, with the variant chosen by the bandwidth or by
 | Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
 | HDR output and tone mapping | GPU rendering |
 | iOS and Android | FFmpeg builds for them and a loader for their app packages |
-| Bitmap subtitles, audio passthrough | Requests from apps |
+| Audio passthrough | Requests from apps |

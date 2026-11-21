@@ -181,12 +181,14 @@ func TestDecodeVideoAndAudioFromGoSource(t *testing.T) {
 				frame.Unref()
 			}
 		case 3:
-			rects, _, _, err := sdec.DecodeSubtitle(pkt)
+			sub, err := sdec.DecodeSubtitle(pkt)
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, r := range rects {
-				texts = append(texts, r.ASS)
+			if sub != nil {
+				for _, r := range sub.Rects {
+					texts = append(texts, r.ASS)
+				}
 			}
 		}
 		pkt.Unref()

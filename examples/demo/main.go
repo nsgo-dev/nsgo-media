@@ -10,6 +10,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -48,9 +49,9 @@ func Root(cx *core.Scope) core.Node {
 	}
 	open := func(path string) {
 		if isSubtitle(path) {
-			if p.AddSubtitles(path) == nil {
-				tracks := p.Info().Tracks
-				p.SelectSubtitle(tracks[len(tracks)-1].ID)
+			// A VobSub file adds a track per language: choose the first.
+			if info := p.Info(); info != nil && p.AddSubtitles(path) == nil {
+				p.SelectSubtitle(p.Info().Tracks[len(info.Tracks)].ID)
 			}
 			return
 		}
@@ -72,6 +73,7 @@ func Root(cx *core.Scope) core.Node {
 				TestID:  "video",
 				Style:   core.Style{FlexGrow: 1, FlexShrink: 1},
 				Children: []core.Node{
+					bitmapSubtitles(cx, p, fit.Get),
 					subtitles(p),
 					status(p),
 				},
@@ -84,7 +86,7 @@ func Root(cx *core.Scope) core.Node {
 
 func isSubtitle(path string) bool {
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".srt", ".vtt", ".ass", ".ssa":
+	case ".srt", ".vtt", ".ass", ".ssa", ".idx":
 		return true
 	}
 	return false
@@ -139,6 +141,54 @@ func subtitles(p *player.Player) core.Node {
 				TextShadowColor: core.RGBA(0x000000, 0.9), TextShadowRadius: 3,
 			},
 		}},
+	}
+}
+
+// placedBitmap is a bitmap of a cue showing, for its image view.
+type placedBitmap struct {
+	cue    player.Cue
+	bitmap player.Bitmap
+}
+
+// bitmapSubtitles draws a PGS, DVD, DVB or VobSub track's bitmaps where
+// their canvas puts them on the picture.
+func bitmapSubtitles(cx *core.Scope, p *player.Player, fit func() player.Fit) core.Node {
+	box := core.NewSignal(cx, core.Size{})
+	return core.View{
+		Style: core.Style{
+			Position: core.Absolute, Left: core.Pt(0), Right: core.Pt(0), Top: core.Pt(0), Bottom: core.Pt(0),
+		},
+		PointerEvents: core.PointerEventsNone,
+		OnLayout:      func(b core.Bounds) { box.Set(b.Size) },
+		Children: []core.Node{core.Each(
+			func() []placedBitmap {
+				var out []placedBitmap
+				for _, c := range p.Cues() {
+					for _, b := range c.Bitmaps {
+						out = append(out, placedBitmap{c, b})
+					}
+				}
+				return out
+			},
+			func(b placedBitmap) *image.RGBA { return b.bitmap.Image },
+			func(_ *core.Scope, item func() placedBitmap, _ func() int) core.Node {
+				return core.Image{
+					TestID:     "bitmap-cue",
+					SourceFunc: func() core.ImageSource { return core.ImageSource{Pixels: item().bitmap.Image} },
+					ResizeMode: core.Stretch,
+					StyleFunc: func() core.Style {
+						it := item()
+						r := it.cue.Place(it.bitmap, p.PictureBounds(box.Get(), fit()))
+						return core.Style{
+							Position: core.Absolute,
+							Left:     core.Pt(r.Origin.X), Top: core.Pt(r.Origin.Y),
+							Width: core.Pt(r.Size.Width), Height: core.Pt(r.Size.Height),
+						}
+					},
+					ElementsHidden: true,
+				}
+			},
+		)},
 	}
 }
 

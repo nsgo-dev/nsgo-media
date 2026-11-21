@@ -10,8 +10,9 @@
 - The source's information, tracks and chapters, and the state, position and buffered range as NSGo signals.
 - `Player.Snapshot` gives the frame showing at the source's size and rotation, or shrunk to a size, from software and hardware decoding.
 - Text subtitle tracks and external SRT, WebVTT and ASS files as timed cues.
+- PGS, DVD and DVB subtitle tracks and external VobSub files as cues with RGBA bitmaps on the source's canvas and their seek generation; `Player.PictureBounds` and `Cue.Place` put the bitmaps on the picture a view draws.
 - HLS and DASH streams, on demand and live, read in Go: `Info.Live` and `Info.Seekable` tell a live stream, `Info.Variants` lists the variants and `Player.SelectVariant` chooses one, or lets the bandwidth choose; HLS segments encrypted with AES-128 decrypt.
 - Hardware decoding through VideoToolbox, D3D11VA and VAAPI, falling back to software.
 - `tools/ffmpeg` builds FFmpeg 9's LGPL shared libraries for each desktop into `dist/ffmpeg`, with libxml2 for DASH.
 - `go tool nsgo-media bundle` puts those libraries into the packages `nsgo build` wrote, signing a macOS app again.
-- A demo app with its own controls, among them stepping both ways, saving a snapshot and choosing an HLS or DASH stream's quality.
+- A demo app with its own controls, among them stepping both ways, saving a snapshot, choosing an HLS or DASH stream's quality and bitmap subtitles drawn over the picture.

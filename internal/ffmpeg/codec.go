@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"errors"
 	"fmt"
+	"image"
 	"unsafe"
 )
 
@@ -91,33 +92,94 @@ func (d *Decoder) Close() {
 	}
 }
 
-// SubtitleRect is one text of a decoded subtitle: plain text, or an ASS
-// event line.
+// Subtitle is a decoded subtitle: what shows from Start to End
+// milliseconds after PTS, replacing what its stream showed before. No
+// rects clear the screen, as PGS and DVB end a subtitle.
+type Subtitle struct {
+	// PTS is in microseconds, NoPTS when unknown.
+	PTS        int64
+	Start, End uint32 // End is math.MaxUint32 when unknown
+	Rects      []SubtitleRect
+}
+
+// SubtitleRect is one part of a decoded subtitle: plain text, an ASS
+// event line, or a bitmap at X, Y on the stream's canvas.
 type SubtitleRect struct {
 	Text string
 	ASS  string
+	X, Y int
+	// Image is a bitmap's pixels, premultiplied as image.RGBA is; nil
+	// for text.
+	Image *image.RGBA
 }
 
-// DecodeSubtitle decodes a subtitle packet. It returns no rects for a
-// packet that holds none, and times in milliseconds from the packet's
-// timestamp.
-func (d *Decoder) DecodeSubtitle(p *Packet) (rects []SubtitleRect, start, end uint32, err error) {
+const subtitleBitmap = 1 // SUBTITLE_BITMAP
+
+// DecodeSubtitle decodes a subtitle packet, returning nil for a packet
+// that completes none.
+func (d *Decoder) DecodeSubtitle(p *Packet) (*Subtitle, error) {
 	var sub [sizeAVSubtitle]byte
 	sp := unsafe.Pointer(&sub[0])
 	var got int32
 	if err := check(avcodecDecodeSubtitle2(d.ctx, sp, &got, p)); err != nil {
-		return nil, 0, 0, err
+		return nil, err
 	}
 	if got == 0 {
-		return nil, 0, 0, nil
+		return nil, nil
 	}
 	defer avsubtitleFree(sp)
+	s := &Subtitle{
+		PTS:   i64(sp, offAVSubtitlePts),
+		Start: uint32(i32(sp, offAVSubtitleStartDisplayTime)),
+		End:   uint32(i32(sp, offAVSubtitleEndDisplayTime)),
+	}
 	n := int(uint32(i32(sp, offAVSubtitleNumRects)))
 	if arr := pp(sp, offAVSubtitleRects); arr != nil && n > 0 {
 		for _, r := range unsafe.Slice((*unsafe.Pointer)(arr), n) {
-			rects = append(rects, SubtitleRect{Text: gostring(pp(r, offAVSubtitleRectText)), ASS: gostring(pp(r, offAVSubtitleRectAss))})
+			if i32(r, offAVSubtitleRectType) == subtitleBitmap {
+				if img := bitmap(r); img != nil {
+					s.Rects = append(s.Rects, SubtitleRect{X: int(i32(r, offAVSubtitleRectX)), Y: int(i32(r, offAVSubtitleRectY)), Image: img})
+				}
+				continue
+			}
+			s.Rects = append(s.Rects, SubtitleRect{Text: gostring(pp(r, offAVSubtitleRectText)), ASS: gostring(pp(r, offAVSubtitleRectAss))})
 		}
 	}
 	keep(sub)
-	return rects, uint32(i32(sp, offAVSubtitleStartDisplayTime)), uint32(i32(sp, offAVSubtitleEndDisplayTime)), nil
+	return s, nil
+}
+
+// bitmap converts a bitmap rect's palette indices to premultiplied RGBA,
+// nil for an empty one.
+func bitmap(r unsafe.Pointer) *image.RGBA {
+	w, h := int(i32(r, offAVSubtitleRectW)), int(i32(r, offAVSubtitleRectH))
+	colors := int(i32(r, offAVSubtitleRectNbColors))
+	pix, pal := pp(r, offAVSubtitleRectData), pp(r, offAVSubtitleRectData+8)
+	stride := int(i32(r, offAVSubtitleRectLinesize))
+	if w <= 0 || h <= 0 || pix == nil || pal == nil || stride < w || colors <= 0 {
+		return nil
+	}
+	colors = min(colors, 256)
+	// Each entry is AV_PIX_FMT_RGB32: 0xAARRGGBB in a native uint32.
+	var lut [256][4]byte
+	for i, c := range unsafe.Slice((*uint32)(pal), colors) {
+		a := c >> 24
+		lut[i] = [4]byte{byte((c >> 16 & 0xff) * a / 255), byte((c >> 8 & 0xff) * a / 255), byte((c & 0xff) * a / 255), byte(a)}
+	}
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	src := unsafe.Slice((*byte)(pix), stride*(h-1)+w)
+	for y := range h {
+		row := img.Pix[y*img.Stride:]
+		for x, v := range src[y*stride : y*stride+w] {
+			copy(row[x*4:x*4+4], lut[v][:])
+		}
+	}
+	return img
+}
+
+// Size is the decoder's picture size, which a subtitle decoder sets to
+// its canvas once a packet tells it; 0 until then.
+func (d *Decoder) Size() (w, h int) {
+	c := unsafe.Pointer(d.ctx)
+	return int(i32(c, offAVCodecContextWidth)), int(i32(c, offAVCodecContextHeight))
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -80,4 +81,21 @@ func TestQualityChoosesTheVariant(t *testing.T) {
 	app.Press("id:quality")
 	app.Press("role:option Auto")
 	play(t, app, 5*time.Second, func() bool { return app.Exists("text:Auto") })
+}
+
+func TestBitmapSubtitlesShowOverThePicture(t *testing.T) {
+	src, err := filepath.Abs(filepath.Join("..", "..", "testdata", "bitmap.mkv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NSGO_MEDIA_DEMO_SOURCE", src)
+	app := nsgotest.Start(t, Root)
+	play(t, app, 5*time.Second, func() bool { return strings.HasSuffix(app.Find("id:time").Text, "/ 0:10") })
+	app.Press("id:subtitle")
+	app.Press("role:option Track 1 (eng)")
+	app.Press("id:stop")
+	app.Press("id:play")
+	// The PGS track's update at 1 s shows two bitmaps, its clear at 1.5 s none.
+	play(t, app, 5*time.Second, func() bool { return len(app.Query("id:bitmap-cue")) == 2 })
+	play(t, app, 5*time.Second, func() bool { return !app.Exists("id:bitmap-cue") })
 }

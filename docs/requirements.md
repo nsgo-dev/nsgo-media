@@ -33,6 +33,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 | Area | Included |
 | --- | --- |
 | Adaptive streams | HLS and DASH over HTTP(S), on demand and live: a live stream reports no duration and, keeping only a sliding window, no seeking. The variant follows the measured bandwidth unless the app lists the variants and chooses one. HLS segments encrypted with AES-128 |
+| Bitmap subtitles | PGS, DVD and DVB subtitle tracks of the source and external VobSub files (`.idx` with its `.sub`), delivered as the same cues as text, each with its seek generation and RGBA bitmaps placed on the source's canvas. A cue replaces the one before it, as PGS updates and clears its picture; cues hold while paused and none of the old position stays after a seek. The core places a canvas over the picture as the view fits and turns it, and the app draws the bitmaps |
 
 ## Out of scope
 
@@ -40,7 +41,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 - Media libraries, playlists, history and remote sources such as SMB, WebDAV or media servers.
 - Recording, capture, transcoding and encoding.
 - DRM, disc images and protocol receivers such as DLNA or AirPlay.
-- Rendering subtitles into the picture, ASS styling beyond text, and bitmap subtitles such as PGS.
+- Rendering subtitles into the picture, and ASS styling beyond text.
 - Mobile targets, the web and mini programs; the [roadmap](roadmap.md) orders them.
 
 ## Constraints

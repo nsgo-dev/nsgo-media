@@ -1,6 +1,8 @@
 package player
 
 import (
+	"image"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -246,5 +248,94 @@ func TestPlayerChoosesVariants(t *testing.T) {
 	}
 	if err := p.SelectVariant(-1); err != nil || !p.AutoVariant() {
 		t.Errorf("auto: %v, %v", err, p.AutoVariant())
+	}
+}
+
+func TestPlayerBitmapSubtitles(t *testing.T) {
+	var p *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.Open(fixture(t, "bitmap.mkv"))
+		return View{Player: p, Style: core.Style{Width: core.Pt(320), Height: core.Pt(320)}}
+	})
+	play(t, app, 3*time.Second, func() bool { return p.Info() != nil })
+	if err := p.SelectSubtitle(1); err != nil {
+		t.Fatal(err)
+	}
+	p.Seek(2100*time.Millisecond, Exact)
+	p.Play()
+	play(t, app, 3*time.Second, func() bool { return len(p.Cues()) == 1 })
+	c := p.Cues()[0]
+	// C's clear at 6 s is not read yet.
+	if c.Start != 2*time.Second || c.End != 0 || c.Generation == 0 || len(c.Bitmaps) != 1 {
+		t.Fatalf("cue %+v", c)
+	}
+	picture := p.PictureBounds(core.Size{Width: 320, Height: 320}, Contain)
+	got := c.Place(c.Bitmaps[0], picture)
+	want := core.Bounds{Origin: core.Point{X: 40, Y: 70 + 120}, Size: core.Size{Width: 60, Height: 24}}
+	if got != want {
+		t.Errorf("C placed at %+v, want %+v", got, want)
+	}
+
+	p.Pause()
+	app.Settle()
+	held := p.Cues()
+	until := time.Now().Add(300 * time.Millisecond)
+	play(t, app, time.Second, func() bool { return time.Now().After(until) })
+	if !sameCues(p.Cues(), held) {
+		t.Errorf("cues while paused %+v, then %+v", held, p.Cues())
+	}
+	p.Seek(6500*time.Millisecond, Exact)
+	app.Settle()
+	if len(p.Cues()) != 0 {
+		t.Errorf("cues after seeking past C: %+v", p.Cues())
+	}
+
+	if err := p.AddSubtitles(fixture(t, "vobsub.idx")); err != nil {
+		t.Fatal(err)
+	}
+	ext := p.Info().Tracks[len(p.Info().Tracks)-1]
+	if err := p.SelectSubtitle(ext.ID); err != nil {
+		t.Fatal(err)
+	}
+	p.Seek(700*time.Millisecond, Exact)
+	play(t, app, 3*time.Second, func() bool { return len(p.Cues()) == 1 })
+	if c := p.Cues()[0]; c.Start != 500*time.Millisecond || c.Generation != 0 || c.Bitmaps[0].X != 60 {
+		t.Errorf("VobSub cue %+v", c)
+	}
+}
+
+func TestPlaceOnTheView(t *testing.T) {
+	// A 40×12 bitmap at 60,70 of a 160×90 canvas over a 160×90 picture
+	// in a 320×320 view.
+	c := Cue{Canvas: image.Pt(160, 90)}
+	b := Bitmap{X: 60, Y: 70, Image: image.NewRGBA(image.Rect(0, 0, 40, 12))}
+	box := core.Size{Width: 320, Height: 320}
+	cover := 320.0 / 90
+	for _, tc := range []struct {
+		fit  Fit
+		want [4]float64
+	}{
+		{Contain, [4]float64{120, 70 + 140, 80, 24}},
+		{Cover, [4]float64{(320-160*cover)/2 + 60*cover, 70 * cover, 40 * cover, 12 * cover}},
+		{Fill, [4]float64{120, 70 * 320.0 / 90, 80, 12 * 320.0 / 90}},
+	} {
+		x, y, w, h := fitRect(box, 160, 90, tc.fit)
+		picture := core.Bounds{Origin: core.Point{X: core.Points(x), Y: core.Points(y)}, Size: core.Size{Width: core.Points(w), Height: core.Points(h)}}
+		got := c.Place(b, picture)
+		have := [4]float64{float64(got.Origin.X), float64(got.Origin.Y), float64(got.Size.Width), float64(got.Size.Height)}
+		for i := range have {
+			if math.Abs(have[i]-tc.want[i]) > 0.01 {
+				t.Errorf("fit %d: placed at %v, want %v", tc.fit, have, tc.want)
+				break
+			}
+		}
+	}
+	// An anamorphic DVD canvas stretches over the picture.
+	dvd := Cue{Canvas: image.Pt(720, 480)}
+	picture := core.Bounds{Size: core.Size{Width: 854, Height: 480}}
+	if got := dvd.Place(Bitmap{X: 360, Y: 400, Image: image.NewRGBA(image.Rect(0, 0, 72, 48))}, picture); math.Abs(float64(got.Origin.X)-427) > 0.01 || got.Origin.Y != 400 || math.Abs(float64(got.Size.Width)-85.4) > 0.01 {
+		t.Errorf("DVD bitmap placed at %+v", got)
 	}
 }

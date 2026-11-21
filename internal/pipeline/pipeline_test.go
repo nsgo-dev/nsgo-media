@@ -237,11 +237,12 @@ func TestSubtitles(t *testing.T) {
 	if len(cues) != 1 || cues[0].Text != "Hello" || cues[0].Start != 500*time.Millisecond {
 		t.Errorf("embedded cues at %v: %+v", p.Position(), cues)
 	}
-	tr, err := p.AddSubtitles(fixture(t, "sub.srt"))
+	trs, err := p.AddSubtitles(fixture(t, "sub.srt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !tr.External || tr.ID != 4 {
+	tr := trs[0]
+	if len(trs) != 1 || !tr.External || tr.ID != 4 {
 		t.Errorf("external track %+v", tr)
 	}
 	if cues := p.Cues(tr.ID); len(cues) != 1 || cues[0].Text != "Hello" {

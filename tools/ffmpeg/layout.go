@@ -31,7 +31,7 @@ var layoutFields = map[string][]string{
 	"AVCodec":           {"name", "long_name", "type", "id", "capabilities"},
 	"AVCodecHWConfig":   {"pix_fmt", "methods", "device_type"},
 	"AVSubtitle":        {"format", "start_display_time", "end_display_time", "num_rects", "rects", "pts"},
-	"AVSubtitleRect":    {"type", "text", "ass"},
+	"AVSubtitleRect":    {"x", "y", "w", "h", "nb_colors", "data", "linesize", "type", "text", "ass"},
 	"AVDictionaryEntry": {"key", "value"},
 	"AVIOInterruptCB":   {"callback", "opaque"},
 }

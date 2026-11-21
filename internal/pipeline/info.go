@@ -69,8 +69,7 @@ type Info struct {
 	Chapters []Chapter
 }
 
-// textSubtitles are the subtitle codecs that decode to text. Bitmap
-// subtitles, such as PGS and DVD's, are out of the first version's scope.
+// textSubtitles are the subtitle codecs that decode to text.
 var textSubtitles = map[string]bool{
 	"subrip": true, "srt": true, "ass": true, "ssa": true, "webvtt": true,
 	"mov_text": true, "text": true, "microdvd": true, "subviewer": true,
@@ -118,7 +117,7 @@ func readInfo(f *ffmpeg.FormatContext) *Info {
 			t.Kind = Audio
 			t.SampleRate, t.Channels = par.SampleRate(), par.Channels()
 		case ffmpeg.MediaSubtitle:
-			if !textSubtitles[t.Codec] {
+			if !textSubtitles[t.Codec] && !bitmapSubtitles[t.Codec] {
 				continue
 			}
 			t.Kind = Subtitle

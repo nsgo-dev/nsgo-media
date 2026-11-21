@@ -7,11 +7,14 @@
 package pipeline
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"math"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -84,6 +87,7 @@ type Pipeline struct {
 	frames      frameQueue
 	cues        cueStore
 	subs        map[int]*ffmpeg.Decoder // the demuxer's subtitle decoders
+	subTrack    atomic.Int64            // the chosen subtitle track, whose bitmaps decode
 	ring        *audioRing
 	out         audioout.Output
 	vp          atomic.Pointer[videoParams]
@@ -159,6 +163,7 @@ func New(opts Options) *Pipeline {
 	// Generation 1 is the first; 0 marks no generation.
 	p := &Pipeline{opts: opts, videoStream: -1, audioStream: -1, paused: true, gen: 1, hist: newFrameHistory()}
 	p.genA.Store(1)
+	p.subTrack.Store(-1)
 	p.cond = sync.NewCond(&p.mu)
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 	p.rate.Store(math.Float64bits(1))
@@ -243,6 +248,9 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 			s := streams[t.ID]
 			if d, err := ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 1, ""); err == nil {
 				p.subs[t.ID] = d
+				if bitmapSubtitles[t.Codec] {
+					p.cues.setBitmap(t.ID)
+				}
 			}
 		}
 	}
@@ -439,6 +447,7 @@ func (p *Pipeline) Close() {
 	for _, d := range p.subs {
 		d.Close()
 	}
+	p.cues.close()
 	if p.pool != nil {
 		p.frames.drain(p.pool)
 		p.release(p.shown)
@@ -603,32 +612,66 @@ func (p *Pipeline) SelectAudio(id int) error {
 	return nil
 }
 
-// AddSubtitles adds an SRT, WebVTT or ASS file as a subtitle track.
-func (p *Pipeline) AddSubtitles(path string) (Track, error) {
+// AddSubtitles adds an SRT, WebVTT or ASS file as a subtitle track, or
+// a VobSub .idx, with its .sub beside it, as a track per language.
+func (p *Pipeline) AddSubtitles(path string) ([]Track, error) {
+	if strings.EqualFold(filepath.Ext(path), ".idx") {
+		files, tracks, err := openBitmapFiles(path, p.start)
+		if err != nil {
+			return nil, err
+		}
+		for i := range tracks {
+			tracks[i].ID = p.newExternalID()
+			tracks[i].Title = cmp.Or(tracks[i].Title, baseName(path))
+			p.cues.setFile(tracks[i].ID, files[i])
+		}
+		return tracks, nil
+	}
 	cues, err := ParseSubtitleFile(path)
 	if err != nil {
-		return Track{}, err
+		return nil, err
 	}
-	p.mu.Lock()
-	id := p.externalID
-	p.externalID++
-	p.mu.Unlock()
+	id := p.newExternalID()
 	for i := range cues {
 		cues[i].Start += p.start
 		cues[i].End += p.start
 	}
 	p.cues.set(id, cues)
-	t := Track{ID: id, Kind: Subtitle, Codec: subtitleCodec(path), External: true, Title: baseName(path)}
-	return t, nil
+	return []Track{{ID: id, Kind: Subtitle, Codec: subtitleCodec(path), External: true, Title: baseName(path)}}, nil
+}
+
+func (p *Pipeline) newExternalID() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.externalID++
+	return p.externalID - 1
+}
+
+// SelectSubtitle chooses the subtitle track whose bitmaps decode, or none
+// for -1; text tracks decode whichever is chosen. Choosing an embedded
+// bitmap track reads again from the keyframe before the position, as
+// SelectAudio does, so the cue showing there decodes.
+func (p *Pipeline) SelectSubtitle(id int) {
+	old := int(p.subTrack.Swap(int64(id)))
+	if old == id {
+		return
+	}
+	p.cues.choose(old)
+	if p.subs[id] != nil && bitmapSubtitles[p.track(id).Codec] {
+		p.seek(p.Position(), true)
+	}
 }
 
 // Cues are the subtitle track's cues showing at the current position,
-// with times from the start.
+// with times from the start; a bitmap cue's End stays openEnd while it is
+// not known.
 func (p *Pipeline) Cues(track int) []Cue {
-	cues := p.cues.at(track, p.lastPos)
+	cues := p.cues.at(track, p.lastPos, p.vp.Load().rot)
 	for i := range cues {
 		cues[i].Start -= p.start
-		cues[i].End -= p.start
+		if cues[i].End != openEnd {
+			cues[i].End -= p.start
+		}
 	}
 	return cues
 }

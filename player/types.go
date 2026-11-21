@@ -2,8 +2,12 @@ package player
 
 import (
 	"cmp"
+	"image"
+	"math"
 	"slices"
 	"time"
+
+	"github.com/nsgo-dev/nsgo/core"
 
 	"github.com/oneo-me/nsgo-media/internal/pipeline"
 )
@@ -123,10 +127,51 @@ type Info struct {
 	Chapters []Chapter
 }
 
-// Cue is a subtitle text showing from Start to End.
+// Cue is a subtitle showing from Start to End: the text of a text track,
+// or the bitmaps of a PGS, DVD, DVB or VobSub track. A cue replaces the
+// one before it on a bitmap track; no cue showing clears the screen.
 type Cue struct {
+	// End is 0 while a bitmap cue's end is not read yet: a PGS cue shows
+	// until the next cue of its track, which the player reads ahead.
 	Start, End time.Duration
+	// Generation is the seek the cue was decoded after, rising with each
+	// seek and each step backward that decodes again: the same cue read
+	// again has new bitmaps. It is 0 for a file AddSubtitles added.
+	Generation uint64
 	Text       string
+	// Canvas is the size, in pixels, of the canvas the bitmaps are placed
+	// on, which covers the picture; Place maps it onto a view.
+	Canvas  image.Point
+	Bitmaps []Bitmap
+}
+
+// Bitmap is a picture of a cue: Image, premultiplied as image.RGBA is,
+// with its top left corner at X, Y on the cue's canvas. A rotated
+// video's bitmaps and canvas are turned as its picture is.
+type Bitmap struct {
+	X, Y  int
+	Image *image.RGBA
+}
+
+// Place is where bitmap b of c shows over a picture drawn at picture,
+// such as PictureBounds gives, in the same units: the canvas is stretched
+// over the picture.
+func (c Cue) Place(b Bitmap, picture core.Bounds) core.Bounds {
+	if c.Canvas.X <= 0 || c.Canvas.Y <= 0 || b.Image == nil {
+		return core.Bounds{}
+	}
+	sx := float64(picture.Size.Width) / float64(c.Canvas.X)
+	sy := float64(picture.Size.Height) / float64(c.Canvas.Y)
+	return core.Bounds{
+		Origin: core.Point{
+			X: picture.Origin.X + core.Points(float64(b.X)*sx),
+			Y: picture.Origin.Y + core.Points(float64(b.Y)*sy),
+		},
+		Size: core.Size{
+			Width:  core.Points(float64(b.Image.Rect.Dx()) * sx),
+			Height: core.Points(float64(b.Image.Rect.Dy()) * sy),
+		},
+	}
 }
 
 func trackOf(t pipeline.Track) Track {
@@ -168,19 +213,20 @@ func cuesOf(cs []pipeline.Cue) []Cue {
 	}
 	out := make([]Cue, len(cs))
 	for i, c := range cs {
-		out[i] = Cue{Start: c.Start, End: c.End, Text: c.Text}
+		out[i] = Cue{Start: c.Start, End: c.End, Generation: c.Gen, Text: c.Text, Canvas: c.Canvas}
+		if c.End == math.MaxInt64 {
+			out[i].End = 0
+		}
+		for _, b := range c.Bitmaps {
+			out[i].Bitmaps = append(out[i].Bitmaps, Bitmap{X: b.X, Y: b.Y, Image: b.Image})
+		}
 	}
 	return out
 }
 
 func sameCues(a, b []Cue) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
+	return slices.EqualFunc(a, b, func(x, y Cue) bool {
+		return x.Start == y.Start && x.End == y.End && x.Generation == y.Generation && x.Text == y.Text &&
+			x.Canvas == y.Canvas && slices.Equal(x.Bitmaps, y.Bitmaps)
+	})
 }

@@ -130,6 +130,13 @@ const (
 	offAVSubtitleNumRects                 = 12
 	offAVSubtitleRects                    = 16
 	offAVSubtitlePts                      = 24
+	offAVSubtitleRectX                    = 0
+	offAVSubtitleRectY                    = 4
+	offAVSubtitleRectW                    = 8
+	offAVSubtitleRectH                    = 12
+	offAVSubtitleRectNbColors             = 16
+	offAVSubtitleRectData                 = 24
+	offAVSubtitleRectLinesize             = 56
 	offAVSubtitleRectType                 = 76
 	offAVSubtitleRectText                 = 80
 	offAVSubtitleRectAss                  = 88
