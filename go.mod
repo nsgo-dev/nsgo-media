@@ -2,11 +2,13 @@ module github.com/oneo-me/nsgo-media
 
 go 1.27.3
 
-require github.com/nsgo-dev/nsgo v0.2.1-0.20261121154924-e8697ce47fc8
+require (
+	github.com/ebitengine/purego v0.11.3
+	github.com/nsgo-dev/nsgo v0.2.1-0.20261121154924-e8697ce47fc8
+)
 
 require (
 	github.com/andybalholm/brotli v1.3.0 // indirect
-	github.com/ebitengine/purego v0.11.3 // indirect
 	github.com/evanw/esbuild v0.28.2 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
