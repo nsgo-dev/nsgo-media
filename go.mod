@@ -31,4 +31,7 @@ require (
 	rsc.io/qr v0.2.0 // indirect
 )
 
-tool github.com/nsgo-dev/nsgo/cmd/nsgo
+tool (
+	github.com/nsgo-dev/nsgo/cmd/nsgo
+	github.com/oneo-me/nsgo-media/cmd/nsgo-media
+)

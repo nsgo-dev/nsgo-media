@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -68,13 +69,21 @@ func TestBundlePutsLibrariesBesideTheExecutable(t *testing.T) {
 	}
 }
 
-func TestBundleWithoutPinnedRelease(t *testing.T) {
-	if releaseTag != "" {
-		t.Skip("a release is pinned")
-	}
+func TestBundleWithoutLibraries(t *testing.T) {
 	pkg := filepath.Join(t.TempDir(), "App-1.0.0-linux_x64")
 	os.MkdirAll(pkg, 0o755)
-	if err := bundle(pkg, "", "", &source{}); err == nil {
-		t.Fatal("bundled without libraries")
+	err := bundle(pkg, "", "", &source{dir: t.TempDir()})
+	if err == nil || !strings.Contains(err.Error(), "go run ./tools/ffmpeg") {
+		t.Fatalf("bundle without libraries: %v", err)
+	}
+}
+
+func TestVersionMatchesTheBuildTool(t *testing.T) {
+	pinned, err := os.ReadFile(filepath.Join("..", "..", "tools", "ffmpeg", "pinned.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `const FFmpegVersion = "` + ffmpegVersion + `"`; !strings.Contains(string(pinned), want) {
+		t.Errorf("tools/ffmpeg/pinned.go has no %s", want)
 	}
 }

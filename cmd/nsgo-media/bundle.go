@@ -3,12 +3,10 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,11 +27,34 @@ type libSet struct {
 	note    []byte
 }
 
-// source finds the archives: in dir, or the pinned release's, downloaded
-// into the user cache.
+// source finds the archives tools/ffmpeg built in dir.
 type source struct {
 	dir   string
 	cache map[string]*libSet
+}
+
+// ffmpegVersion is the version in the archives' names, FFmpegVersion in
+// tools/ffmpeg/pinned.go.
+const ffmpegVersion = "9.0.2"
+
+const modulePath = "github.com/oneo-me/nsgo-media"
+
+const buildHint = "build them in NSGo Media's directory with go run ./tools/ffmpeg, or name their directory with -libs"
+
+// defaultLibs is where tools/ffmpeg writes its archives: dist/ffmpeg in the
+// current directory if it is there, as in NSGo Media's own checkout, or else
+// in the directory of the NSGo Media module the current module uses, such
+// as a local checkout a replace directive names.
+func defaultLibs() string {
+	local := filepath.Join("dist", "ffmpeg")
+	if st, err := os.Stat(local); err == nil && st.IsDir() {
+		return local
+	}
+	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", modulePath).Output()
+	if dir := strings.TrimSpace(string(out)); err == nil && dir != "" {
+		return filepath.Join(dir, "dist", "ffmpeg")
+	}
+	return local
 }
 
 var libraryName = regexp.MustCompile(`^(lib[a-z]+\.\d+\.dylib|[a-z]+-\d+\.dll|lib[a-z]+\.so\.\d+)$`)
@@ -85,48 +106,12 @@ func (s *source) load(target string) (*libSet, error) {
 }
 
 func (s *source) archive(target string) ([]byte, error) {
-	name := archiveName(target)
-	if s.dir != "" {
-		return os.ReadFile(filepath.Join(s.dir, name))
+	path := filepath.Join(s.dir, archiveName(target))
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("no FFmpeg libraries for %s: %s is missing; %s", target, path, buildHint)
 	}
-	sum := releaseSums[target]
-	if releaseTag == "" || sum == "" {
-		return nil, errors.New("this version of NSGo Media pins no released libraries; build them with tools/ffmpeg and pass -libs")
-	}
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		cache = os.TempDir()
-	}
-	path := filepath.Join(cache, "nsgo-media", "libraries", releaseTag, name)
-	if data, err := os.ReadFile(path); err == nil && sha(data) == sum {
-		return data, nil
-	}
-	url := "https://github.com/oneo-me/nsgo-media/releases/download/" + releaseTag + "/" + name
-	fmt.Printf("fetching %s\n", url)
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s: %s", url, resp.Status)
-	}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if got := sha(data); got != sum {
-		return nil, fmt.Errorf("%s: SHA-256 is %s, pinned %s", name, got, sum)
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err == nil {
-		os.WriteFile(path, data, 0o644)
-	}
-	return data, nil
-}
-
-func sha(b []byte) string {
-	h := sha256.Sum256(b)
-	return hex.EncodeToString(h[:])
+	return data, err
 }
 
 // packageTarget is the target at the end of a package directory's name,

@@ -7,7 +7,6 @@
 ```sh
 go run ./tools/ffmpeg                                    # every target into dist/ffmpeg
 go run ./tools/ffmpeg -target linux_x64                  # one target
-go run ./tools/ffmpeg -upload v0.1.0                     # build, then upload to that existing release
 go run ./tools/ffmpeg -layout internal/ffmpeg/layout.go  # regenerate the struct layouts
 ```
 
@@ -21,7 +20,7 @@ It runs on macOS with Xcode and Go alone. Every download is pinned with its SHA-
 
 - The tool runs itself as the compiler, archiver and `pkg-config` configure calls (`-as`), so it adapts MinGW's linker flags to Zig's and answers only for libva, whose headers and link libraries come from Debian 12's packages. Nothing on the build host is detected (`--disable-autodetect`).
 - Only LGPL 2.1 parts are configured: every demuxer, parser and decoder, the file protocol, and the audio filters rate changes use. There are no encoders, muxers, devices or network protocols; HTTP(S) is read in Go through a custom `AVIOContext`, so no TLS library is linked. zlib is linked statically on Windows and Linux.
-- Each archive, `ffmpeg-<version>-<target>.zip`, holds the six libraries under their run-time names (`libavutil.61.dylib`, `avutil-61.dll`, `libavutil.so.61`), `COPYING.LGPLv2.1` and `BUILD.txt` with the source and the configure line, which the LGPL asks to ship with them. `SHA256SUMS` lists the archives.
+- Each archive, `ffmpeg-<version>-<target>.zip`, holds the six libraries under their run-time names (`libavutil.61.dylib`, `avutil-61.dll`, `libavutil.so.61`), `COPYING.LGPLv2.1` and `BUILD.txt` with the source and the configure line, which the LGPL asks to ship with them.
 - macOS libraries have `@rpath` install names and an `@loader_path` run path; Linux ones a `$ORIGIN` run path, so each finds its siblings wherever they are.
 
 ## Packaging an app
@@ -31,10 +30,10 @@ It runs on macOS with Xcode and Go alone. Every download is pinned with its SHA-
 ```sh
 go get -tool github.com/oneo-me/nsgo-media/cmd/nsgo-media
 go tool nsgo build -installers=false
-go tool nsgo-media bundle dist/*      # -libs dist/ffmpeg to use archives tools/ffmpeg built
+go tool nsgo-media bundle dist/*      # -libs DIR to take the archives from elsewhere
 ```
 
-- The libraries come from the release `cmd/nsgo-media/libraries.go` pins with their checksums, downloaded once into the user cache. `tools/ffmpeg -upload` writes that file after uploading; until a release is uploaded, `bundle` needs `-libs`.
+- The libraries are the archives `go run ./tools/ffmpeg` built; nothing is downloaded. `bundle` looks in `dist/ffmpeg` of the current directory, as in this repository, or else in `dist/ffmpeg` of the directory `go list -m` gives for this module, which for another app is the local checkout its `replace` directive names. Where neither has them, it stops and says to build them with `go run ./tools/ffmpeg` or pass `-libs`.
 - A macOS app is signed again with the identity it has (`-sign` names another): the libraries first, with the hardened runtime and a timestamp unless ad hoc, then the app keeping its identifier, entitlements and options. An app `nsgo build` notarized needs notarizing again.
 - The installers `nsgo build` makes (the disk image, the Windows installer, the Linux packages and AppImage) are made from the packages before `bundle` runs, so they lack the libraries; build with `-installers=false` and make installers afterwards. NSGo's tool carrying a third-party package's native libraries, as it carries its own terminal library, would remove this step.
 

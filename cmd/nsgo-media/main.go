@@ -9,9 +9,9 @@
 //	go tool nsgo build -installers=false
 //	go tool nsgo-media bundle dist/*
 //
-// It takes the libraries of the release this module pins, downloaded once
-// and checked against their SHA-256, or with -libs the archives
-// tools/ffmpeg built.
+// It takes the archives go run ./tools/ffmpeg built, from dist/ffmpeg in
+// the current directory or else in the NSGo Media module's directory, or
+// from the directory -libs names.
 package main
 
 import (
@@ -26,7 +26,7 @@ func main() {
 		os.Exit(2)
 	}
 	fs := flag.NewFlagSet("bundle", flag.ExitOnError)
-	libs := fs.String("libs", "", "a directory of ffmpeg-<version>-<target>.zip archives, as tools/ffmpeg writes, instead of the pinned release's")
+	libs := fs.String("libs", "", "the directory of the ffmpeg-<version>-<target>.zip archives tools/ffmpeg wrote; by default dist/ffmpeg in the current directory, or else in the NSGo Media module's directory")
 	target := fs.String("target", "", "the packages' target, such as macos_arm64; by default the end of each package's name, as nsgo build names them")
 	sign := fs.String("sign", "", "the identity a macOS app is signed again with; by default the one it is signed with")
 	fs.Usage = func() {
@@ -37,6 +37,9 @@ func main() {
 	if fs.NArg() == 0 {
 		fs.Usage()
 		os.Exit(2)
+	}
+	if *libs == "" {
+		*libs = defaultLibs()
 	}
 	src := &source{dir: *libs}
 	failed := false
