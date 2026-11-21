@@ -1,0 +1,45 @@
+# Requirements
+
+NSGo Media is a video player core for [NSGo](https://github.com/nsgo-dev/nsgo) apps. It opens a media source, decodes it with FFmpeg, keeps audio and video in sync, plays the sound and renders the picture into a view. The app builds every control itself and drives the core through its Go API.
+
+## Problem
+
+NSGo's `core.Video` hands a source to each platform's own player. Formats differ by platform (AVFoundation opens no MKV, AVI or FLV), and the app gets no frame-exact clock, no frame stepping and no picture it can draw over freely. Apps that need a real player, such as media players, editors' previews and course viewers, have no route on NSGo today.
+
+## Users
+
+- Developers of NSGo apps who embed playback and want their own controls, overlays and subtitles.
+- The developer's end users only indirectly: they see the picture, hear the sound and use the app's controls.
+
+## First version
+
+Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
+
+| Area | Included |
+| --- | --- |
+| Sources | Local files and HTTP(S) URLs, in any container and codec the bundled FFmpeg decodes |
+| Information | Duration, tracks (video, audio, subtitle) with their codecs and languages, picture size and rotation, container metadata, chapters |
+| Playback | Play, pause, stop; seek to a time, fast to a keyframe or exact to a frame; step one frame forward while paused; rate from 0.25× to 4× with the pitch kept; loop |
+| Sound | Volume, mute, choosing the audio track; output on the system's default device |
+| Picture | A view that draws the current frame with contain, cover or fill, follows the stream's rotation, and lets app views draw above it |
+| Subtitles | Text subtitle tracks of the source and external SRT, WebVTT and ASS files, delivered to the app as timed text cues; the app draws them |
+| State | Playing, paused, buffering, ended and error states, position, buffered range and the chosen tracks, as NSGo signals the app's views read |
+| Decoding | Hardware decoding through FFmpeg where the platform offers it, falling back to software decoding on failure |
+| Players | Several players at once, each with its own view |
+| Distribution | FFmpeg shared libraries this repository builds, LGPL components only, uploaded to each release |
+
+## Out of scope
+
+- Any control UI: play buttons, progress bars, menus, gestures and keyboard shortcuts belong to the app.
+- Media libraries, playlists, history and remote sources such as SMB, WebDAV or media servers.
+- Recording, capture, transcoding and encoding.
+- DRM, disc images and protocol receivers such as DLNA or AirPlay.
+- Rendering subtitles into the picture, ASS styling beyond text, and bitmap subtitles such as PGS.
+- Mobile targets, the web and mini programs; the [roadmap](roadmap.md) orders them.
+
+## Constraints
+
+- No cgo and no hand-written C: FFmpeg and system audio are reached through purego or `syscall`, as NSGo reaches its systems.
+- Only FFmpeg's LGPL components, loaded as shared libraries, so closed-source apps can ship the core.
+- The core uses only NSGo's public API, so it never needs a fork of NSGo.
+- [shuax/media](https://github.com/shuax/media) and [shuax/player](https://github.com/shuax/player) are design references only. They carry no license, so no code is copied from them.
