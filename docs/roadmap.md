@@ -4,7 +4,7 @@ Milestones run in order. The [requirements](requirements.md#first-version) defin
 
 ## 0. Skeleton
 
-The Go module, its package layout, a demo app, and the check and test commands run locally. The project has no CI yet.
+Done: the Go module, its package layout, an empty demo app, and the check and test commands run locally. The project has no CI yet.
 
 ## 1. FFmpeg libraries
 

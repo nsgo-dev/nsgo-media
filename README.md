@@ -37,6 +37,14 @@ func Root(cx *core.Scope) core.Node {
 
 ## Development
 
+With [Go](https://go.dev/dl/) 1.27.3 or later, from the repository root:
+
+```sh
+go tool nsgo dev examples/demo  # run the demo app with hot reload
+go tool nsgo check              # vet every package
+go tool nsgo test               # every package's tests
+```
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the design and [AGENTS.md](AGENTS.md) for how to work on the project.
 
 ## License

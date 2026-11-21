@@ -37,6 +37,14 @@ func Root(cx *core.Scope) core.Node {
 
 ## 开发
 
+安装 [Go](https://go.dev/dl/) 1.27.3 或更新版本后，在仓库根目录运行：
+
+```sh
+go tool nsgo dev examples/demo  # 以热重载运行 demo 应用
+go tool nsgo check              # 检查所有包
+go tool nsgo test               # 运行所有包的测试
+```
+
 设计见 [ARCHITECTURE.md](ARCHITECTURE.md)，参与方式见 [AGENTS.md](AGENTS.md)。
 
 ## 许可证
