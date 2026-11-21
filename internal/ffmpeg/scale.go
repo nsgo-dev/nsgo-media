@@ -2,72 +2,66 @@ package ffmpeg
 
 import (
 	"errors"
+	"runtime"
 	"unsafe"
 )
 
 const (
 	swsFastBilinear = 1 << 0
 	swsBilinear     = 1 << 1
-	swsCSITU709     = 1
-	swsCSDefault    = 5
-	swsCSBT2020     = 9
+
+	colorSpaceRGB         = 0
+	colorSpaceUnspecified = 2
+	colorSpaceBT709       = 1
 )
 
-// Scaler converts video frames to RGBA at a size, keeping its swscale
-// context while the source and the size stay the same.
+// Scaler converts video frames to RGBA at a size through swscale's frame
+// API, which follows each frame's color space and range and splits the
+// work over the CPU's cores.
 type Scaler struct {
-	ctx                unsafe.Pointer
-	srcW, srcH, srcFmt int32
-	dstW, dstH         int32
-	colorSpace         int32
-	fullRange          bool
-	rgba               int32
+	ctx  unsafe.Pointer
+	dst  *Frame
+	rgba int32
+	w, h int // the last output size, to choose the filter
 }
 
 // Scale converts f into dst, w×h pixels with rows of stride bytes of RGBA,
-// in memory C may write (the pipeline's frame buffers come from Alloc).
+// in memory from Alloc.
 func (s *Scaler) Scale(f *Frame, dst unsafe.Pointer, stride, w, h int) error {
-	if s.rgba == 0 {
+	if s.ctx == nil {
 		s.rgba = avGetPixFmt("rgba")
+		s.ctx = swsAllocContext()
+		s.dst = NewFrame()
+		if s.ctx == nil || s.dst == nil {
+			return errors.New("ffmpeg: out of memory")
+		}
+		avOptSetInt(s.ctx, "threads", int64(min(runtime.NumCPU(), 8)), 0)
 	}
-	sw, sh, sf := int32(f.Width()), int32(f.Height()), f.Format()
-	cs, full := f.ColorSpace(), f.FullRange()
-	if s.ctx == nil || sw != s.srcW || sh != s.srcH || sf != s.srcFmt || int32(w) != s.dstW || int32(h) != s.dstH {
-		flags := int32(swsBilinear)
-		if int32(w) == sw && int32(h) == sh {
+	if w != s.w || h != s.h {
+		flags := int64(swsBilinear)
+		if w == f.Width() && h == f.Height() {
 			flags = swsFastBilinear
 		}
-		s.ctx = swsGetCachedContext(s.ctx, sw, sh, sf, int32(w), int32(h), s.rgba, flags, nil, nil, nil)
-		if s.ctx == nil {
-			return errors.New("ffmpeg: cannot convert " + PixelFormatName(sf) + " to RGBA")
-		}
-		s.srcW, s.srcH, s.srcFmt, s.dstW, s.dstH = sw, sh, sf, int32(w), int32(h)
-		s.colorSpace, s.fullRange = -1, !full
+		avOptSetInt(s.ctx, "sws_flags", flags, 0)
+		s.w, s.h = w, h
 	}
-	if cs != s.colorSpace || full != s.fullRange {
-		// swscale assumes BT.601 limited range unless told otherwise.
-		table := int32(swsCSDefault)
-		switch cs {
-		case ColorSpaceBT709:
-			table = swsCSITU709
-		case ColorSpaceBT2020NCL, ColorSpaceBT2020CL:
-			table = swsCSBT2020
-		case 2: // unspecified: HD pictures are BT.709 in practice
-			if sh >= 720 {
-				table = swsCSITU709
-			}
-		}
-		srcRange := int32(0)
-		if full {
-			srcRange = 1
-		}
-		swsSetColorspaceDetails(s.ctx, swsGetCoefficients(table), srcRange, swsGetCoefficients(swsCSDefault), 1, 0, 1<<16, 1<<16)
-		s.colorSpace, s.fullRange = cs, full
+	if f.ColorSpace() == colorSpaceUnspecified && f.Height() >= 720 {
+		// Untagged HD pictures are BT.709 in practice; swscale would take
+		// them for BT.601.
+		*(*int32)(at(f.p(), offAVFrameColorspace)) = colorSpaceBT709
 	}
-	dstData := [4]unsafe.Pointer{dst}
-	dstStride := [4]int32{int32(stride)}
-	if swsScale(s.ctx, f.dataArray(), f.linesizeArray(), 0, sh, &dstData[0], &dstStride[0]) <= 0 {
-		return errors.New("ffmpeg: scaling failed")
+	d := s.dst.p()
+	*(*unsafe.Pointer)(at(d, offAVFrameData)) = dst
+	*(*int32)(at(d, offAVFrameLinesize)) = int32(stride)
+	*(*int32)(at(d, offAVFrameWidth)) = int32(w)
+	*(*int32)(at(d, offAVFrameHeight)) = int32(h)
+	*(*int32)(at(d, offAVFrameFormat)) = s.rgba
+	*(*int32)(at(d, offAVFrameColorspace)) = colorSpaceRGB
+	*(*int32)(at(d, offAVFrameColorRange)) = colorRangeJPEG
+	err := check(swsScaleFrame(s.ctx, s.dst, f))
+	*(*unsafe.Pointer)(at(d, offAVFrameData)) = nil
+	if err != nil {
+		return errors.New("ffmpeg: cannot convert " + PixelFormatName(f.Format()) + " to RGBA: " + err.Error())
 	}
 	return nil
 }
@@ -77,6 +71,10 @@ func (s *Scaler) Close() {
 	if s.ctx != nil {
 		swsFreeContext(s.ctx)
 		s.ctx = nil
+	}
+	if s.dst != nil {
+		s.dst.Free()
+		s.dst = nil
 	}
 }
 

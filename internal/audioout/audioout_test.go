@@ -1,0 +1,59 @@
+package audioout
+
+import (
+	"math"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+// TestDevicePlays plays a quiet tone on the default device and checks the
+// device's count of played frames advances at its rate, and holds while
+// paused. Machines without a device fall back to the null output.
+func TestDevicePlays(t *testing.T) {
+	var phase float64
+	var calls atomic.Int64
+	var out Output
+	fill := func(dst []float32) {
+		calls.Add(1)
+		ch := 2
+		if out != nil {
+			ch = out.Channels()
+		}
+		for i := 0; i < len(dst); i += ch {
+			v := float32(0.05 * math.Sin(phase))
+			phase += 2 * math.Pi * 440 / 48000
+			for c := 0; c < ch; c++ {
+				dst[i+c] = v
+			}
+		}
+	}
+	out, err := Open(fill)
+	if err != nil {
+		t.Logf("no device, using the null output: %v", err)
+	}
+	defer out.Close()
+	start := out.Played()
+	time.Sleep(500 * time.Millisecond)
+	played := out.Played() - start
+	want := int64(out.Rate()) / 2
+	if played < want/2 || played > want*3/2 {
+		t.Fatalf("played %d frames in 0.5 s at %d Hz", played, out.Rate())
+	}
+	if calls.Load() == 0 {
+		t.Fatal("fill was never called")
+	}
+	out.SetPaused(true)
+	time.Sleep(100 * time.Millisecond)
+	held := out.Played()
+	time.Sleep(200 * time.Millisecond)
+	if d := out.Played() - held; d > int64(out.Rate())/50 {
+		t.Fatalf("played %d frames while paused", d)
+	}
+	out.SetPaused(false)
+	time.Sleep(200 * time.Millisecond)
+	if out.Played() <= held {
+		t.Fatal("did not resume")
+	}
+	t.Logf("%T at %d Hz, %d channels", out, out.Rate(), out.Channels())
+}

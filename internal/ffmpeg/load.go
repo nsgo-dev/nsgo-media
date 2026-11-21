@@ -180,12 +180,10 @@ var (
 	swrFree           func(s *ptr)
 	swrGetDelay       func(s ptr, base int64) int64
 
-	swscaleVersion          func() uint32
-	swsGetCachedContext     func(ctx ptr, srcW, srcH, srcFmt, dstW, dstH, dstFmt, flags int32, srcFilter, dstFilter, param ptr) ptr
-	swsScale                func(ctx ptr, src *ptr, srcStride *int32, y, h int32, dst *ptr, dstStride *int32) int32
-	swsFreeContext          func(ctx ptr)
-	swsSetColorspaceDetails func(ctx ptr, inv ptr, srcRange int32, table ptr, dstRange, brightness, contrast, saturation int32) int32
-	swsGetCoefficients      func(cs int32) ptr
+	swscaleVersion  func() uint32
+	swsFreeContext  func(ctx ptr)
+	swsAllocContext func() ptr
+	swsScaleFrame   func(ctx ptr, dst, src *Frame) int32
 
 	avcodecVersion          func() uint32
 	avcodecFindDecoder      func(id int32) *Codec
@@ -267,11 +265,9 @@ var symbols = []sym{
 	{"swresample", "swr_get_delay", &swrGetDelay},
 
 	{"swscale", "swscale_version", &swscaleVersion},
-	{"swscale", "sws_getCachedContext", &swsGetCachedContext},
-	{"swscale", "sws_scale", &swsScale},
 	{"swscale", "sws_freeContext", &swsFreeContext},
-	{"swscale", "sws_setColorspaceDetails", &swsSetColorspaceDetails},
-	{"swscale", "sws_getCoefficients", &swsGetCoefficients},
+	{"swscale", "sws_alloc_context", &swsAllocContext},
+	{"swscale", "sws_scale_frame", &swsScaleFrame},
 
 	{"avcodec", "avcodec_version", &avcodecVersion},
 	{"avcodec", "avcodec_find_decoder", &avcodecFindDecoder},

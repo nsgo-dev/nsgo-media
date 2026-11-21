@@ -368,8 +368,6 @@ func (f *Frame) Plane(i int) (unsafe.Pointer, int) {
 	return pp(f.p(), offAVFrameData+uintptr(i)*8), int(i32(f.p(), offAVFrameLinesize+uintptr(i)*4))
 }
 
-func (f *Frame) dataArray() *unsafe.Pointer { return (*unsafe.Pointer)(at(f.p(), offAVFrameData)) }
-func (f *Frame) linesizeArray() *int32      { return (*int32)(at(f.p(), offAVFrameLinesize)) }
 func (f *Frame) extendedData() *unsafe.Pointer {
 	return (*unsafe.Pointer)(pp(f.p(), offAVFrameExtendedData))
 }
