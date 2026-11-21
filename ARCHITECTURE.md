@@ -54,3 +54,4 @@ Pipeline tests decode small fixture clips in `testdata/` headless and check time
 | --- | --- |
 | [Requirements](docs/requirements.md) | What the first version includes or leaves out |
 | [Roadmap](docs/roadmap.md) | The order of milestones or what comes after the first version |
+| [FFmpeg libraries](docs/ffmpeg.md) | The pinned FFmpeg, its configure flags, the binding's majors or where libraries load from |
