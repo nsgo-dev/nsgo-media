@@ -10,4 +10,5 @@
 - Text subtitle tracks and external SRT, WebVTT and ASS files as timed cues.
 - Hardware decoding through VideoToolbox, D3D11VA and VAAPI, falling back to software.
 - `tools/ffmpeg` builds FFmpeg 9's LGPL shared libraries for each desktop and uploads them to a release.
+- `go tool nsgo-media bundle` puts the libraries into the packages `nsgo build` wrote, signing a macOS app again.
 - A demo app with its own controls.

@@ -18,7 +18,7 @@
 
 ## 状态
 
-开发中：播放、声音、定位、字幕和硬件解码已在 macOS、Windows 和 Linux 上可用，但还没有发布版本，应用包如何携带 FFmpeg 库也尚未确定。[需求](docs/requirements.md)定义了首个版本，[路线图](docs/roadmap.md)给出了剩余工作的顺序。
+开发中：播放、声音、定位、字幕和硬件解码已在 macOS、Windows 和 Linux 上可用，但还没有发布版本。[需求](docs/requirements.md)定义了首个版本，[路线图](docs/roadmap.md)给出了剩余工作的顺序。
 
 ## 用法
 
@@ -37,7 +37,7 @@ func Root(cx *core.Scope) core.Node {
 
 播放器的状态（如 `p.State()`、`p.Position()` 和 `p.Cues()`）是 NSGo 信号，应用的视图直接读取。[`examples/demo`](examples/demo) 是一个带完整自定义控件的播放器。
 
-内核在运行时加载 FFmpeg 动态库：优先使用 `tools/ffmpeg` 构建的库，从 `NSGO_MEDIA_FFMPEG` 指定的目录或可执行文件旁加载，否则使用系统的 FFmpeg 9（macOS 上可 `brew install ffmpeg`）。详见 [FFmpeg 库](docs/ffmpeg.md)。
+内核在运行时加载 FFmpeg 动态库：优先使用 `tools/ffmpeg` 构建的库，从 `NSGO_MEDIA_FFMPEG` 指定的目录或可执行文件旁加载，否则使用系统的 FFmpeg 9（macOS 上可 `brew install ffmpeg`）。应用的包在 `nsgo build` 之后用 `go tool nsgo-media bundle` 放入这些库。详见 [FFmpeg 库](docs/ffmpeg.md)。
 
 ## 开发
 

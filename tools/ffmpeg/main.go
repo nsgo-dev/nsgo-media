@@ -68,6 +68,9 @@ func main() {
 		if err := uploadRelease(*upload, append(archives, sums)); err != nil {
 			fail(err)
 		}
+		if err := writePins(*upload, *out, filepath.Join("cmd", "nsgo-media", "libraries.go")); err != nil {
+			fail(err)
+		}
 	}
 }
 

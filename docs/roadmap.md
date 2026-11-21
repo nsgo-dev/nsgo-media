@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones run in order. The [requirements](requirements.md#first-version) define the first version; milestones 0 to 4 are built, and the first release waits for the libraries' packaging and the upload.
+Milestones run in order. The [requirements](requirements.md#first-version) define the first version; milestones 0 to 4 are built, and the first release waits for the libraries' upload.
 
 ## 0. Skeleton
 
@@ -24,7 +24,7 @@ Hardware decoding with its fallback, exact seeking and frame stepping, HTTP buff
 
 ## 5. First release
 
-Measured playback of 1080p and 4K at 60 fps on each desktop ([done](performance.md)), the demo app as the usage example, how an app's package carries the libraries (an [open question](../ARCHITECTURE.md#open-questions)), and a tagged release with its libraries.
+Measured playback of 1080p and 4K at 60 fps on each desktop ([done](performance.md)), the demo app as the usage example, a step putting the libraries into an app's packages ([done](ffmpeg.md#packaging-an-app)), and a tagged release with its libraries.
 
 ## Later
 

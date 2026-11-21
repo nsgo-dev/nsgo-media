@@ -1,6 +1,6 @@
 # NSGo Media architecture
 
-NSGo Media is a Go module that NSGo apps import. A player reads a source with FFmpeg on its own workers. It decodes audio into the system's output and video into frames that a view draws at the display's pace. The app owns every control and reads the player's state as NSGo signals. Packaging the libraries into an app is still open, and the [roadmap](docs/roadmap.md) orders what remains.
+NSGo Media is a Go module that NSGo apps import. A player reads a source with FFmpeg on its own workers. It decodes audio into the system's output and video into frames that a view draws at the display's pace. The app owns every control and reads the player's state as NSGo signals. The [roadmap](docs/roadmap.md) orders what remains.
 
 ## Code map
 
@@ -11,6 +11,7 @@ NSGo Media is a Go module that NSGo apps import. A player reads a source with FF
 | `internal/ffmpeg/library` | Finding the FFmpeg libraries: an environment variable, the app's package, beside the executable, then the system's |
 | `internal/pipeline` | Demuxing, bounded packet queues, decoders and their hardware fallback, the frame queue and the clock |
 | `internal/audioout` | Audio output, one backend per target: CoreAudio on macOS, WASAPI on Windows, PulseAudio on Linux |
+| `cmd/nsgo-media` | `bundle`, which puts the libraries into the packages `nsgo build` wrote and signs a macOS app again |
 | `tools/ffmpeg` | The command that builds FFmpeg's LGPL shared libraries for each desktop target at the pinned version |
 | `examples/demo` | A player app with its own controls, showing how an app drives the core |
 
@@ -42,7 +43,7 @@ The core persists nothing. A player's state lives in memory until `Close`; the a
 
 ## Open questions
 
-- **Packaging the libraries.** How do FFmpeg's libraries get into an app's package, signed into a macOS app's `Frameworks` and beside a Windows or Linux executable? This needs support from the `nsgo` tool or a step of the core's own, chosen with the user.
+None now. Packaging the libraries is a step of the core's own after `nsgo build` (decided by the user, 2026-11-22; [FFmpeg libraries](docs/ffmpeg.md#packaging-an-app)); the `nsgo` tool carrying third-party packages' native libraries itself is proposed to NSGo.
 
 ## Verification
 
