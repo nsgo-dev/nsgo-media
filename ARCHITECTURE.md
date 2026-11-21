@@ -1,6 +1,6 @@
 # NSGo Media architecture
 
-NSGo Media is a Go module that NSGo apps import. A player reads a source with FFmpeg on its own workers. It decodes audio into the system's output and video into frames that a view draws at the display's pace. The app owns every control and reads the player's state as NSGo signals. Nothing is built yet: this is the planned design, and the [roadmap](docs/roadmap.md) orders it.
+NSGo Media is a Go module that NSGo apps import. A player reads a source with FFmpeg on its own workers. It decodes audio into the system's output and video into frames that a view draws at the display's pace. The app owns every control and reads the player's state as NSGo signals. Packaging the libraries into an app is still open, and the [roadmap](docs/roadmap.md) orders what remains.
 
 ## Code map
 
@@ -28,13 +28,13 @@ NSGo Media is a Go module that NSGo apps import. A player reads a source with FF
 
 ## Core flows
 
-**Open.** `Open` starts a worker that opens the input, reads its streams and posts the source's information. Decoders for the chosen tracks start, hardware first where the platform offers it.
+**Open.** `Open` starts a goroutine that opens the input, reads its streams and posts the source's information. Files go through FFmpeg's file protocol; HTTP(S) is read in Go (`httpSource`, ranged GETs) through a custom `AVIOContext`. Decoders for the chosen tracks start, video on the platform's hardware device first.
 
-**Play.** The demuxer fills a packet queue per stream. The audio decoder resamples into the output device's buffer, whose played position is the master clock; without audio a monotonic clock stands in. The video decoder converts frames to RGBA into a small pool.
+**Play.** The demuxer fills a packet queue per stream and waits while they hold 2 s and 25 packets each, or 48 MiB together. The audio decoder resamples to the device's format, slows or speeds it with `atempo`, and queues 300 ms for the device. Each device frame it fills is recorded against the media time it plays, so the device's played count is the master clock, eased between the device's updates; without audio a monotonic clock stands in. The video decoder copies hardware frames to memory, converts them to RGBA no larger than the largest view needs, rotates them, and queues 3 in a pool of 7.
 
-**Present.** On each `RequestAnimationFrame` the view takes the newest frame due by the clock and drops the late ones. It writes that frame into the image's pixel buffer with a new version. Decoding stays on its workers, so the engine goroutine only copies.
+**Present.** At every `RequestAnimationFrame` the player runs the presenter: it starts the clock once the first frame and 100 ms of sound are ready, shows the newest frame due by the clock (a few milliseconds early, a lead that shifts when two frames fall due in one display frame) and drops late ones. It sets the frame into the view's image source with a new version; the frame shown before goes back to the pool a display frame later, after the commit that copied it ran.
 
-**Seek.** A seek raises the pipeline's generation and flushes the queues. Packets, frames and cues of an older generation are dropped wherever they are met, so a stale frame never shows after a seek.
+**Seek.** A seek raises the pipeline's generation, flushes the queues and holds the clock at the target. Packets, frames and samples of an older generation are dropped wherever they are met, so a stale frame never shows. An exact seek drops what decodes before the target; a fast one starts at the keyframe. A hardware decoder that fails gives way to software and seeks again to the shown position.
 
 ## Data and state
 
@@ -46,7 +46,7 @@ The core persists nothing. A player's state lives in memory until `Close`; the a
 
 ## Verification
 
-Pipeline tests decode small fixture clips in `testdata/` headless and check timestamps, seeking and frame steps. `nsgotest` drives the demo app on each desktop. Sound output, sync and 4K performance need a check on real machines.
+Pipeline and player tests decode the clips in `testdata/` headless, through a silent output paced as a device, and check order, seeking, steps, rate, looping, subtitles, HTTP and `Close`. `internal/audioout`'s test plays a tone on the real device. `nsgotest` drives the demo app. `TestMeasurePlayback` plays a long clip on a real machine; the results are in [Performance](docs/performance.md).
 
 ## Subjects
 
@@ -54,4 +54,5 @@ Pipeline tests decode small fixture clips in `testdata/` headless and check time
 | --- | --- |
 | [Requirements](docs/requirements.md) | What the first version includes or leaves out |
 | [Roadmap](docs/roadmap.md) | The order of milestones or what comes after the first version |
+| [Performance](docs/performance.md) | The presenter, the frame conversion or anything on the per-frame path |
 | [FFmpeg libraries](docs/ffmpeg.md) | The pinned FFmpeg, its configure flags, the binding's majors or where libraries load from |

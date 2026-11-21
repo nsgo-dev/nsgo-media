@@ -1,10 +1,10 @@
 # Roadmap
 
-Milestones run in order. The [requirements](requirements.md#first-version) define the first version; nothing is built yet.
+Milestones run in order. The [requirements](requirements.md#first-version) define the first version; milestones 0 to 4 are built, and the first release waits for the libraries' packaging and the upload.
 
 ## 0. Skeleton
 
-Done: the Go module, its package layout, an empty demo app, and the check and test commands run locally. The project has no CI yet.
+The Go module, its package layout, a demo app, and the check and test commands run locally. The project has no CI yet.
 
 ## 1. FFmpeg libraries
 
@@ -24,7 +24,7 @@ Hardware decoding with its fallback, exact seeking and frame stepping, HTTP buff
 
 ## 5. First release
 
-Measured playback of 1080p and 4K at 60 fps on each desktop, the demo app as the usage example, and a tagged release with its libraries.
+Measured playback of 1080p and 4K at 60 fps on each desktop ([done](performance.md)), the demo app as the usage example, how an app's package carries the libraries (an [open question](../ARCHITECTURE.md#open-questions)), and a tagged release with its libraries.
 
 ## Later
 

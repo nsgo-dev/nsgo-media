@@ -22,7 +22,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 | Playback | Play, pause, stop; seek to a time, fast to a keyframe or exact to a frame; step one frame forward while paused; rate from 0.25× to 4× with the pitch kept; loop |
 | Sound | Volume, mute, choosing the audio track; output on the system's default device |
 | Picture | A view that draws the current frame with contain, cover or fill, follows the stream's rotation, and lets app views draw above it |
-| Subtitles | Text subtitle tracks of the source and external SRT, WebVTT and ASS files, delivered to the app as timed text cues; the app draws them |
+| Subtitles | Text subtitle tracks of the source and external SRT, WebVTT and ASS files in UTF-8 or UTF-16, delivered to the app as timed text cues; the app draws them |
 | State | Playing, paused, buffering, ended and error states, position, buffered range and the chosen tracks, as NSGo signals the app's views read |
 | Decoding | Hardware decoding through FFmpeg where the platform offers it, falling back to software decoding on failure |
 | Players | Several players at once, each with its own view |
@@ -40,6 +40,6 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 ## Constraints
 
 - No cgo and no hand-written C: FFmpeg and system audio are reached through purego or `syscall`, as NSGo reaches its systems.
-- Only FFmpeg's LGPL components, loaded as shared libraries, so closed-source apps can ship the core.
+- Only FFmpeg's LGPL components, loaded as shared libraries, so closed-source apps can ship the core. On Linux they need glibc 2.34 and libva 2, which desktop distributions install.
 - The core uses only NSGo's public API, so it never needs a fork of NSGo.
 - [shuax/media](https://github.com/shuax/media) and [shuax/player](https://github.com/shuax/player) are design references only. They carry no license, so no code is copied from them.
