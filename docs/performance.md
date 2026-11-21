@@ -18,7 +18,7 @@ The clips were FFmpeg's `testsrc2` at 60 fps with AAC sound, H.264 (x264) and HE
 | Ryzen 9 6900HX, Radeon 680M, Omarchy | VAAPI | 0 dropped, 51% | 0 dropped, 166% | 0 dropped, 182% |
 | Windows 11 PC | D3D11VA | 0 dropped, 70% | 0 dropped, 111% | 0 dropped, 112% |
 
-CPU is a percentage of one core. Copying hardware frames to memory and converting them to RGBA take most of it; swscale splits the conversion over up to 8 threads.
+CPU is a percentage of one core. Copying hardware frames to memory and converting them to RGBA take most of it; swscale splits the conversion over up to 8 threads. Each frame queued or showing also keeps its decoded picture for snapshots, about 12 MiB for 8-bit 4K; keeping them costs no CPU, as the copy from a hardware frame is made anyway (a 4K60 H.264 clip on the MacBook used 54–58% before and after).
 
 ## The app's share
 

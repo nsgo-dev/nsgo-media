@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones run in order. The [requirements](requirements.md#first-version) define the first version; all of them are built, for local use: nothing is published online.
+Milestones run in order. The [requirements](requirements.md#first-version) define the first version; all of them are built, for local use: nothing is published online. Milestones after the first version take the [later goals](#later) one at a time.
 
 ## 0. Skeleton
 
@@ -26,6 +26,10 @@ Hardware decoding with its fallback, exact seeking and frame stepping, HTTP buff
 
 Measured playback of 1080p and 4K at 60 fps on each desktop ([performance](performance.md)), the demo app as the usage example, and a step putting locally built libraries into an app's packages ([packaging](ffmpeg.md#packaging-an-app)).
 
+## 6. Stepping backward and snapshots
+
+Stepping one frame backward while paused, from a bounded history of recent decoded frames or by decoding again from the keyframe before, and snapshots of the frame showing at the source's size.
+
 ## Later
 
 | Goal | Depends on |
@@ -33,5 +37,4 @@ Measured playback of 1080p and 4K at 60 fps on each desktop ([performance](perfo
 | Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
 | HDR output and tone mapping | GPU rendering |
 | iOS and Android | FFmpeg builds for them and a loader for their app packages |
-| Stepping backward, snapshots of the current frame | The first version's frame pipeline |
 | HLS and DASH adaptive streams, bitmap subtitles, audio passthrough | Requests from apps |

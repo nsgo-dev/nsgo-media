@@ -15,7 +15,7 @@ func (p *Pipeline) demux() {
 	streams := f.Streams()
 	for {
 		p.mu.Lock()
-		for !p.stopped() && p.seekReq == nil && (p.demuxEOF || p.queuesFull()) {
+		for !p.stopped() && p.seekReq == nil && (p.demuxEOF || p.hold || p.queuesFull()) {
 			p.cond.Wait()
 		}
 		if p.stopped() {
@@ -127,7 +127,7 @@ func (p *Pipeline) doSeek(req *seekRequest) {
 		// Some inputs seek only forward of the target.
 		f.Seek(-1, math.MinInt64, us, math.MaxInt64, 0)
 	}
-	marker := item{flush: true, gen: req.gen, target: req.target, exact: req.exact}
+	marker := item{flush: true, gen: req.gen, target: req.target, exact: req.exact, vdrop: req.vdrop, back: req.back}
 	p.vq.flush(marker)
 	p.aq.flush(marker)
 	for _, d := range p.subs {

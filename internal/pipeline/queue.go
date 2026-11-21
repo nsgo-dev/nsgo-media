@@ -14,10 +14,12 @@ type item struct {
 	gen   uint64
 	flush bool
 	eof   bool
-	// target and exact are a flush's seek: decoders drop what precedes
-	// target when exact.
+	// target, exact, vdrop and back are a flush's seek: what the
+	// decoders drop, as seekRequest says.
 	target time.Duration
 	exact  bool
+	vdrop  time.Duration
+	back   *backFill
 }
 
 // packetQueue is one stream's packets between the demuxer and its

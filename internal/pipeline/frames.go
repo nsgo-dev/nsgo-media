@@ -18,6 +18,20 @@ type Frame struct {
 	gen   uint64
 	mem   unsafe.Pointer
 	size  int
+	// src is the decoded picture, in memory, the frame was converted
+	// from, which snapshots convert again at the source's size.
+	src *ffmpeg.Frame
+	// loose is a frame outside the pool, which the presenter converted
+	// from the history; releasing it frees it.
+	loose bool
+}
+
+// freeSource drops the decoded picture the frame holds.
+func (f *Frame) freeSource() {
+	if f.src != nil {
+		f.src.Free()
+		f.src = nil
+	}
 }
 
 // framePool bounds the frames of a player: those queued for display,
@@ -79,6 +93,7 @@ func (p *framePool) put(f *Frame) {
 	if f == nil {
 		return
 	}
+	f.freeSource()
 	p.mu.Lock()
 	p.out--
 	if p.closed {
@@ -108,6 +123,18 @@ func (p *framePool) close() {
 	p.free = nil
 	p.cond.Broadcast()
 	p.mu.Unlock()
+}
+
+// release gives a frame back: to the pool, or freed when loose.
+func (p *Pipeline) release(f *Frame) {
+	switch {
+	case f == nil:
+	case f.loose:
+		f.freeSource()
+		ffmpeg.Free(f.mem)
+	default:
+		p.pool.put(f)
+	}
 }
 
 // frameQueue holds decoded frames in display order for the presenter.

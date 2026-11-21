@@ -157,6 +157,7 @@ var (
 	avFrameFree            func(f **Frame)
 	avFrameUnref           func(f *Frame)
 	avFrameMoveRef         func(dst, src *Frame)
+	avFrameClone           func(f *Frame) *Frame
 	avFrameGetBuffer       func(f *Frame, align int32) int32
 	avGetPixFmt            func(name string) int32
 	avGetPixFmtName        func(f int32) string
@@ -241,6 +242,7 @@ var symbols = []sym{
 	{"avutil", "av_frame_free", &avFrameFree},
 	{"avutil", "av_frame_unref", &avFrameUnref},
 	{"avutil", "av_frame_move_ref", &avFrameMoveRef},
+	{"avutil", "av_frame_clone", &avFrameClone},
 	{"avutil", "av_frame_get_buffer", &avFrameGetBuffer},
 	{"avutil", "av_get_pix_fmt", &avGetPixFmt},
 	{"avutil", "av_get_pix_fmt_name", &avGetPixFmtName},

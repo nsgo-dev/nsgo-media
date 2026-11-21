@@ -341,6 +341,9 @@ func (f *Frame) Unref() { avFrameUnref(f) }
 // MoveTo moves the frame's buffers into dst, leaving f empty.
 func (f *Frame) MoveTo(dst *Frame) { avFrameMoveRef(dst, f) }
 
+// Clone is a new frame referencing f's buffers, nil when out of memory.
+func (f *Frame) Clone() *Frame { return avFrameClone(f) }
+
 func (f *Frame) Width() int      { return int(i32(f.p(), offAVFrameWidth)) }
 func (f *Frame) Height() int     { return int(i32(f.p(), offAVFrameHeight)) }
 func (f *Frame) Format() int32   { return i32(f.p(), offAVFrameFormat) }

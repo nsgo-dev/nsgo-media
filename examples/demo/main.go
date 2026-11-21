@@ -7,7 +7,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -232,10 +234,15 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) co
 				},
 			},
 			ui.IconButton{TestID: "stop", Icon: lucide.Square, Label: "Stop", OnPress: p.Stop},
+			ui.IconButton{TestID: "step-back", Icon: lucide.StepBack, Label: "Previous frame", OnPress: func() {
+				p.Pause()
+				p.StepBackward()
+			}},
 			ui.IconButton{TestID: "step", Icon: lucide.StepForward, Label: "Next frame", OnPress: func() {
 				p.Pause()
 				p.StepForward()
 			}},
+			ui.IconButton{TestID: "snapshot", Icon: lucide.Camera, Label: "Save snapshot", OnPress: func() { saveSnapshot(cx, p) }},
 			ui.IconButton{TestID: "loop", Icon: lucide.Repeat, Label: "Loop", Selected: p.Loop, OnPress: func() { p.SetLoop(!p.Loop()) }},
 			ui.IconButton{
 				TestID: "mute",
@@ -304,6 +311,24 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) co
 			},
 		},
 	}
+}
+
+// saveSnapshot saves the frame showing, at the source's size, as a PNG
+// the user places.
+func saveSnapshot(cx *core.Scope, p *player.Player) {
+	img, err := p.Snapshot(0, 0)
+	if err != nil {
+		return
+	}
+	go func() {
+		var buf bytes.Buffer
+		if png.Encode(&buf, img) != nil {
+			return
+		}
+		cx.Post(func() {
+			cx.SaveFile(core.SaveOptions{Name: "snapshot.png", Data: buf.Bytes()}, nil)
+		})
+	}()
 }
 
 func rateOptions() []ui.Option[float64] {

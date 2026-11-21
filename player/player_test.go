@@ -144,3 +144,33 @@ func TestFitRect(t *testing.T) {
 		t.Errorf("fill %v %v %v %v", x, y, w, h)
 	}
 }
+
+func TestPlayerStepsAndSnapshots(t *testing.T) {
+	var p *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.Open(fixture(t, "av.mkv"))
+		p.Seek(time.Second, Exact)
+		return View{Player: p, Style: core.Style{Width: core.Pt(40), Height: core.Pt(23)}}
+	})
+	play(t, app, 3*time.Second, func() bool { return p.State() == Paused && p.Position() == time.Second })
+	p.StepBackward()
+	p.StepBackward()
+	play(t, app, 3*time.Second, func() bool { return p.Position() == 920*time.Millisecond })
+	p.StepForward()
+	play(t, app, 3*time.Second, func() bool { return p.Position() == 960*time.Millisecond })
+	if f := p.frame.GetUntracked(); f.img == nil || f.img.Bounds().Dx() >= 160 {
+		t.Fatalf("frame shown %v, want one the view's size", f.img.Bounds())
+	}
+	img, err := p.Snapshot(0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := img.Bounds(); b.Dx() != 160 || b.Dy() != 90 {
+		t.Errorf("snapshot %v, want the source's 160×90", b)
+	}
+	if img, _ = p.Snapshot(80, 80); img.Bounds().Dx() != 80 || img.Bounds().Dy() != 45 {
+		t.Errorf("snapshot in 80×80 is %v", img.Bounds())
+	}
+}

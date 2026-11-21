@@ -165,7 +165,7 @@ func TestExactAndFastSeekWhilePaused(t *testing.T) {
 
 	// Stepping shows the next frames, 40 ms apart.
 	for want := 1040 * time.Millisecond; want <= 1120*time.Millisecond; want += 40 * time.Millisecond {
-		p.Step()
+		p.Step(1)
 		st = run(t, p, time.Second, func(s Status) bool { return s.Frame != nil })
 		if got := st.Frame.PTS - p.start; got != want {
 			t.Fatalf("step showed %v, want %v", got, want)

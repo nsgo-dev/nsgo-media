@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"errors"
+	"image"
 	"math"
 	"time"
 	"unsafe"
@@ -20,16 +21,57 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 	if dec == nil {
 		return
 	}
-	frame, sw := ffmpeg.NewFrame(), ffmpeg.NewFrame()
+	frame := ffmpeg.NewFrame()
 	defer frame.Free()
-	defer sw.Free()
 	var scaler ffmpeg.Scaler
 	defer scaler.Close()
 	gen := p.genA.Load()
-	dropBefore := time.Duration(-1)
+	vdrop := time.Duration(-1)
+	var back *backFill
+	backDone := false
 	failures := 0
 
-	// emit converts and queues each frame the decoder has ready.
+	// take moves the decoded picture into a frame of its own, in memory.
+	take := func() (*ffmpeg.Frame, error) {
+		src := ffmpeg.NewFrame()
+		if frame.Hardware() {
+			err := frame.TransferTo(src)
+			frame.Unref()
+			if err != nil {
+				src.Free()
+				return nil, errHardware
+			}
+			return src, nil
+		}
+		frame.MoveTo(src)
+		return src, nil
+	}
+
+	// fill keeps a frame of a history fill, ending it at the shown frame.
+	fill := func(pts time.Duration) error {
+		if backDone || pts < back.from {
+			frame.Unref()
+			return nil
+		}
+		if pts <= back.end {
+			src, err := take()
+			if err != nil {
+				return err
+			}
+			if !p.hist.push(back.id, pts, src) {
+				src.Free()
+			}
+		} else {
+			frame.Unref()
+		}
+		if pts >= back.end {
+			p.endFill(back, gen)
+			backDone = true
+		}
+		return nil
+	}
+
+	// receive converts and queues each frame the decoder has ready.
 	receive := func() error {
 		for {
 			err := dec.Receive(frame)
@@ -44,24 +86,26 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 				ts = frame.PTS()
 			}
 			pts := p.videoTB.Duration(ts)
-			if dropBefore >= 0 && pts < dropBefore-p.frameDuration()/2 {
+			if back != nil {
+				if err := fill(pts); err != nil {
+					return err
+				}
+				continue
+			}
+			if vdrop >= 0 && pts < vdrop {
 				frame.Unref()
 				continue
 			}
-			src := frame
-			if frame.Hardware() {
-				if err := frame.TransferTo(sw); err != nil {
-					frame.Unref()
-					return errHardware
-				}
-				frame.Unref()
-				src = sw
+			src, err := take()
+			if err != nil {
+				return err
 			}
 			out := p.convert(&scaler, src, pts, gen)
-			src.Unref()
 			if out == nil {
+				src.Free()
 				return nil // closed, or a seek made the frame stale
 			}
+			out.src = src
 			failures = 0
 			p.frames.push(out)
 		}
@@ -74,14 +118,10 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 		}
 		if it.flush {
 			dec.Flush()
-			gen = it.gen
-			dropBefore = -1
-			if it.exact {
-				dropBefore = it.target
-			}
+			gen, vdrop, back, backDone = it.gen, it.vdrop, it.back, false
 			continue
 		}
-		if it.gen != gen {
+		if it.gen != gen || backDone {
 			freeItem(it)
 			continue
 		}
@@ -92,7 +132,12 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 				err = receive()
 			}
 			dec.Flush()
-			p.frames.setEOF(gen)
+			if back == nil {
+				p.frames.setEOF(gen)
+			} else if !backDone {
+				p.endFill(back, gen)
+				backDone = true
+			}
 		} else {
 			err = dec.Send(it.pkt)
 			if ffmpeg.IsAgain(err) {
@@ -121,6 +166,16 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder) {
 	}
 }
 
+// endFill ends a history fill and stops the demuxer reading for it.
+func (p *Pipeline) endFill(back *backFill, gen uint64) {
+	p.hist.finish(back.id)
+	p.mu.Lock()
+	if p.gen == gen {
+		p.hold = true
+	}
+	p.mu.Unlock()
+}
+
 var errHardware = errors.New("pipeline: hardware frame transfer failed")
 
 func (p *Pipeline) frameDuration() time.Duration {
@@ -138,8 +193,8 @@ func (p *Pipeline) seekForFallback() {
 	p.gen++
 	gen := p.gen
 	p.genA.Store(gen)
-	p.seekReq = &seekRequest{target: t, exact: true, gen: gen}
-	p.demuxEOF = false
+	p.seekReq = &seekRequest{target: t, exact: true, vdrop: t - p.frameDuration()/2, gen: gen}
+	p.demuxEOF, p.hold = false, false
 	p.cond.Broadcast()
 	p.mu.Unlock()
 	p.interrupt.Store(true)
@@ -149,29 +204,10 @@ func (p *Pipeline) seekForFallback() {
 // convert scales and rotates a decoded picture into a pool frame, at the
 // output size: the displayed size, shrunk to cover the view's.
 func (p *Pipeline) convert(s *ffmpeg.Scaler, f *ffmpeg.Frame, pts time.Duration, gen uint64) *Frame {
-	w, h := f.Width(), f.Height()
-	// The displayed shape: pixel aspect ratio, then rotation.
-	dw, dh := float64(w)*p.videoSAR, float64(h)
-	if p.videoSAR <= 0 {
-		dw = float64(w)
-	}
+	ow, oh := p.outputSize(f.Width(), f.Height())
 	rot := p.videoRot
-	if rot == 90 || rot == 270 {
-		dw, dh = dh, dw
-	}
-	p.mu.Lock()
-	vw, vh := p.outW, p.outH
-	p.mu.Unlock()
-	scale := 1.0
-	if vw > 0 && vh > 0 {
-		scale = math.Min(1, math.Max(float64(vw)/dw, float64(vh)/dh))
-	}
-	ow, oh := max(int(math.Round(dw*scale)), 2), max(int(math.Round(dh*scale)), 2)
 	// The converter writes the unrotated picture.
-	cw, ch := ow, oh
-	if rot == 90 || rot == 270 {
-		cw, ch = oh, ow
-	}
+	cw, ch := turned(ow, oh, rot)
 	stale := func() bool { return p.genA.Load() != gen || p.stopped() }
 	out := p.pool.get(ow, oh, stale)
 	if out == nil {
@@ -201,6 +237,78 @@ func (p *Pipeline) convert(s *ffmpeg.Scaler, f *ffmpeg.Frame, pts time.Duration,
 	}
 	out.PTS, out.gen = pts, gen
 	return out
+}
+
+// displayed is the shape a w×h picture shows at: its pixels' aspect
+// ratio, then its rotation.
+func (p *Pipeline) displayed(w, h int) (dw, dh float64) {
+	dw, dh = float64(w)*p.videoSAR, float64(h)
+	if p.videoSAR <= 0 {
+		dw = float64(w)
+	}
+	if p.videoRot == 90 || p.videoRot == 270 {
+		dw, dh = dh, dw
+	}
+	return dw, dh
+}
+
+// outputSize is the size a w×h picture converts to for display: its
+// displayed size, shrunk to cover the largest view.
+func (p *Pipeline) outputSize(w, h int) (ow, oh int) {
+	dw, dh := p.displayed(w, h)
+	p.mu.Lock()
+	vw, vh := p.outW, p.outH
+	p.mu.Unlock()
+	scale := 1.0
+	if vw > 0 && vh > 0 {
+		scale = math.Min(1, math.Max(float64(vw)/dw, float64(vh)/dh))
+	}
+	return max(int(math.Round(dw*scale)), 2), max(int(math.Round(dh*scale)), 2)
+}
+
+// turned is a w×h picture's size before a rotation by deg.
+func turned(w, h, deg int) (int, int) {
+	if deg == 90 || deg == 270 {
+		return h, w
+	}
+	return w, h
+}
+
+// paint converts f to RGBA of ow×oh, rotated, in memory from
+// ffmpeg.Alloc the caller frees.
+func (p *Pipeline) paint(s *ffmpeg.Scaler, f *ffmpeg.Frame, ow, oh int) (unsafe.Pointer, error) {
+	rot := p.videoRot
+	cw, ch := turned(ow, oh, rot)
+	out := ffmpeg.Alloc(ow * oh * 4)
+	if out == nil {
+		return nil, errNoMemory
+	}
+	dst := out
+	if rot != 0 {
+		if dst = ffmpeg.Alloc(cw * ch * 4); dst == nil {
+			ffmpeg.Free(out)
+			return nil, errNoMemory
+		}
+		defer ffmpeg.Free(dst)
+	}
+	if err := s.Scale(f, dst, cw*4, cw, ch); err != nil {
+		ffmpeg.Free(out)
+		return nil, err
+	}
+	if rot != 0 {
+		rotate(unsafe.Slice((*byte)(out), ow*oh*4), unsafe.Slice((*byte)(dst), cw*ch*4), cw, ch, rot)
+	}
+	return out, nil
+}
+
+var errNoMemory = errors.New("pipeline: out of memory")
+
+// newLooseFrame makes a frame outside the pool of mem, w×h RGBA.
+func newLooseFrame(mem unsafe.Pointer, w, h int) *Frame {
+	size := w * h * 4
+	return &Frame{mem: mem, size: size, loose: true, Image: &image.RGBA{
+		Pix: unsafe.Slice((*byte)(mem), size), Stride: w * 4, Rect: image.Rect(0, 0, w, h),
+	}}
 }
 
 // rotate turns src, w×h RGBA, clockwise by deg into dst.
@@ -261,6 +369,7 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 		tb = p.in.Format.Streams()[p.AudioTrack()].TimeBase()
 	}
 	anchored := false
+	idle := false          // a history fill needs no sound
 	var next time.Duration // the media time the tempo's next output starts at
 	var stretched []float32
 
@@ -350,14 +459,14 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 				tempo.Close()
 				tempo, tempoRate = nil, 1
 			}
-			gen, anchored = it.gen, false
+			gen, anchored, idle = it.gen, false, it.back != nil
 			dropBefore = -1
 			if it.exact {
 				dropBefore = it.target
 			}
 			continue
 		}
-		if dec == nil || it.gen != gen {
+		if dec == nil || it.gen != gen || idle {
 			freeItem(it)
 			continue
 		}

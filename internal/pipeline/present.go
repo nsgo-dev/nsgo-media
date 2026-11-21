@@ -26,7 +26,7 @@ func (p *Pipeline) Tick() Status {
 	// The frame shown before the last one went out in a commit that ran,
 	// so its pixels may be written again.
 	if p.retired != nil {
-		p.pool.put(p.retired)
+		p.release(p.retired)
 		p.retired = nil
 	}
 	hasVideo := p.videoStream >= 0
@@ -69,15 +69,11 @@ func (p *Pipeline) Tick() Status {
 		}
 		p.waitFirst = false
 		p.begin(start, paused)
-	} else if p.stepReq {
-		if len(fq) > 0 {
-			st.Frame = p.take()
-			p.stepReq = false
-			p.begin(st.Frame.PTS, true)
-		}
+	} else if p.steps != 0 && paused {
+		st.Frame = p.step(videoEOF)
 	}
 
-	pos := p.clock(hasAudio)
+	pos := p.clock(hasAudio, paused)
 	if !p.waitFirst && !paused {
 		// Buffering: playback ran out of data the demuxer has yet to read.
 		if p.running && !demuxEOF {
@@ -144,9 +140,14 @@ func (p *Pipeline) begin(t time.Duration, paused bool) {
 	p.lastPos = t
 }
 
-func (p *Pipeline) clock(hasAudio bool) time.Duration {
+func (p *Pipeline) clock(hasAudio, paused bool) time.Duration {
 	if p.waitFirst {
 		return p.target
+	}
+	if paused {
+		// Paused, the clock stays where it stopped or a step put it.
+		p.smooth.valid = false
+		return p.lastPos
 	}
 	if !hasAudio {
 		return p.wall.now()
@@ -201,7 +202,7 @@ func (p *Pipeline) due(pos time.Duration) *Frame {
 	var f *Frame
 	for len(p.frames.frames) > 0 && p.frames.frames[0].PTS <= pos+early {
 		if f != nil {
-			p.pool.put(f)
+			p.release(f)
 			p.dropped++
 			if p.halfFrame > 0 {
 				p.lead = (p.lead + 3*time.Millisecond) % (2 * p.halfFrame)

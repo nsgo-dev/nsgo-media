@@ -107,11 +107,11 @@ type Pipeline struct {
 	outW, outH  int
 	buffered    time.Duration // the latest timestamp demuxed
 	externalID  int
+	hold        bool // a history fill finished: the demuxer reads no more
 
 	// The presenter's state, on the engine's goroutine.
 	shown, retired *Frame
 	waitFirst      bool
-	stepReq        bool
 	target         time.Duration
 	exact          bool
 	running        bool
@@ -124,18 +124,35 @@ type Pipeline struct {
 	dropped, empty int
 	lead           time.Duration // how early a frame shows
 	reopenAudio    atomic.Bool
+
+	// Stepping, on the engine's goroutine.
+	hist        *frameHistory
+	steps       int  // frames to step, backward when negative
+	detached    bool // the decoders do not go on from the shown frame
+	filling     uint64
+	fillID      uint64 // the last fill, and what it was for
+	fillGen     uint64
+	fillFor     time.Duration
+	fillSpan    time.Duration
+	fillAtStart bool
+	stepScaler  ffmpeg.Scaler
 }
 
+// seekRequest is a seek for the demuxer and, in its flush marker, what
+// the decoders drop: audio before target when exact, video before vdrop
+// (none when negative), or with back all but a history fill.
 type seekRequest struct {
 	target time.Duration
 	exact  bool
+	vdrop  time.Duration
+	back   *backFill
 	gen    uint64
 }
 
 // New makes a pipeline; Open opens its source.
 func New(opts Options) *Pipeline {
 	// Generation 1 is the first; 0 marks no generation.
-	p := &Pipeline{opts: opts, videoStream: -1, audioStream: -1, paused: true, gen: 1}
+	p := &Pipeline{opts: opts, videoStream: -1, audioStream: -1, paused: true, gen: 1, hist: newFrameHistory()}
 	p.genA.Store(1)
 	p.cond = sync.NewCond(&p.mu)
 	p.ctx, p.cancel = context.WithCancel(context.Background())
@@ -376,11 +393,13 @@ func (p *Pipeline) Close() {
 	}
 	if p.pool != nil {
 		p.frames.drain(p.pool)
-		p.pool.put(p.shown)
-		p.pool.put(p.retired)
+		p.release(p.shown)
+		p.release(p.retired)
 		p.shown, p.retired = nil, nil
 		p.pool.close()
 	}
+	p.hist.clear()
+	p.stepScaler.Close()
 	p.in.Close()
 	if p.http != nil {
 		p.http.Close()
@@ -392,14 +411,22 @@ func (p *Pipeline) stopped() bool { return p.closing.Load() }
 // Commands. They may be called from any goroutine, but the presenter's
 // state they touch belongs to the engine's, where the player calls them.
 
-// SetPaused pauses or resumes playback. Resuming at the end starts over.
+// SetPaused pauses or resumes playback. Resuming at the end starts over;
+// resuming on a frame stepping backward showed decodes again from it.
 func (p *Pipeline) SetPaused(paused bool) {
 	p.mu.Lock()
 	ended := p.ended
 	p.paused = paused
 	p.mu.Unlock()
-	if !paused && ended {
+	switch {
+	case paused:
+	case ended:
 		p.Seek(0, false)
+	case (p.detached || p.filling != 0) && p.shown != nil:
+		p.seekTo(p.shown.PTS, true, p.shown.PTS)
+	default:
+		p.steps = 0
+		p.hist.clear()
 	}
 	p.wall.setRunning(!paused && p.running, p.Rate())
 	p.ring.setPaused(paused)
@@ -420,32 +447,43 @@ func (p *Pipeline) Seek(t time.Duration, exact bool) {
 		t = min(t, p.info.Duration)
 	}
 	t = max(t, 0) + p.start
+	vdrop := time.Duration(-1)
+	if exact {
+		vdrop = t - p.frameDuration()/2
+	}
+	p.seekTo(t, exact, vdrop)
+}
+
+// seekTo seeks to the media time t, dropping video before vdrop, and
+// waits for the first frame to start the clock there.
+func (p *Pipeline) seekTo(t time.Duration, exact bool, vdrop time.Duration) {
+	gen := p.restart(t, exact, vdrop, nil)
+	p.ring.flush(gen, t)
+	p.hist.clear()
+	p.steps, p.detached, p.filling = 0, false, 0
+	p.waitFirst, p.running, p.buffering = true, false, false
+	p.target, p.exact, p.lastPos = t, exact, t
+	p.smooth.valid = false
+	p.wall.set(t)
+}
+
+// restart has the demuxer seek to target in a new generation and drops
+// the frames queued, returning the generation.
+func (p *Pipeline) restart(target time.Duration, exact bool, vdrop time.Duration, back *backFill) uint64 {
 	p.mu.Lock()
 	p.gen++
 	gen := p.gen
 	p.genA.Store(gen)
-	p.seekReq = &seekRequest{target: t, exact: exact, gen: gen}
-	p.demuxEOF = false
-	p.ended = false
-	p.buffered = t
+	p.seekReq = &seekRequest{target: target, exact: exact, vdrop: vdrop, back: back, gen: gen}
+	p.demuxEOF, p.hold, p.ended = false, false, false
+	p.buffered = target
 	p.cond.Broadcast()
 	p.mu.Unlock()
 	// A blocking read stops for the seek.
 	p.interrupt.Store(true)
 	p.frames.drain(p.pool)
 	p.pool.wakeAll()
-	p.ring.flush(gen, t)
-	p.waitFirst, p.stepReq, p.running, p.buffering = true, false, false, false
-	p.target, p.exact, p.lastPos = t, exact, t
-	p.smooth.valid = false
-	p.wall.set(t)
-}
-
-// Step shows the next frame while paused.
-func (p *Pipeline) Step() {
-	if p.Paused() && p.videoStream >= 0 {
-		p.stepReq = true
-	}
+	return gen
 }
 
 // SetRate sets the speed, 0.25 to 4, keeping the pitch.

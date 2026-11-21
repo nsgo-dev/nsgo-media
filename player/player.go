@@ -280,11 +280,34 @@ func (p *Player) Seek(t time.Duration, mode SeekMode) {
 	}
 }
 
-// StepForward shows the next frame while paused.
+// StepForward shows the next frame while paused. Steps asked for before
+// the last ones showed add up; stepping stops at the last frame.
 func (p *Player) StepForward() {
 	if p.ready() {
-		p.pl.Step()
+		p.pl.Step(1)
 	}
+}
+
+// StepBackward shows the previous frame while paused, stopping at the
+// first. It keeps the recent frames decoded, so steps back over them are
+// quick; others decode again from the keyframe before them. Playing
+// again goes on from the frame shown, sound included.
+func (p *Player) StepBackward() {
+	if p.ready() {
+		p.pl.Step(-1)
+	}
+}
+
+// Snapshot is the frame showing: at the source's size, its pixels' shape
+// and rotation applied, however large the views draw it. A width or
+// height above 0 shrinks it to fit, keeping its shape; it never grows.
+// It converts the decoded picture again, which takes milliseconds for a
+// large one.
+func (p *Player) Snapshot(width, height int) (*image.RGBA, error) {
+	if !p.ready() {
+		return nil, errors.New("player: no source is open")
+	}
+	return p.pl.Snapshot(width, height)
 }
 
 // SetRate sets the speed from 0.25 to 4, keeping the pitch.

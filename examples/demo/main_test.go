@@ -50,6 +50,12 @@ func TestControlsDriveThePlayer(t *testing.T) {
 		t.Fatalf("moved while paused: %s, then %s", held, timeText())
 	}
 
+	// Stepping back and forward shows the frames around the position.
+	app.Press("id:step-back")
+	app.Press("id:step-back")
+	app.Press("id:step")
+	play(t, app, 2*time.Second, func() bool { return timeText() == "0:01 / 0:02" })
+
 	// Stop goes back to the start.
 	app.Press("id:stop")
 	play(t, app, 2*time.Second, func() bool { return timeText() == "0:00 / 0:02" })
