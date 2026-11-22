@@ -1,0 +1,28 @@
+---
+// The docs live in docs/public/; filePath is relative to website/.
+import { posix } from 'node:path';
+import { Icon } from '@astrojs/starlight/components';
+import { project } from '../../site';
+
+const { entry, isFallback } = Astro.locals.starlightRoute;
+const href = `${project.repo}/edit/main/${posix.normalize(`website/${entry.filePath}`)}`;
+---
+
+{!isFallback && entry.id !== '404' && (
+	<a href={href} class="sl-flex print:hidden">
+		<Icon name="pencil" size="1.2em" />
+		{Astro.locals.t('page.editLink')}
+	</a>
+)}
+
+<style>
+	a {
+		gap: 0.5rem;
+		align-items: center;
+		text-decoration: none;
+		color: var(--sl-color-gray-3);
+	}
+	a:hover {
+		color: var(--sl-color-white);
+	}
+</style>

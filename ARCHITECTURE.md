@@ -14,6 +14,7 @@ NSGo Media is a Go module that NSGo apps import. A player reads a source with FF
 | `cmd/nsgo-media` | `bundle`, which puts the libraries into the packages `nsgo build` wrote and signs a macOS or iOS app again |
 | `tools/ffmpeg` | The command that builds FFmpeg's LGPL shared libraries for each desktop target, and frameworks for iOS, at the pinned version |
 | `examples/demo` | A player app with its own controls, showing how an app drives the core |
+| `website` | The official site, Astro with Starlight, whose docs it reads from `docs/public/<language>/` and GitHub Pages serves |
 
 ## Boundaries
 

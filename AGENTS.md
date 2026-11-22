@@ -25,5 +25,5 @@ When adding, changing or patching anything the FFmpeg libraries are built from o
 
 ## Documentation
 
-- Keep `README.md` and `README.zh-CN.md` equivalent; everything else, including code comments, is English.
+- Keep `README.md` and `README.zh-CN.md` equivalent, and `docs/public/en/` and `docs/public/zh/`, the website's docs; everything else, including code comments, is English.
 - Update a document only when a fact its reader needs changes, and keep it within its budget.
