@@ -1,6 +1,6 @@
 # NSGo Media architecture
 
-NSGo Media is a Go module that NSGo apps import. A player reads a source with FFmpeg on its own workers. It decodes audio into the system's output and video into frames that a view draws at the display's pace. The app owns every control and reads the player's state as NSGo signals. The [roadmap](docs/roadmap.md) orders what remains.
+NSGo Media is a Go module that NSGo apps import. A player reads a source with FFmpeg on its own workers. It decodes audio into the system's output and video into frames that a view draws at the display's pace. The app owns every control and reads the player's state as NSGo signals. The [roadmap](https://github.com/oneo-me/nsgo-media/issues/2), whose sub-issues are its stages, theirs the tasks by area and theirs the subtasks, orders what remains; the website shows it.
 
 ## Code map
 
@@ -65,6 +65,6 @@ Pipeline and player tests decode the clips in `testdata/` headless, through a si
 | Document | Read before changing |
 | --- | --- |
 | [Requirements](docs/requirements.md) | What the first version includes or leaves out |
-| [Roadmap](docs/roadmap.md) | The order of milestones or what comes after the first version |
+| [Roadmap](https://github.com/oneo-me/nsgo-media/issues/2) (issues) | The order of milestones or what comes after the first version |
 | [Performance](docs/performance.md) | The presenter, the frame conversion or anything on the per-frame path |
 | [FFmpeg libraries](docs/ffmpeg.md) | The pinned FFmpeg, its configure flags, the binding's majors or where libraries load from |

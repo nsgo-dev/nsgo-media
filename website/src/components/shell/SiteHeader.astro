@@ -8,7 +8,7 @@ import logo from '../../assets/logo.png';
 import KIcon from '../KIcon.astro';
 import HeaderMenu from './HeaderMenu.astro';
 import NavMenu from './NavMenu.astro';
-import { copy, docsHome, feedback, homePath } from '../../copy';
+import { copy, docsHome, feedback, homePath, roadmapPath } from '../../copy';
 import { xAccounts } from '../../accounts';
 import { langOf, otherLanguagePath } from '../../lang';
 import { project } from '../../site';
@@ -19,6 +19,8 @@ const t = copy[lang];
 const home = url(homePath[lang]);
 const docs = url(docsHome[lang]);
 const inDocs = Astro.url.pathname.startsWith(docs);
+const roadmap = url(roadmapPath[lang]);
+const inRoadmap = Astro.url.pathname.startsWith(roadmap);
 // The same page in each language. The 404 page has no address of its own,
 // so its menu goes to the home pages.
 const is404 = Astro.locals.starlightRoute.entry.id === '404';
@@ -44,6 +46,7 @@ const colors = { languages: '#8b5cf6', globe: '#14b8a6', sun: '#f59e0b', moon: '
 	<nav class="nav" aria-label={t.nav.label}>
 		<a href={`${home}#features`}>{t.nav.features}</a>
 		<a href={docs} aria-current={inDocs ? 'page' : undefined}>{t.nav.docs}</a>
+		<a href={roadmap} aria-current={inRoadmap ? 'page' : undefined}>{t.nav.roadmap}</a>
 		<NavMenu label={t.nav.community} links={t.community} />
 		<a href={feedback} target="_blank" rel="noopener noreferrer">{t.nav.feedback}<Icon name="external" size="0.75rem" class="external" /></a>
 	</nav>

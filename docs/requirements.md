@@ -45,7 +45,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 - DRM, disc images and protocol receivers such as DLNA or AirPlay.
 - Rendering subtitles into the picture, and ASS styling beyond text.
 - Android, set aside for now.
-- Background playback on iOS, the web and mini programs; the [roadmap](roadmap.md) orders them.
+- Background playback on iOS, the web and mini programs; the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2) orders them.
 
 ## Constraints
 

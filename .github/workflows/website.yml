@@ -12,6 +12,8 @@ on:
 
 permissions:
   contents: read
+  # The roadmap page reads the repository's issues when it builds.
+  issues: read
 
 # One run at a time; a newer commit cancels the older run, whose site it replaces.
 concurrency:
@@ -41,6 +43,7 @@ jobs:
         env:
           SITE: ${{ steps.pages.outputs.origin }}
           BASE: ${{ steps.pages.outputs.base_path }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           # Empty on a pull request, where astro.config.mjs keeps its own address.
           [ -n "$SITE" ] || unset SITE BASE

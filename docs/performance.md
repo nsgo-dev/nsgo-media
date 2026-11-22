@@ -22,7 +22,7 @@ CPU is a percentage of one core. Copying hardware frames to memory and convertin
 
 ## The app's share
 
-The pipeline's frames then go through NSGo's pixel buffers: the engine copies each new version and the platform uploads it. In the demo on macOS, a 4K60 HEVC clip in a window about 2500×1400 pixels used about 140% CPU in all, against the pipeline's 25%, as each frame is converted to the view's size and then copied twice more. Zero-copy rendering of hardware frames is a [later goal](roadmap.md#later).
+The pipeline's frames then go through NSGo's pixel buffers: the engine copies each new version and the platform uploads it. In the demo on macOS, a 4K60 HEVC clip in a window about 2500×1400 pixels used about 140% CPU in all, against the pipeline's 25%, as each frame is converted to the view's size and then copied twice more. Zero-copy rendering of hardware frames is a [later goal](https://github.com/oneo-me/nsgo-media/issues/15).
 
 ## Presentation
 

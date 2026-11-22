@@ -3,7 +3,7 @@
 // the sidebar; on wider screens the docs show it beside the content.
 import { Icon } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
-import { copy, docsHome, feedback, homePath } from '../../copy';
+import { copy, docsHome, feedback, homePath, roadmapPath } from '../../copy';
 import { xAccounts } from '../../accounts';
 import { langOf } from '../../lang';
 import { project } from '../../site';
@@ -23,6 +23,7 @@ const t = copy[lang];
 		<nav class="menu-links" aria-label={t.nav.label}>
 			<a href={`${url(homePath[lang])}#features`}>{t.nav.features}</a>
 			<a href={url(docsHome[lang])}>{t.nav.docs}</a>
+			<a href={url(roadmapPath[lang])}>{t.nav.roadmap}</a>
 			{
 				[
 					{ label: t.nav.feedback, href: feedback },

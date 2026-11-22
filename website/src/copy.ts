@@ -39,7 +39,7 @@ const en = {
 	title: 'NSGo Media: a video player core for NSGo apps',
 	description:
 		'A video player core for NSGo apps: it decodes with FFmpeg, keeps sound and picture in sync and draws the picture in a view, while the app builds its own controls.',
-	nav: { label: 'Main', menu: 'Menu', docs: 'Docs', features: 'Features', github: 'GitHub', community: 'Community', feedback: 'Feedback' },
+	nav: { label: 'Main', menu: 'Menu', docs: 'Docs', roadmap: 'Roadmap', features: 'Features', github: 'GitHub', community: 'Community', feedback: 'Feedback' },
 	community: community({ nsgoNote: 'The UI engine NSGo Media plays in', telegram: 'NSGo Telegram', awesomeNote: 'Apps, libraries and resources' }),
 	theme: { name: 'Theme', light: 'Light', dark: 'Dark', auto: 'Auto' },
 	language: { name: 'Language', auto: 'Auto' },
@@ -91,11 +91,31 @@ const en = {
 		title: 'Built for NSGo',
 		text: 'NSGo Media is a Go module NSGo apps import, and it uses only NSGo’s public API. NSGo is a cross-platform native UI engine with a Go backend.',
 	},
+	roadmap: {
+		title: 'Roadmap',
+		description: 'The stages of NSGo Media, their tasks by area and their subtasks, with each one’s progress, pull requests and what it waits for, from its GitHub issues.',
+		dateLocale: 'en-US',
+		stage: (n: number) => `Stage ${n}`,
+		progress: (done: number, total: number) => `${done} of ${total} tasks closed`,
+		subtasks: (done: number, total: number) => `${done} of ${total} subtasks closed`,
+		// The area of tasks whose titles name none.
+		other: 'Other',
+		status: { done: 'Done', blocked: 'Blocked', review: 'In review', progress: 'In progress', planned: 'Planned' },
+		pull: { open: 'Open', draft: 'Draft', merged: 'Merged', closed: 'Closed' },
+		waitsFor: 'Waits for',
+		open: 'Open',
+		closed: 'Closed',
+		// Before the date the issues were read.
+		asOf: 'As of ',
+		// Around the reason and the link to the tracking issue.
+		unavailable: ['This build could not read the issues from GitHub (', '). See them on ', '.'],
+	},
 	footer: {
 		copyright: '© 2026 ONEO',
 		license: { label: 'MIT License', href: 'https://github.com/oneo-me/nsgo-media/blob/main/LICENSE' },
 		links: [
 			{ label: 'Docs', href: 'docs/' },
+			{ label: 'Roadmap', href: 'roadmap/' },
 			{ label: 'Feedback', href: 'https://github.com/oneo-me/nsgo-media/issues' },
 			{ label: 'Changelog', href: 'https://github.com/oneo-me/nsgo-media/blob/main/CHANGELOG.md' },
 			{ label: 'GitHub', href: 'https://github.com/oneo-me/nsgo-media' },
@@ -107,7 +127,7 @@ const zh: typeof en = {
 	htmlLang: 'zh-CN',
 	title: 'NSGo Media：面向 NSGo 应用的视频播放器内核',
 	description: '面向 NSGo 应用的视频播放器内核：用 FFmpeg 解码，同步声音和画面，并在视图中绘制画面；控制界面由应用自己实现。',
-	nav: { label: '主导航', menu: '菜单', docs: '文档', features: '功能', github: 'GitHub', community: '社区', feedback: '反馈' },
+	nav: { label: '主导航', menu: '菜单', docs: '文档', roadmap: '路线图', features: '功能', github: 'GitHub', community: '社区', feedback: '反馈' },
 	community: community({ nsgoNote: 'NSGo Media 所在的 UI 引擎', telegram: 'NSGo Telegram 群组', awesomeNote: '应用、库和资源' }),
 	theme: { name: '主题', light: '浅色', dark: '深色', auto: '自动' },
 	language: { name: '语言', auto: '自动' },
@@ -159,11 +179,28 @@ const zh: typeof en = {
 		title: '为 NSGo 而建',
 		text: 'NSGo Media 是 NSGo 应用导入的 Go 模块，只使用 NSGo 的公开 API。NSGo 是以 Go 为后端的跨平台原生 UI 引擎。',
 	},
+	roadmap: {
+		title: '路线图',
+		description: 'NSGo Media 的各个阶段、按领域分组的任务和子任务，以及每一项的进度、拉取请求和在等待什么，来自它的 GitHub issue。',
+		dateLocale: 'zh-CN',
+		stage: (n: number) => `阶段 ${n}`,
+		progress: (done: number, total: number) => `已关闭 ${done} / ${total} 个任务`,
+		subtasks: (done: number, total: number) => `已关闭 ${done} / ${total} 个子任务`,
+		other: '其他',
+		status: { done: '已完成', blocked: '受阻', review: '审查中', progress: '进行中', planned: '计划中' },
+		pull: { open: '打开', draft: '草稿', merged: '已合并', closed: '已关闭' },
+		waitsFor: '等待',
+		open: '未关闭',
+		closed: '已关闭',
+		asOf: '数据截至 ',
+		unavailable: ['这次构建没能从 GitHub 读取 issue（', '）。请到 ', ' 查看。'],
+	},
 	footer: {
 		copyright: '© 2026 ONEO',
 		license: { label: 'MIT 许可证', href: 'https://github.com/oneo-me/nsgo-media/blob/main/LICENSE' },
 		links: [
 			{ label: '文档', href: 'zh/docs/' },
+			{ label: '路线图', href: 'zh/roadmap/' },
 			{ label: '反馈', href: 'https://github.com/oneo-me/nsgo-media/issues' },
 			{ label: '更新日志', href: 'https://github.com/oneo-me/nsgo-media/blob/main/CHANGELOG.md' },
 			{ label: 'GitHub', href: 'https://github.com/oneo-me/nsgo-media' },
@@ -174,4 +211,5 @@ const zh: typeof en = {
 export const copy = { en, zh } satisfies Record<Lang, typeof en>;
 
 export const docsHome = { en: 'docs/', zh: 'zh/docs/' } satisfies Record<Lang, string>;
+export const roadmapPath = { en: 'roadmap/', zh: 'zh/roadmap/' } satisfies Record<Lang, string>;
 export const homePath = { en: '', zh: 'zh/' } satisfies Record<Lang, string>;

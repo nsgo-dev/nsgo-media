@@ -18,7 +18,7 @@
 
 ## Status
 
-In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows, Linux and iOS for local use, with no published release. The [requirements](docs/requirements.md) define the first version and the [roadmap](docs/roadmap.md) records what comes later.
+In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows, Linux and iOS for local use, with no published release. The [requirements](docs/requirements.md) define the first version and the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2) records what comes later.
 
 ## Usage
 
