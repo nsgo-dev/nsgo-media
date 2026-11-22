@@ -2,9 +2,9 @@
 // output device, with one backend per system: CoreAudio's AudioQueue on
 // macOS and iOS, WASAPI on Windows and PulseAudio (or PipeWire's server for
 // it) on Linux. It also passes IEC 61937 streams through to a receiver
-// that decodes them on the desktops: CoreAudio's encoded formats with the
-// device hogged, WASAPI's exclusive mode and PulseAudio's passthrough
-// formats. Watch reports what iOS does to the output under the app.
+// that decodes them on the desktops, on HDMI's high bit rate carrier too:
+// CoreAudio's encoded formats with the device hogged, WASAPI's exclusive
+// mode and PulseAudio's passthrough formats. Watch reports what iOS does to the output under the app.
 package audioout
 
 import (
@@ -19,30 +19,52 @@ import (
 type Fill func(dst []float32)
 
 // FillIEC writes the next frames of an IEC 61937 stream into dst, all of
-// it, as Fill does: 16-bit little-endian stereo, 4 bytes a frame.
+// it, as Fill does: 16-bit little-endian words, 2 bytes a channel of a
+// carrier frame.
 type FillIEC func(dst []byte)
 
 // IEC is an IEC 61937 stream's format: the codec its bursts carry and the
 // encoded audio's rate and channels, which some systems are told.
 type IEC struct {
-	Codec      string // "ac3", "eac3" or "dts"
+	// Codec is "ac3", "eac3", "dts" (DTS' core), or for HDMI's high bit
+	// rate "dtshd" (whole DTS-HD frames) or "truehd" (TrueHD in MAT
+	// frames).
+	Codec      string
 	SampleRate int
 	Channels   int
 }
 
-// CarrierRate is the rate of the 16-bit stereo frames carrying the
-// bursts: the encoded rate, four times it for E-AC-3.
+// HBR reports the stream needing HDMI's high bit rate carrier.
+func (f IEC) HBR() bool { return f.Codec == "dtshd" || f.Codec == "truehd" }
+
+// CarrierRate is the rate of the frames carrying the bursts: the encoded
+// rate, four times it for E-AC-3, and for the high bit rate 192 kHz, or
+// 176.4 kHz for a rate of 44.1 kHz's family.
 func (f IEC) CarrierRate() int {
-	if f.Codec == "eac3" {
+	switch {
+	case f.HBR() && f.SampleRate%44100 == 0:
+		return 176400
+	case f.HBR():
+		return 192000
+	case f.Codec == "eac3":
 		return f.SampleRate * 4
 	}
 	return f.SampleRate
 }
 
+// CarrierChannels is the carrier's channels of 16 bits: 2, or 8 for the
+// high bit rate.
+func (f IEC) CarrierChannels() int {
+	if f.HBR() {
+		return 8
+	}
+	return 2
+}
+
 // Output is an open device stream.
 type Output interface {
 	// Rate and Channels are the stream's format, which Fill writes; an
-	// IEC 61937 stream's are its carrier's, 2 channels.
+	// IEC 61937 stream's are its carrier's.
 	Rate() int
 	Channels() int
 	// Played is how many frames (samples per channel) the device has
@@ -91,7 +113,10 @@ func NewNull(rate, channels int, fill Fill) Output {
 
 // NewNullIEC returns an output that drops f's IEC 61937 stream at its
 // carrier's rate, for tests.
-func NewNullIEC(f IEC, fill FillIEC) Output { return newNull(f.CarrierRate(), 2, 4, fill) }
+func NewNullIEC(f IEC, fill FillIEC) Output {
+	ch := f.CarrierChannels()
+	return newNull(f.CarrierRate(), ch, 2*ch, fill)
+}
 
 func newNull(rate, channels, frameBytes int, fill func([]byte)) Output {
 	n := &null{rate: rate, channels: channels, frameBytes: frameBytes, fill: fill, done: make(chan struct{})}

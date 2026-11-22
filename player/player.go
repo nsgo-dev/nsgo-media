@@ -446,9 +446,12 @@ func (p *Player) SetLoop(l bool) {
 // the receiver the output device drives, such as an amplifier on HDMI or
 // S/PDIF, which decodes it: through WASAPI in exclusive mode on Windows,
 // a hogged CoreAudio device with an encoded format on macOS, and a
-// PulseAudio sink with passthrough formats on Linux. It is off unless
-// set. A track of another codec, a rate other than 1, enhanced DTS, and
-// a device that takes no such stream play as PCM, as AudioOutput tells.
+// PulseAudio sink with passthrough formats on Linux. DTS-HD and TrueHD
+// need HDMI's high bit rate, 8 channels at 192 kHz; where the device
+// takes none, DTS-HD passes its core if PassthroughDTS is set. It is off
+// unless set. A track of another codec, a rate other than 1, enhanced DTS
+// that does not pass, and a device that takes no such stream play as
+// PCM, as AudioOutput tells.
 // Passing through, volume does not change the sound and muting sends
 // silence the receiver understands. Changing it while a track of the
 // codecs plays starts its sound again from the position.
@@ -630,7 +633,8 @@ func (p *Player) Passthrough() Passthrough { return p.pass.Get() }
 
 // AudioOutput is what the audio output plays now: the playing track
 // passing through or PCM, the device stream's rate and channels, and why
-// it plays PCM though passthrough was set for its codec.
+// it plays PCM, or DTS-HD's core, though passthrough was set for its
+// codec.
 func (p *Player) AudioOutput() AudioOutput { return p.output.Get() }
 
 // HardwareDevice is the device video decodes on: "videotoolbox",

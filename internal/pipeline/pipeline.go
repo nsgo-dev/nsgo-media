@@ -97,6 +97,7 @@ type Pipeline struct {
 	ring        *audioRing
 	dev         atomic.Pointer[device]
 	pass        atomic.Int64 // Passthrough
+	passMask    atomic.Int64 // audioPass once the track's first packet decided it
 	opened      atomic.Bool  // Open returned the source
 	vp          atomic.Pointer[videoParams]
 	hwDevice    atomic.Value // string
@@ -594,7 +595,7 @@ func (p *Pipeline) SetRate(r float64) {
 	r = min(max(r, 0.25), 4)
 	p.wall.rebase(r)
 	old := math.Float64frombits(p.rate.Swap(math.Float64bits(r)))
-	if p.opened.Load() && (old == 1) != (r == 1) && Passthrough(p.pass.Load()).passes(p.audioCodec()) {
+	if p.opened.Load() && (old == 1) != (r == 1) && Passthrough(p.pass.Load())&p.audioPass() != 0 {
 		p.restartAudio()
 	}
 }

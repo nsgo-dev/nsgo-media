@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"cmp"
 	"errors"
 	"image"
 	"math"
@@ -401,26 +402,39 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 	var next time.Duration // the media time the tempo's next output starts at
 	var stretched []float32
 
-	// choose decides how the track plays from its first packet, data.
+	// choose decides how the track plays from its first packet, data:
+	// the first of its IEC 61937 streams that packs and opens, or PCM.
 	choose := func(data []byte) {
 		decide = false
-		var fallback Fallback
-		iec, fallback = p.iecFormat(stream, data)
+		fs, fallback := p.iecFormats(stream, data)
+		mask := passCodecs[stream.Params().CodecName()]
+		if mask == PassDTS|PassDTSHD && !dtsHD(stream.Params().Profile(), data) {
+			mask = PassDTS
+		}
+		p.passMask.Store(int64(mask))
 		if packer != nil {
 			packer.Close()
 			packer = nil
 		}
 		var err error
-		if iec != nil {
-			if packer, err = ffmpeg.NewPacker(stream.Params()); err != nil {
-				iec = nil
+		var packers []*ffmpeg.Packer
+		var packed []audioout.IEC
+		for _, f := range fs {
+			k, e := ffmpeg.NewPacker(stream.Params(), dtsHDRate(f))
+			if e != nil {
+				err = cmp.Or(err, e)
+				continue
 			}
+			packers, packed = append(packers, k), append(packed, f)
 		}
-		if e := p.useOutput(iec); e != nil {
-			err, iec = e, nil
-			if packer != nil {
-				packer.Close()
-				packer = nil
+		var e error
+		iec, e = p.useOutput(packed)
+		err = cmp.Or(err, e)
+		for i, k := range packers {
+			if iec != nil && packed[i] == *iec {
+				packer = k
+			} else {
+				k.Close()
 			}
 		}
 		if err != nil {
@@ -457,7 +471,7 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 		c := chunk{data: append([]byte(nil), data...), pts: tb.Duration(burstPTS), perFrame: float64(time.Second) / float64(iec.CarrierRate())}
 		burstPTS = ffmpeg.NoPTS
 		if dropBefore >= 0 {
-			if c.pts+burstDuration(&c) <= dropBefore {
+			if c.pts+burstDuration(&c, iec.CarrierChannels()) <= dropBefore {
 				return
 			}
 			dropBefore = -1
@@ -545,6 +559,7 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 					}
 				}
 				decide = dec != nil
+				p.passMask.Store(0)
 				if dec == nil {
 					// No sound plays: the device goes back to PCM.
 					p.useOutput(nil)
@@ -561,9 +576,10 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 				dec.Flush()
 			}
 			if packer != nil && !decide {
-				// E-AC-3 gathers frames for a burst; a seek starts anew.
+				// E-AC-3 gathers frames for a burst, TrueHD for a MAT
+				// frame; a seek starts anew.
 				packer.Close()
-				packer, _ = ffmpeg.NewPacker(stream.Params())
+				packer, _ = ffmpeg.NewPacker(stream.Params(), dtsHDRate(*iec))
 			}
 			burstPTS = ffmpeg.NoPTS
 			res.Reset()

@@ -16,76 +16,138 @@ type Passthrough int
 const (
 	PassAC3 Passthrough = 1 << iota
 	PassEAC3
-	// PassDTS passes DTS' core; enhanced DTS, such as DTS-HD, plays as
-	// PCM.
+	// PassDTS passes DTS' core: DTS-HD's too where PassDTSHD is not set
+	// or the device takes no high bit rate. Other enhanced DTS, such as
+	// DTS-ES, 96/24 or Express, plays as PCM.
 	PassDTS
+	// PassDTSHD passes DTS-HD's whole frames, core and extension
+	// substream, on HDMI's high bit rate carrier.
+	PassDTSHD
+	// PassTrueHD passes TrueHD, with whatever its stream carries, such as
+	// Atmos, in MAT frames on HDMI's high bit rate carrier.
+	PassTrueHD
 )
 
-// passCodecs are the codecs each flag passes, by FFmpeg's name.
-var passCodecs = map[string]Passthrough{"ac3": PassAC3, "eac3": PassEAC3, "dts": PassDTS}
+// passCodecs are the flags that decide how a codec plays, by FFmpeg's
+// name.
+var passCodecs = map[string]Passthrough{"ac3": PassAC3, "eac3": PassEAC3, "dts": PassDTS | PassDTSHD, "truehd": PassTrueHD}
 
-// passes reports codec being one of c.
-func (c Passthrough) passes(codec string) bool { return c&passCodecs[codec] != 0 }
-
-// Fallback is why audio plays as PCM though passthrough was asked for
-// its codec.
+// Fallback is why audio plays otherwise than passthrough asked: as PCM,
+// or DTS-HD as its core.
 type Fallback int
 
 const (
 	FallbackNone Fallback = iota
 	// FallbackRate is a rate other than 1, which only PCM plays.
 	FallbackRate
-	// FallbackEnhancedDTS is a DTS stream with extensions to its core,
-	// such as DTS-HD, DTS-ES or DTS 96/24.
+	// FallbackEnhancedDTS is a DTS stream with extensions to its core that
+	// do not pass, such as DTS-HD without PassDTSHD, DTS-ES, DTS 96/24 or
+	// DTS Express.
 	FallbackEnhancedDTS
 	// FallbackDevice is the device or the system not taking the stream,
-	// refusing it or failing to start it; Output.Err says why.
+	// refusing it or failing to start it; Output.Err says why. DTS-HD then
+	// passes its core when PassDTS is set.
 	FallbackDevice
 )
 
 // Output is what the audio output plays.
 type Output struct {
-	// Passthrough is set while Codec passes through in IEC 61937 bursts.
+	// Passthrough is set while Codec passes through in IEC 61937 bursts:
+	// "ac3", "eac3", "dts" (DTS' core), "dtshd" or "truehd".
 	Passthrough bool
 	Codec       string
 	// Rate and Channels are the device stream's: the PCM's, or the IEC
 	// 61937 carrier's, 2 channels at the codec's rate or four times it
-	// for E-AC-3.
+	// for E-AC-3, and 8 at 192 kHz for DTS-HD and TrueHD.
 	Rate, Channels int
 	Fallback       Fallback
 	Err            error
 }
 
-// DTS profiles of FFmpeg's (AV_PROFILE_DTS*): the core, and above it the
-// enhanced ones.
+// DTS profiles of FFmpeg's (AV_PROFILE_DTS*): the core, DTS-HD's, and
+// the unknown one.
 const (
 	profileDTS     = 20
+	profileDTSHRA  = 50
+	profileDTSMA   = 60
+	profileDTSMAX  = 61
+	profileDTSIMAX = 62
 	profileUnknown = -99
 )
 
-// iecFormat is the IEC 61937 stream the audio track s plays as, with its
-// first packet data, or nil and why it plays as PCM.
-func (p *Pipeline) iecFormat(s *ffmpeg.Stream, data []byte) (*audioout.IEC, Fallback) {
+// iecFormats are the IEC 61937 streams the audio track s may play as,
+// with its first packet data, the first that opens playing; none and why
+// it plays as PCM otherwise.
+func (p *Pipeline) iecFormats(s *ffmpeg.Stream, data []byte) ([]audioout.IEC, Fallback) {
 	par := s.Params()
 	codec := par.CodecName()
-	if !Passthrough(p.pass.Load()).passes(codec) {
+	pass := Passthrough(p.pass.Load())
+	hd := false
+	if codec == "dts" {
+		prof := par.Profile()
+		hd = pass&PassDTSHD != 0 && dtsHD(prof, data)
+		if !hd && pass&PassDTS != 0 && (prof != profileDTS && prof != profileUnknown || enhancedDTS(data)) {
+			if p.Rate() != 1 {
+				return nil, FallbackRate
+			}
+			return nil, FallbackEnhancedDTS
+		}
+	}
+	if pass&passCodecs[codec]&^PassDTSHD == 0 && !hd {
 		return nil, FallbackNone
 	}
 	if p.Rate() != 1 {
 		return nil, FallbackRate
 	}
-	if codec == "dts" {
-		if prof := par.Profile(); prof != profileDTS && prof != profileUnknown || enhancedDTS(data) {
-			return nil, FallbackEnhancedDTS
-		}
+	f := audioout.IEC{Codec: codec, SampleRate: par.SampleRate(), Channels: par.Channels()}
+	if !hd {
+		return []audioout.IEC{f}, FallbackNone
 	}
-	return &audioout.IEC{Codec: codec, SampleRate: par.SampleRate(), Channels: par.Channels()}, FallbackNone
+	fs := []audioout.IEC{{Codec: "dtshd", SampleRate: f.SampleRate, Channels: f.Channels}}
+	if pass&PassDTS != 0 {
+		fs = append(fs, f)
+	}
+	return fs, FallbackNone
+}
+
+// dtsHDRate is the IEC 61937 rate the spdif muxer packs f's DTS type IV
+// bursts at, 0 for those of DTS' core.
+func dtsHDRate(f audioout.IEC) int {
+	if f.Codec == "dtshd" {
+		return f.CarrierRate() * f.CarrierChannels() / 2
+	}
+	return 0
 }
 
 const (
 	dtsCoreSync = 0x7ffe8001
 	dtsExssSync = 0x64582025
 )
+
+// dtsHD reports a DTS stream of profile prof, whose first packet is data,
+// being DTS-HD with a core: High Resolution or Master Audio, whose frames
+// are a core and an extension substream.
+func dtsHD(prof int32, data []byte) bool {
+	switch prof {
+	case profileDTSHRA, profileDTSMA, profileDTSMAX, profileDTSIMAX:
+		// A first packet may be a stray substream before the first core,
+		// as DTS-HD streams begin with.
+		return true
+	}
+	return coreExss(data)
+}
+
+// coreExss reports data being a DTS core frame followed by an extension
+// substream, as DTS-HD lays them out.
+func coreExss(data []byte) bool {
+	be := binary.BigEndian
+	if len(data) < 11 || be.Uint32(data) != dtsCoreSync {
+		return false
+	}
+	size := (int(data[5]&0x03)<<12 | int(data[6])<<4 | int(data[7])>>4) + 1
+	size = (size + 3) &^ 3
+	return len(data) >= size+4 && be.Uint32(data[size:]) == dtsExssSync
+}
 
 // enhancedDTS reports a DTS frame carrying more than its core: an
 // extension substream, alone as DTS Express' or after the core as
@@ -109,22 +171,22 @@ func enhancedDTS(data []byte) bool {
 			return true
 		}
 	}
-	size := (int(data[5]&0x03)<<12 | int(data[6])<<4 | int(data[7])>>4) + 1
-	size = (size + 3) &^ 3
-	return len(data) >= size+4 && be.Uint32(data[size:]) == dtsExssSync
+	return coreExss(data)
 }
 
-// pauseUnit is a pause burst of IEC 61937: a 4-frame repetition period
+// pauseUnit is a pause burst of IEC 61937: a repetition period of 4
+// stereo frames, 16 bytes, one frame of the high bit rate's carrier,
 // whose payload gives its gap's length in the encoded audio's samples.
 // Gaps in a stream are filled with it, as receivers expect.
 func pauseUnit(f *audioout.IEC) []byte {
 	u := make([]byte, 16)
 	le := binary.LittleEndian
-	le.PutUint16(u[0:], 0xF872) // Pa
-	le.PutUint16(u[2:], 0x4E1F) // Pb
-	le.PutUint16(u[4:], 3)      // Pc: a pause
-	le.PutUint16(u[6:], 32)     // Pd: 32 bits of payload
-	le.PutUint16(u[8:], uint16(max(4*f.SampleRate/max(f.CarrierRate(), 1), 1)))
+	le.PutUint16(u[0:], 0xF872)                          // Pa
+	le.PutUint16(u[2:], 0x4E1F)                          // Pb
+	le.PutUint16(u[4:], 3)                               // Pc: a pause
+	le.PutUint16(u[6:], 32)                              // Pd: 32 bits of payload
+	iecRate := f.CarrierRate() * f.CarrierChannels() / 2 // of 2 words a frame
+	le.PutUint16(u[8:], uint16(max(4*f.SampleRate/max(iecRate, 1), 1)))
 	return u
 }
 
@@ -147,29 +209,32 @@ type device struct {
 
 func (p *Pipeline) output() audioout.Output { return p.dev.Load().out }
 
-func sameIEC(a, b *audioout.IEC) bool {
-	return a == nil && b == nil || a != nil && b != nil && *a == *b
-}
-
-// useOutput makes the device play f's IEC 61937 stream, or PCM for nil,
-// opening it again when it plays another, and returns the error that
-// made it play PCM instead. The ring is flushed, so nothing it holds is
-// lost. It is called on the audio decoder's goroutine.
-func (p *Pipeline) useOutput(f *audioout.IEC) error {
+// useOutput makes the device play the first of fs' IEC 61937 streams
+// that opens, or PCM when none does or fs is empty, opening it again
+// unless it plays fs' first already. It returns the stream it plays, nil
+// for PCM, and the error of the first that failed to open. The ring is
+// flushed, so nothing it holds is lost. It is called on the audio
+// decoder's goroutine.
+func (p *Pipeline) useOutput(fs []audioout.IEC) (*audioout.IEC, error) {
 	cur := p.dev.Load()
-	if sameIEC(cur.iec, f) || p.stopped() {
-		return nil
+	if len(fs) == 0 && cur.iec == nil || len(fs) > 0 && cur.iec != nil && *cur.iec == fs[0] || p.stopped() {
+		return cur.iec, nil
 	}
 	// The old device lets go first: an exclusive stream needs it free.
 	p.dev.Store(&device{out: held{cur.out.Rate(), cur.out.Channels()}, iec: cur.iec})
 	cur.out.Close()
 	var out audioout.Output
-	var err error
-	if f != nil {
-		p.ring.reset(f.CarrierRate(), 2, f)
-		out, err = p.openIEC(*f, p.ring.fillIEC)
-		if err != nil || out == nil {
-			f, out = nil, nil
+	var f *audioout.IEC
+	var first error
+	for _, c := range fs {
+		p.ring.reset(c.CarrierRate(), c.CarrierChannels(), &c)
+		o, err := p.openIEC(c, p.ring.fillIEC)
+		if err == nil && o != nil {
+			out, f = o, &c
+			break
+		}
+		if first == nil {
+			first = err
 		}
 	}
 	if f == nil {
@@ -194,7 +259,7 @@ func (p *Pipeline) useOutput(f *audioout.IEC) error {
 	if p.stopped() {
 		out.Close()
 	}
-	return err
+	return f, first
 }
 
 // setPausedOutput pauses or resumes a PCM device.
@@ -225,17 +290,22 @@ func (p *Pipeline) AudioOutput() Output {
 // starts again from the position, the picture holding for a moment.
 func (p *Pipeline) SetPassthrough(c Passthrough) {
 	old := Passthrough(p.pass.Swap(int64(c)))
-	if p.opened.Load() && old.passes(p.audioCodec()) != c.passes(p.audioCodec()) {
+	if p.opened.Load() && (old^c)&p.audioPass() != 0 {
 		p.restartAudio()
 	}
 }
 
-// audioCodec is the playing audio track's codec, empty for none.
-func (p *Pipeline) audioCodec() string {
-	if id := p.AudioTrack(); id >= 0 {
-		return p.track(id).Codec
+// audioPass is the flags that decide how the playing audio track plays:
+// its codec's, or once its first packet decided, a DTS core's PassDTS
+// alone.
+func (p *Pipeline) audioPass() Passthrough {
+	if m := Passthrough(p.passMask.Load()); m != 0 {
+		return m
 	}
-	return ""
+	if id := p.AudioTrack(); id >= 0 {
+		return passCodecs[p.track(id).Codec]
+	}
+	return 0
 }
 
 // restartAudio decodes the audio track again from the position, deciding
@@ -245,7 +315,8 @@ func (p *Pipeline) restartAudio() {
 	p.seek(p.Position(), true)
 }
 
-// burstDuration is how long the frames of an IEC 61937 chunk play.
-func burstDuration(c *chunk) time.Duration {
-	return time.Duration(float64(len(c.data)/4) * c.perFrame)
+// burstDuration is how long the frames of an IEC 61937 chunk, of ch
+// carrier channels, play.
+func burstDuration(c *chunk, ch int) time.Duration {
+	return time.Duration(float64(len(c.data)/(2*ch)) * c.perFrame)
 }

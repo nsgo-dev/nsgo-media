@@ -1,11 +1,13 @@
 package player
 
 import (
+	"errors"
 	"image"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -373,4 +375,40 @@ func TestPlayerPassesAudioThrough(t *testing.T) {
 	if o := p.AudioOutput(); o != (AudioOutput{}) {
 		t.Fatalf("output %+v after Close", o)
 	}
+}
+
+// TestPlayerPassesHBR checks DTS-HD passing whole on the high bit rate,
+// and passing its core with the device's error where the device takes
+// no high bit rate.
+func TestPlayerPassesHBR(t *testing.T) {
+	var p *Player
+	var noHBR atomic.Bool
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.openIEC = func(f audioout.IEC, fill audioout.FillIEC) (audioout.Output, error) {
+			if f.HBR() && noHBR.Load() {
+				return nil, errors.New("no high bit rate")
+			}
+			return audioout.NewNullIEC(f, fill), nil
+		}
+		p.SetPassthrough(PassthroughDTS | PassthroughDTSHD | PassthroughTrueHD)
+		p.Open(fixture(t, "hbr.mkv"))
+		p.Play()
+		return View{Player: p}
+	})
+	play(t, app, 3*time.Second, func() bool { return p.AudioOutput().Passthrough })
+	if o := p.AudioOutput(); o.Codec != "dtshd" || o.SampleRate != 192000 || o.Channels != 8 || o.Fallback != FallbackNone {
+		t.Fatalf("output %+v", o)
+	}
+	noHBR.Store(true)
+	p.Seek(0, Fast)
+	p.SetPassthrough(PassthroughDTS | PassthroughTrueHD)
+	play(t, app, 3*time.Second, func() bool { return p.AudioOutput().Fallback == FallbackEnhancedDTS })
+	p.SetPassthrough(PassthroughDTS | PassthroughDTSHD | PassthroughTrueHD)
+	play(t, app, 3*time.Second, func() bool { return p.AudioOutput().Codec == "dts" })
+	if o := p.AudioOutput(); !o.Passthrough || o.SampleRate != 48000 || o.Channels != 2 || o.Fallback != FallbackDevice || o.Err == nil {
+		t.Fatalf("output %+v", o)
+	}
+	p.Close()
 }

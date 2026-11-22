@@ -181,13 +181,21 @@ type Passthrough int
 const (
 	PassthroughAC3  = Passthrough(pipeline.PassAC3)
 	PassthroughEAC3 = Passthrough(pipeline.PassEAC3)
-	// PassthroughDTS passes DTS' core. Enhanced DTS, such as DTS-HD,
-	// DTS-ES or DTS 96/24, plays as PCM.
+	// PassthroughDTS passes DTS' core: DTS-HD's too where
+	// PassthroughDTSHD is not set or the device takes no high bit rate.
+	// Other enhanced DTS, such as DTS-ES, DTS 96/24 or DTS Express, plays
+	// as PCM.
 	PassthroughDTS = Passthrough(pipeline.PassDTS)
+	// PassthroughDTSHD passes DTS-HD High Resolution and Master Audio
+	// whole, core and extensions, on HDMI's high bit rate carrier.
+	PassthroughDTSHD = Passthrough(pipeline.PassDTSHD)
+	// PassthroughTrueHD passes TrueHD as its stream is, Atmos and all,
+	// on HDMI's high bit rate carrier.
+	PassthroughTrueHD = Passthrough(pipeline.PassTrueHD)
 )
 
-// Fallback is why the audio plays as PCM though passthrough was set for
-// its codec.
+// Fallback is why the audio plays otherwise than passthrough was set for
+// its codec: as PCM, or DTS-HD as its core.
 type Fallback int
 
 const (
@@ -196,10 +204,13 @@ const (
 	FallbackNone = Fallback(pipeline.FallbackNone)
 	// FallbackRate is a rate other than 1, which only PCM plays.
 	FallbackRate = Fallback(pipeline.FallbackRate)
-	// FallbackEnhancedDTS is DTS with extensions to its core.
+	// FallbackEnhancedDTS is DTS with extensions to its core that do not
+	// pass: DTS-HD without PassthroughDTSHD, DTS-ES, DTS 96/24 or DTS
+	// Express.
 	FallbackEnhancedDTS = Fallback(pipeline.FallbackEnhancedDTS)
 	// FallbackDevice is the device or the system not taking the stream,
 	// refusing it or failing to start it; AudioOutput.Err says why.
+	// DTS-HD then passes its core where PassthroughDTS is set.
 	FallbackDevice = Fallback(pipeline.FallbackDevice)
 )
 
@@ -219,16 +230,18 @@ func (f Fallback) String() string {
 
 // AudioOutput is what the audio device plays.
 type AudioOutput struct {
-	// Passthrough is set while the track's Codec, "ac3", "eac3" or "dts",
-	// passes through.
+	// Passthrough is set while Codec passes through: "ac3", "eac3", "dts"
+	// (DTS' core, DTS-HD's too), "dtshd" (DTS-HD whole) or "truehd".
 	Passthrough bool
 	Codec       string
 	// SampleRate and Channels are the device stream's: the PCM's, or
 	// passing through, the IEC 61937 carrier's, 2 channels at the codec's
-	// rate or four times it for E-AC-3. The track's own are in its Track.
+	// rate or four times it for E-AC-3, and for DTS-HD and TrueHD the high
+	// bit rate's 8 at 192 kHz (176.4 kHz for 44.1 kHz's family). The
+	// track's own are in its Track.
 	SampleRate, Channels int
-	// Fallback is why the audio plays as PCM, and Err the device's error
-	// for FallbackDevice.
+	// Fallback is why the audio plays as PCM or DTS-HD as its core, and
+	// Err the device's error for FallbackDevice.
 	Fallback Fallback
 	Err      error
 }

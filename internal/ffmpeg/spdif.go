@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"unsafe"
 
@@ -10,9 +11,10 @@ import (
 )
 
 // Packer wraps a stream's encoded audio packets in IEC 61937 bursts, as
-// S/PDIF and HDMI carry AC-3, E-AC-3 and DTS to a receiver that decodes
-// them, through FFmpeg's spdif muxer. The bursts are 16-bit little-endian
-// stereo frames, a carrier played as PCM is.
+// S/PDIF and HDMI carry AC-3, E-AC-3, DTS, DTS-HD and TrueHD to a
+// receiver that decodes them, through FFmpeg's spdif muxer. The bursts
+// are 16-bit little-endian words, which a carrier plays as PCM frames: 2
+// channels, or 8 for HDMI's high bit rate.
 type Packer struct {
 	ctx *FormatContext
 	pb  unsafe.Pointer
@@ -35,8 +37,11 @@ func HasMuxer(name string) bool {
 }
 
 // NewPacker makes a packer for the stream whose parameters are par: AC-3,
-// E-AC-3 or DTS.
-func NewPacker(par *CodecParameters) (*Packer, error) {
+// E-AC-3, DTS or TrueHD, whose access units it gathers into MAT frames.
+// A DTS stream passes its core alone unless dtsHDRate is set: then whole
+// frames, DTS-HD's extension substream with the core, pass as DTS type
+// IV bursts at that IEC 61937 rate, 768000 for HDMI's high bit rate.
+func NewPacker(par *CodecParameters, dtsHDRate int) (*Packer, error) {
 	if err := Load(); err != nil {
 		return nil, err
 	}
@@ -79,7 +84,13 @@ func NewPacker(par *CodecParameters) (*Packer, error) {
 		return nil, errors.New("ffmpeg: out of memory")
 	}
 	*(*unsafe.Pointer)(at(k.ctx.p(), offAVFormatContextPb)) = k.pb
-	if err := check(avformatWriteHeader(k.ctx, nil)); err != nil {
+	var opts ptr
+	if dtsHDRate > 0 {
+		avDictSet(&opts, "dtshd_rate", strconv.Itoa(dtsHDRate), 0)
+	}
+	err := check(avformatWriteHeader(k.ctx, &opts))
+	avDictFree(&opts)
+	if err != nil {
 		k.Close()
 		return nil, fmt.Errorf("ffmpeg: spdif cannot carry %s: %w", par.CodecName(), err)
 	}
@@ -88,7 +99,8 @@ func NewPacker(par *CodecParameters) (*Packer, error) {
 
 // Pack wraps p, which becomes the packer's to change, and returns the
 // bursts it completed, valid until the next call: none while E-AC-3
-// gathers the frames of one burst. The packet's stream index and
+// gathers the frames of one burst, or TrueHD the 24 access units of a
+// MAT frame. The packet's stream index and
 // timestamps are changed for the muxer.
 func (k *Packer) Pack(p *Packet) ([]byte, error) {
 	k.out = k.out[:0]

@@ -58,36 +58,48 @@ func TestDevicePlays(t *testing.T) {
 	t.Logf("%T at %d Hz, %d channels", out, out.Rate(), out.Channels())
 }
 
-// TestDeviceIEC opens the default device for an AC-3 stream. A device
-// driving no receiver refuses it, which is what the test checks on most
-// machines; one that takes it plays pause bursts at the carrier's rate.
+// TestDeviceIEC opens the default device for an AC-3 stream, and for
+// DTS-HD and TrueHD on HDMI's high bit rate. A device driving no receiver
+// refuses them, which is what the test checks on most machines; one that
+// takes a stream plays pause bursts at its carrier's rate.
 func TestDeviceIEC(t *testing.T) {
 	pause := []byte{0x72, 0xF8, 0x1F, 0x4E, 3, 0, 32, 0, 4, 0, 0, 0, 0, 0, 0, 0}
-	var calls atomic.Int64
-	fill := func(dst []byte) {
-		calls.Add(1)
-		for i := range dst {
-			dst[i] = pause[i%len(pause)]
-		}
+	for _, tc := range []struct {
+		f              IEC
+		rate, channels int
+	}{
+		{IEC{Codec: "ac3", SampleRate: 48000, Channels: 6}, 48000, 2},
+		{IEC{Codec: "dtshd", SampleRate: 48000, Channels: 6}, 192000, 8},
+		{IEC{Codec: "truehd", SampleRate: 48000, Channels: 8}, 192000, 8},
+	} {
+		t.Run(tc.f.Codec, func(t *testing.T) {
+			var calls atomic.Int64
+			fill := func(dst []byte) {
+				calls.Add(1)
+				for i := range dst {
+					dst[i] = pause[i%len(pause)]
+				}
+			}
+			out, err := OpenIEC(tc.f, fill)
+			if err != nil {
+				t.Logf("refused: %v", err)
+				// PCM still opens after the refusal.
+				pcm, err := Open(func(dst []float32) { clear(dst) })
+				if err != nil {
+					t.Logf("no PCM device: %v", err)
+				}
+				pcm.Close()
+				return
+			}
+			defer out.Close()
+			if out.Rate() != tc.rate || out.Channels() != tc.channels {
+				t.Fatalf("carrier %d Hz, %d channels", out.Rate(), out.Channels())
+			}
+			time.Sleep(500 * time.Millisecond)
+			if played := out.Played(); played < int64(tc.rate)/4 || calls.Load() == 0 {
+				t.Fatalf("played %d frames in 0.5 s", played)
+			}
+			t.Logf("%T passes %s through", out, tc.f.Codec)
+		})
 	}
-	out, err := OpenIEC(IEC{Codec: "ac3", SampleRate: 48000, Channels: 6}, fill)
-	if err != nil {
-		t.Logf("refused: %v", err)
-		// PCM still opens after the refusal.
-		pcm, err := Open(func(dst []float32) { clear(dst) })
-		if err != nil {
-			t.Logf("no PCM device: %v", err)
-		}
-		pcm.Close()
-		return
-	}
-	defer out.Close()
-	if out.Rate() != 48000 || out.Channels() != 2 {
-		t.Fatalf("carrier %d Hz, %d channels", out.Rate(), out.Channels())
-	}
-	time.Sleep(500 * time.Millisecond)
-	if played := out.Played(); played < 12000 || calls.Load() == 0 {
-		t.Fatalf("played %d frames in 0.5 s", played)
-	}
-	t.Logf("%T passes AC-3 through", out)
 }

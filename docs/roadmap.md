@@ -46,6 +46,10 @@ AC-3, E-AC-3 and DTS' core passed through in IEC 61937 bursts, which FFmpeg's sp
 
 FFmpeg built as frameworks for iOS devices and the simulator with VideoToolbox, the loader finding them in the app, an AudioQueue output that follows interruptions, unplugged headphones and the background, `bundle` for iOS apps, and the demo's controls for touch. Verified on the simulator and once on an iPhone (2026-11-22).
 
+## 11. High bit rate passthrough
+
+DTS-HD and TrueHD passed through on HDMI's 8-channel, 192 kHz carrier, in DTS type IV bursts and MAT frames the spdif muxer makes, on the three desktops, with DTS-HD's core or PCM where the device takes no high bit rate. No receiver has decoded them yet.
+
 ## Later
 
 | Goal | Depends on |
@@ -53,6 +57,5 @@ FFmpeg built as frameworks for iOS devices and the simulator with VideoToolbox, 
 | Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
 | HDR output and tone mapping | GPU rendering |
 | The iOS audio session at Playback, so the Ring/Silent switch does not silence a movie, and playing in the background | NSGo letting a library hold the session ([nsgo#1931](https://github.com/nsgo-dev/nsgo/issues/1931)), or its planned `audio.Output` ([nsgo#1057](https://github.com/nsgo-dev/nsgo/issues/1057)); the background also needs the app's `audio` background mode |
-| Audio passthrough of DTS-HD and TrueHD | HDMI's 8-channel high bit rate carrier on each desktop |
 
 Android is set aside for now (decided by the user, 2026-11-22).

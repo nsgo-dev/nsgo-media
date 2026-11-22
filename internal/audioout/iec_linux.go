@@ -16,7 +16,9 @@ import (
 // threaded main loop, polling the states under its lock instead of
 // registering callbacks. The sink takes the stream only where its
 // passthrough formats are enabled (pactl set-sink-formats, or PipeWire's
-// IEC958 codecs); otherwise the stream fails as not supported.
+// IEC958 codecs); otherwise the stream fails as not supported. DTS-HD and
+// TrueHD, from PulseAudio 13, are HDMI's high bit rate: 8 channels at
+// 192 kHz.
 
 const (
 	paContextReady      = 4
@@ -31,7 +33,7 @@ const (
 )
 
 // paEncodings are pa_encoding_t's passthrough values, by codec.
-var paEncodings = map[string]int32{"ac3": 2, "eac3": 3, "dts": 5}
+var paEncodings = map[string]int32{"ac3": 2, "eac3": 3, "dts": 5, "truehd": 7, "dtshd": 8}
 
 var (
 	paaOnce sync.Once
@@ -118,6 +120,7 @@ type pulseIEC struct {
 	ml, ctx, s uintptr
 	fill       FillIEC
 	rate       int
+	frameBytes int
 	mu         sync.Mutex
 	paused     bool
 	closed     bool
@@ -135,7 +138,7 @@ func openIEC(f IEC, fill FillIEC) (Output, error) {
 	if err := loadPulseAsync(); err != nil {
 		return nil, err
 	}
-	p := &pulseIEC{fill: fill, rate: f.CarrierRate(), done: make(chan struct{})}
+	p := &pulseIEC{fill: fill, rate: f.CarrierRate(), frameBytes: 2 * f.CarrierChannels(), done: make(chan struct{})}
 	if p.ml = paMainloopNew(); p.ml == 0 {
 		return nil, errors.New("audioout: pa_threaded_mainloop_new failed")
 	}
@@ -177,16 +180,21 @@ func (p *pulseIEC) connect(enc int32, f IEC) error {
 	paMainloopLock(p.ml)
 	fi := paFormatInfoNew()
 	*(*int32)(pointer(fi)) = enc // pa_format_info.encoding
-	// PulseAudio takes the encoded rate and makes E-AC-3's carrier of it.
-	paFormatInfoSetRate(fi, int32(f.SampleRate))
-	paFormatInfoSetChans(fi, 2)
+	// PulseAudio takes the encoded rate and makes E-AC-3's carrier of it;
+	// the high bit rate's is its carrier's.
+	rate := f.SampleRate
+	if f.HBR() {
+		rate = f.CarrierRate()
+	}
+	paFormatInfoSetRate(fi, int32(rate))
+	paFormatInfoSetChans(fi, int32(f.CarrierChannels()))
 	p.s = paStreamNewExtended(p.ctx, "Playback", &fi, 1, 0)
 	paFormatInfoFree(fi)
 	var code int32
 	if p.s != 0 {
 		// pa_buffer_attr: a 100 ms target, the rest the server's choice.
 		none := ^uint32(0)
-		attr := struct{ maxlength, tlength, prebuf, minreq, fragsize uint32 }{none, uint32(p.rate * 4 / 10), none, none, none}
+		attr := struct{ maxlength, tlength, prebuf, minreq, fragsize uint32 }{none, uint32(p.rate * p.frameBytes / 10), none, none, none}
 		code = paStreamConnectPlayback(p.s, 0, unsafe.Pointer(&attr), paStreamFlags, 0, 0)
 	}
 	paMainloopUnlock(p.ml)
@@ -221,7 +229,7 @@ func (p *pulseIEC) wait(check func() (bool, error)) error {
 
 func (p *pulseIEC) run() {
 	defer p.wg.Done()
-	buf := make([]byte, p.rate*4/10)
+	buf := make([]byte, p.rate*p.frameBytes/10)
 	t := time.NewTicker(5 * time.Millisecond)
 	defer t.Stop()
 	for {
@@ -240,7 +248,8 @@ func (p *pulseIEC) run() {
 		}
 		n := 0
 		if !paused {
-			n = min(int(paStreamWritableSize(p.s)), len(buf)) &^ 3
+			n = min(int(paStreamWritableSize(p.s)), len(buf))
+			n -= n % p.frameBytes
 		}
 		if n > 0 {
 			p.fill(buf[:n])
@@ -253,7 +262,7 @@ func (p *pulseIEC) run() {
 		ok := paStreamGetLatency(p.s, &usec, &neg) == 0
 		paMainloopUnlock(p.ml)
 		p.mu.Lock()
-		p.written += int64(n / 4)
+		p.written += int64(n / p.frameBytes)
 		if ok {
 			p.latency = int64(usec) * int64(p.rate) / 1000000
 			if neg != 0 {
@@ -265,7 +274,7 @@ func (p *pulseIEC) run() {
 }
 
 func (p *pulseIEC) Rate() int     { return p.rate }
-func (p *pulseIEC) Channels() int { return 2 }
+func (p *pulseIEC) Channels() int { return p.frameBytes / 2 }
 
 func (p *pulseIEC) Played() int64 {
 	p.mu.Lock()

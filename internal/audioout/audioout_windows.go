@@ -15,7 +15,9 @@ import (
 // One goroutine, locked to its thread for COM, opens it, tops its buffer
 // up every few milliseconds and closes it. An IEC 61937 stream opens the
 // device in exclusive mode with the format of its codec, which the
-// device's driver takes only where it drives a receiver that decodes it.
+// device's driver takes only where it drives a receiver that decodes it:
+// 2 channels at the codec's rate, or for DTS-HD and TrueHD 8 at 192 kHz,
+// HDMI's high bit rate.
 
 var (
 	ole32            = syscall.NewLazyDLL("ole32.dll")
@@ -42,6 +44,9 @@ var (
 		"ac3":  {0x00000092, 0x0000, 0x0010, [8]byte{0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}},
 		"eac3": {0x0000000A, 0x0CEA, 0x0010, [8]byte{0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}},
 		"dts":  {0x00000008, 0x0000, 0x0010, [8]byte{0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}},
+		// DTS_HD and DOLBY_MLP, which TrueHD is.
+		"dtshd":  {0x0000000B, 0x0CEA, 0x0010, [8]byte{0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}},
+		"truehd": {0x0000000C, 0x0CEA, 0x0010, [8]byte{0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}},
 	}
 )
 
@@ -56,6 +61,7 @@ const (
 	bufferDuration        = 100 * time.Millisecond
 	wasapiChannels        = 2
 	speakerFrontLeftRight = 0x3
+	speaker7Point1        = 0x63F // KSAUDIO_SPEAKER_7POINT1_SURROUND
 )
 
 // call calls the method at index of a COM object's vtable.
@@ -94,6 +100,7 @@ type wasapi struct {
 	frameBytes int
 	iec        *IEC // an exclusive IEC 61937 stream, nil for PCM
 	rate       int
+	channels   int
 	mu         sync.Mutex
 	paused     bool
 	closed     bool
@@ -104,14 +111,15 @@ type wasapi struct {
 }
 
 func open(fill Fill) (Output, error) {
-	return start(&wasapi{fill: floatBytes(fill), frameBytes: 4 * wasapiChannels})
+	return start(&wasapi{fill: floatBytes(fill), frameBytes: 4 * wasapiChannels, channels: wasapiChannels})
 }
 
 func openIEC(f IEC, fill FillIEC) (Output, error) {
 	if _, ok := subtypeIEC[f.Codec]; !ok {
 		return nil, fmt.Errorf("audioout: no IEC 61937 format for %s", f.Codec)
 	}
-	return start(&wasapi{fill: fill, frameBytes: 4, iec: &f, rate: f.CarrierRate()})
+	ch := f.CarrierChannels()
+	return start(&wasapi{fill: fill, frameBytes: 2 * ch, iec: &f, rate: f.CarrierRate(), channels: ch})
 }
 
 func start(w *wasapi) (Output, error) {
@@ -287,10 +295,14 @@ func waveFormat(channels, rate, bits int, mask uint32, sub guid) [52]byte {
 	return f
 }
 
-// iecFormat is the WAVEFORMATEXTENSIBLE_IEC61937 of f: 16-bit stereo at
-// the carrier's rate, with the encoded audio's rate and channels.
+// iecFormat is the WAVEFORMATEXTENSIBLE_IEC61937 of f: the carrier's 16-bit
+// channels at its rate, with the encoded audio's rate and channels.
 func iecFormat(f IEC) [52]byte {
-	w := waveFormat(2, f.CarrierRate(), 16, speakerFrontLeftRight, subtypeIEC[f.Codec])
+	mask := uint32(speakerFrontLeftRight)
+	if f.CarrierChannels() == 8 {
+		mask = speaker7Point1
+	}
+	w := waveFormat(f.CarrierChannels(), f.CarrierRate(), 16, mask, subtypeIEC[f.Codec])
 	le := binary.LittleEndian
 	le.PutUint16(w[16:], 34)
 	le.PutUint32(w[40:], uint32(f.SampleRate))
@@ -299,7 +311,7 @@ func iecFormat(f IEC) [52]byte {
 }
 
 func (w *wasapi) Rate() int     { return w.rate }
-func (w *wasapi) Channels() int { return wasapiChannels }
+func (w *wasapi) Channels() int { return w.channels }
 
 func (w *wasapi) Played() int64 {
 	w.mu.Lock()

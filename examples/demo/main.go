@@ -308,13 +308,14 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit], to
 		passthrough = ui.IconButton{
 			TestID:   "passthrough",
 			Icon:     lucide.HdmiPort,
-			Label:    "Pass AC-3, E-AC-3 and DTS to a receiver",
+			Label:    "Pass AC-3, E-AC-3, DTS, DTS-HD and TrueHD to a receiver",
 			Selected: func() bool { return p.Passthrough() != 0 },
 			OnPress: func() {
 				if p.Passthrough() != 0 {
 					p.SetPassthrough(0)
 				} else {
-					p.SetPassthrough(player.PassthroughAC3 | player.PassthroughEAC3 | player.PassthroughDTS)
+					p.SetPassthrough(player.PassthroughAC3 | player.PassthroughEAC3 | player.PassthroughDTS |
+						player.PassthroughDTSHD | player.PassthroughTrueHD)
 				}
 			},
 		}
@@ -454,6 +455,9 @@ func outputText(p *player.Player) string {
 		return ""
 	}
 	format := fmt.Sprintf("%g kHz · %d ch", float64(o.SampleRate)/1000, o.Channels)
+	if o.Passthrough && o.Fallback == player.FallbackDevice {
+		return codecNames[o.Codec] + " passthrough, the device refused DTS-HD · " + format
+	}
 	if o.Passthrough {
 		return codecNames[o.Codec] + " passthrough · " + format
 	}
@@ -468,7 +472,7 @@ func outputText(p *player.Player) string {
 	return "PCM · " + format
 }
 
-var codecNames = map[string]string{"ac3": "AC-3", "eac3": "E-AC-3", "dts": "DTS"}
+var codecNames = map[string]string{"ac3": "AC-3", "eac3": "E-AC-3", "dts": "DTS", "dtshd": "DTS-HD", "truehd": "TrueHD"}
 
 // saveSnapshot saves the frame showing, at the source's size, as a PNG
 // the user places.

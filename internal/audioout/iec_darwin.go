@@ -19,7 +19,9 @@ import (
 // the carrier's frames straight into the device's buffer. Closing gives
 // the device back as it was. Outputs listing only linear PCM, as
 // built-in speakers and most HDMI ports do, are refused: their PCM would
-// sound the bursts as noise.
+// sound the bursts as noise. DTS-HD and TrueHD need an encoded format of
+// HDMI's high bit rate, 8 channels at 192 kHz, which macOS lists for no
+// output it drives itself.
 
 const (
 	scopeGlobal   = 0x676c6f62 // 'glob'
@@ -136,6 +138,7 @@ type hogged struct {
 	index    int // the stream's buffer in the device's buffer list
 	fill     FillIEC
 	rate     int
+	channels int
 	procID   uintptr
 	original [sizeASBD]byte // the stream's physical format before
 	mixing   uint32
@@ -154,7 +157,7 @@ func openIEC(f IEC, fill FillIEC) (Output, error) {
 	if err := loadHAL(); err != nil {
 		return nil, err
 	}
-	h := &hogged{fill: fill, rate: f.CarrierRate()}
+	h := &hogged{fill: fill, rate: f.CarrierRate(), channels: f.CarrierChannels()}
 	if err := getProp(systemObject, propDefault, scopeGlobal, unsafe.Pointer(&h.dev), 4); err != nil || h.dev == 0 {
 		return nil, errors.New("audioout: no default output device")
 	}
@@ -162,7 +165,8 @@ func openIEC(f IEC, fill FillIEC) (Output, error) {
 	if err != nil {
 		return nil, fmt.Errorf("audioout: the device's streams: %v", err)
 	}
-	// A stream with an encoded physical format at the carrier's rate.
+	// A stream with an encoded physical format at the carrier's rate, and
+	// for the high bit rate with its 8 channels.
 	var format []byte
 	for i := 0; i < len(streams)/4 && format == nil; i++ {
 		s := *(*uint32)(unsafe.Pointer(&streams[i*4]))
@@ -175,7 +179,9 @@ func openIEC(f IEC, fill FillIEC) (Output, error) {
 			id := *(*uint32)(unsafe.Pointer(&d[8]))
 			lo, hi := *(*float64)(unsafe.Pointer(&d[40])), *(*float64)(unsafe.Pointer(&d[48]))
 			rate := *(*float64)(unsafe.Pointer(&d[0]))
-			if encodedFormats[id] && (rate == float64(h.rate) || lo <= float64(h.rate) && float64(h.rate) <= hi) {
+			ch := int(*(*uint32)(unsafe.Pointer(&d[28])))
+			if encodedFormats[id] && (rate == float64(h.rate) || lo <= float64(h.rate) && float64(h.rate) <= hi) &&
+				(!f.HBR() || ch == h.channels) {
 				format = append([]byte(nil), d[:sizeASBD]...)
 				*(*float64)(unsafe.Pointer(&format[0])) = float64(h.rate)
 				h.stream, h.index = s, i
@@ -184,7 +190,7 @@ func openIEC(f IEC, fill FillIEC) (Output, error) {
 		}
 	}
 	if format == nil {
-		return nil, fmt.Errorf("audioout: the device has no encoded format for %s at %d Hz", f.Codec, h.rate)
+		return nil, fmt.Errorf("audioout: the device has no encoded format for %s at %d Hz, %d channels", f.Codec, h.rate, h.channels)
 	}
 
 	pid := int32(syscall.Getpid())
@@ -287,12 +293,12 @@ func (h *hogged) render(now, out, outTime uintptr) {
 	h.mu.Lock()
 	h.base = max(h.written-ahead-h.latency, h.base)
 	h.at = time.Now()
-	h.written += int64(size / 4)
+	h.written += int64(size / (2 * h.channels))
 	h.mu.Unlock()
 }
 
 func (h *hogged) Rate() int     { return h.rate }
-func (h *hogged) Channels() int { return 2 }
+func (h *hogged) Channels() int { return h.channels }
 
 func (h *hogged) Played() int64 {
 	h.mu.Lock()

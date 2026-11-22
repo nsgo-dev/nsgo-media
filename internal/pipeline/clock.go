@@ -58,7 +58,7 @@ func (c *wallClock) rebase(rate float64) {
 // the rate stretches.
 type chunk struct {
 	samples  []float32
-	data     []byte // a burst's 16-bit stereo frames, instead of samples
+	data     []byte // a burst's frames of 16-bit words, instead of samples
 	off      int    // frames already played
 	pts      time.Duration
 	perFrame float64 // nanoseconds
@@ -68,7 +68,7 @@ type chunk struct {
 
 func (c *chunk) frames(ch int) int {
 	if c.data != nil {
-		return len(c.data)/4 - c.off
+		return len(c.data)/(2*ch) - c.off
 	}
 	return len(c.samples)/ch - c.off
 }
@@ -329,23 +329,24 @@ func (r *audioRing) fillIEC(dst []byte) {
 		clear(dst)
 		return
 	}
-	total := len(dst) / 4
+	fb := 2 * r.ch // bytes a carrier frame
+	total := len(dst) / fb
 	play := r.running && !r.paused && !r.closed
 	silent := r.muted || r.volume == 0
 	for i := 0; i < total; {
-		if r.burst.frames(2) <= 0 {
+		if r.burst.frames(r.ch) <= 0 {
 			r.burst = r.nextBurst(play)
 			r.burst.silent = r.burst.media && silent
 		}
 		b := &r.burst
-		n := min(total-i, b.frames(2))
-		out := dst[i*4 : (i+n)*4]
+		n := min(total-i, b.frames(r.ch))
+		out := dst[i*fb : (i+n)*fb]
 		if b.silent {
 			for k := range out {
-				out[k] = r.pause[(b.off*4+k)%len(r.pause)]
+				out[k] = r.pause[(b.off*fb+k)%len(r.pause)]
 			}
 		} else {
-			copy(out, b.data[b.off*4:])
+			copy(out, b.data[b.off*fb:])
 		}
 		if b.media {
 			pts := b.pts + time.Duration(float64(b.off)*b.perFrame)
@@ -368,8 +369,8 @@ func (r *audioRing) nextBurst(play bool) chunk {
 		for len(r.chunks) > 0 {
 			c := r.chunks[0]
 			r.chunks = r.chunks[1:]
-			r.frames -= c.frames(2)
-			if r.skipTo >= 0 && c.pts+burstDuration(&c) <= r.skipTo {
+			r.frames -= c.frames(r.ch)
+			if r.skipTo >= 0 && c.pts+burstDuration(&c, r.ch) <= r.skipTo {
 				continue
 			}
 			r.skipTo = -1
