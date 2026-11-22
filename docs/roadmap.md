@@ -52,6 +52,7 @@ FFmpeg built as frameworks for iOS devices and the simulator with VideoToolbox, 
 | --- | --- |
 | Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
 | HDR output and tone mapping | GPU rendering |
-| Android | FFmpeg builds for it and a loader for its app packages |
 | The iOS audio session at Playback, so the Ring/Silent switch does not silence a movie, and playing in the background | NSGo letting a library hold the session ([nsgo#1931](https://github.com/nsgo-dev/nsgo/issues/1931)), or its planned `audio.Output` ([nsgo#1057](https://github.com/nsgo-dev/nsgo/issues/1057)); the background also needs the app's `audio` background mode |
-| Audio passthrough on Android, and of DTS-HD and TrueHD | Android; HDMI's 8-channel high bit rate carrier on each desktop |
+| Audio passthrough of DTS-HD and TrueHD | HDMI's 8-channel high bit rate carrier on each desktop |
+
+Android is set aside for now (decided by the user, 2026-11-22).

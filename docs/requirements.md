@@ -44,7 +44,8 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 - Recording, capture, transcoding and encoding.
 - DRM, disc images and protocol receivers such as DLNA or AirPlay.
 - Rendering subtitles into the picture, and ASS styling beyond text.
-- Android, background playback on iOS, the web and mini programs; the [roadmap](roadmap.md) orders them.
+- Android, set aside for now.
+- Background playback on iOS, the web and mini programs; the [roadmap](roadmap.md) orders them.
 
 ## Constraints
 
