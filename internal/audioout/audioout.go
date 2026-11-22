@@ -1,7 +1,9 @@
 // Package audioout plays interleaved float32 PCM on the system's default
 // output device, with one backend per desktop: CoreAudio's AudioQueue on
 // macOS, WASAPI on Windows and PulseAudio (or PipeWire's server for it) on
-// Linux.
+// Linux. It also passes IEC 61937 streams through to a receiver that
+// decodes them: CoreAudio's encoded formats with the device hogged,
+// WASAPI's exclusive mode and PulseAudio's passthrough formats.
 package audioout
 
 import (
@@ -15,9 +17,31 @@ import (
 // thread, so it must return quickly and never wait for the engine.
 type Fill func(dst []float32)
 
+// FillIEC writes the next frames of an IEC 61937 stream into dst, all of
+// it, as Fill does: 16-bit little-endian stereo, 4 bytes a frame.
+type FillIEC func(dst []byte)
+
+// IEC is an IEC 61937 stream's format: the codec its bursts carry and the
+// encoded audio's rate and channels, which some systems are told.
+type IEC struct {
+	Codec      string // "ac3", "eac3" or "dts"
+	SampleRate int
+	Channels   int
+}
+
+// CarrierRate is the rate of the 16-bit stereo frames carrying the
+// bursts: the encoded rate, four times it for E-AC-3.
+func (f IEC) CarrierRate() int {
+	if f.Codec == "eac3" {
+		return f.SampleRate * 4
+	}
+	return f.SampleRate
+}
+
 // Output is an open device stream.
 type Output interface {
-	// Rate and Channels are the stream's format, which Fill writes.
+	// Rate and Channels are the stream's format, which Fill writes; an
+	// IEC 61937 stream's are its carrier's, 2 channels.
 	Rate() int
 	Channels() int
 	// Played is how many frames (samples per channel) the device has
@@ -40,11 +64,17 @@ func Open(fill Fill) (Output, error) {
 	return out, nil
 }
 
-// null is an output without a device: a goroutine asks for samples at the
+// OpenIEC opens the default output device for f's IEC 61937 stream. It
+// fails when the device, or the system's setting for it, takes no such
+// stream, or another program holds it; the caller then plays PCM.
+func OpenIEC(f IEC, fill FillIEC) (Output, error) { return openIEC(f, fill) }
+
+// null is an output without a device: a goroutine asks for frames at the
 // rate a device would and drops them.
 type null struct {
 	rate, channels int
-	fill           Fill
+	frameBytes     int
+	fill           func([]byte)
 	mu             sync.Mutex
 	played         int64
 	paused         bool
@@ -55,7 +85,15 @@ type null struct {
 // NewNull returns an output that plays nothing at rate and channels, for
 // machines without a device and for tests.
 func NewNull(rate, channels int, fill Fill) Output {
-	n := &null{rate: rate, channels: channels, fill: fill, done: make(chan struct{})}
+	return newNull(rate, channels, 4*channels, floatBytes(fill))
+}
+
+// NewNullIEC returns an output that drops f's IEC 61937 stream at its
+// carrier's rate, for tests.
+func NewNullIEC(f IEC, fill FillIEC) Output { return newNull(f.CarrierRate(), 2, 4, fill) }
+
+func newNull(rate, channels, frameBytes int, fill func([]byte)) Output {
+	n := &null{rate: rate, channels: channels, frameBytes: frameBytes, fill: fill, done: make(chan struct{})}
 	n.wg.Add(1)
 	go n.run()
 	return n
@@ -65,7 +103,7 @@ func (n *null) run() {
 	defer n.wg.Done()
 	const period = 10 * time.Millisecond
 	frames := n.rate * int(period) / int(time.Second)
-	buf := make([]float32, frames*n.channels)
+	buf := make([]byte, frames*n.frameBytes)
 	t := time.NewTicker(period)
 	defer t.Stop()
 	for {
@@ -106,6 +144,15 @@ func (n *null) Close() {
 		close(n.done)
 	}
 	n.wg.Wait()
+}
+
+// floatBytes has fill write float32 samples into a byte buffer.
+func floatBytes(fill Fill) func([]byte) {
+	return func(dst []byte) {
+		if len(dst) >= 4 {
+			fill(unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(dst))), len(dst)/4))
+		}
+	}
 }
 
 // pointer turns an address a C callback passed as an integer back into a

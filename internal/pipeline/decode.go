@@ -7,6 +7,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/oneo-me/nsgo-media/internal/audioout"
 	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
 )
 
@@ -356,18 +357,26 @@ func u32(b []byte) []uint32 {
 	return unsafe.Slice((*uint32)(unsafe.Pointer(unsafe.SliceData(b))), len(b)/4)
 }
 
-// decodeAudio decodes the audio queue into device samples for the ring.
+// decodeAudio decodes the audio queue into device samples for the ring,
+// or wraps its packets in IEC 61937 bursts when they pass through. How a
+// track plays is decided at its first packet, after it opened or was
+// chosen again, and the device changes to play it so.
 func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 	defer p.wg.Done()
+	var packer *ffmpeg.Packer
 	defer func() {
 		if dec != nil {
 			dec.Close()
 		}
+		if packer != nil {
+			packer.Close()
+		}
 	}()
 	frame := ffmpeg.NewFrame()
 	defer frame.Free()
-	res := ffmpeg.NewResampler(p.out.Rate(), p.out.Channels())
-	defer res.Close()
+	outRate, ch := p.output().Rate(), p.output().Channels()
+	res := ffmpeg.NewResampler(outRate, ch)
+	defer func() { res.Close() }()
 	var tempo *ffmpeg.Tempo
 	tempoRate := 1.0
 	defer func() {
@@ -375,19 +384,86 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 			tempo.Close()
 		}
 	}()
-	outRate, ch := p.out.Rate(), p.out.Channels()
 	gen := p.genA.Load()
 	dropBefore := time.Duration(-1)
 	var tb ffmpeg.Rational
+	var stream *ffmpeg.Stream
 	streamIdx := -1 // the audio stream's index in its input
 	if dec != nil {
-		_, s := p.stream(p.AudioTrack())
-		tb, streamIdx = s.TimeBase(), s.Index()
+		_, stream = p.stream(p.AudioTrack())
+		tb, streamIdx = stream.TimeBase(), stream.Index()
 	}
+	decide := dec != nil     // how the track plays waits for its first packet
+	var iec *audioout.IEC    // the stream passing through, nil for PCM
+	burstPTS := ffmpeg.NoPTS // the first packet of the burst being packed
 	anchored := false
 	idle := false          // a history fill needs no sound
 	var next time.Duration // the media time the tempo's next output starts at
 	var stretched []float32
+
+	// choose decides how the track plays from its first packet, data.
+	choose := func(data []byte) {
+		decide = false
+		var fallback Fallback
+		iec, fallback = p.iecFormat(stream, data)
+		if packer != nil {
+			packer.Close()
+			packer = nil
+		}
+		var err error
+		if iec != nil {
+			if packer, err = ffmpeg.NewPacker(stream.Params()); err != nil {
+				iec = nil
+			}
+		}
+		if e := p.useOutput(iec); e != nil {
+			err, iec = e, nil
+			if packer != nil {
+				packer.Close()
+				packer = nil
+			}
+		}
+		if err != nil {
+			fallback = FallbackDevice
+		}
+		out := p.output()
+		info := Output{Rate: out.Rate(), Channels: out.Channels(), Fallback: fallback, Err: err}
+		if iec != nil {
+			info.Passthrough, info.Codec = true, iec.Codec
+		} else if out.Rate() != outRate || out.Channels() != ch {
+			outRate, ch = out.Rate(), out.Channels()
+			res.Close()
+			res = ffmpeg.NewResampler(outRate, ch)
+		}
+		p.setOutput(info)
+	}
+
+	// pack wraps a packet, queueing the bursts it completes.
+	pack := func(pkt *ffmpeg.Packet) {
+		ts := pkt.PTS()
+		if ts == ffmpeg.NoPTS {
+			ts = pkt.DTS()
+		}
+		if burstPTS == ffmpeg.NoPTS {
+			burstPTS = ts
+		}
+		data, err := packer.Pack(pkt)
+		if err != nil || len(data) == 0 {
+			if err != nil {
+				burstPTS = ffmpeg.NoPTS
+			}
+			return
+		}
+		c := chunk{data: append([]byte(nil), data...), pts: tb.Duration(burstPTS), perFrame: float64(time.Second) / float64(iec.CarrierRate())}
+		burstPTS = ffmpeg.NoPTS
+		if dropBefore >= 0 {
+			if c.pts+burstDuration(&c) <= dropBefore {
+				return
+			}
+			dropBefore = -1
+		}
+		p.ring.push(gen, c)
+	}
 
 	process := func() bool {
 		for {
@@ -460,17 +536,36 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 					dec.Close()
 					dec = nil
 				}
+				stream = nil
 				if id := p.AudioTrack(); id >= 0 {
 					if d, err := p.openAudioDecoder(id); err == nil {
 						dec = d
-						_, s := p.stream(id)
-						tb, streamIdx = s.TimeBase(), s.Index()
+						_, stream = p.stream(id)
+						tb, streamIdx = stream.TimeBase(), stream.Index()
 					}
+				}
+				decide = dec != nil
+				if dec == nil {
+					// No sound plays: the device goes back to PCM.
+					p.useOutput(nil)
+					iec = nil
+					if packer != nil {
+						packer.Close()
+						packer = nil
+					}
+					out := p.output()
+					p.setOutput(Output{Rate: out.Rate(), Channels: out.Channels()})
 				}
 			}
 			if dec != nil {
 				dec.Flush()
 			}
+			if packer != nil && !decide {
+				// E-AC-3 gathers frames for a burst; a seek starts anew.
+				packer.Close()
+				packer, _ = ffmpeg.NewPacker(stream.Params())
+			}
+			burstPTS = ffmpeg.NoPTS
 			res.Reset()
 			if tempo != nil {
 				tempo.Close()
@@ -488,14 +583,19 @@ func (p *Pipeline) decodeAudio(dec *ffmpeg.Decoder) {
 			continue
 		}
 		if it.eof {
-			if dec.Send(nil) == nil {
+			if packer == nil && dec.Send(nil) == nil {
 				process()
 			}
 			dec.Flush()
 			p.ring.setEOF(gen)
 			continue
 		}
-		if err := dec.Send(it.pkt); err == nil || ffmpeg.IsAgain(err) {
+		if decide {
+			choose(it.pkt.Data())
+		}
+		if packer != nil {
+			pack(it.pkt)
+		} else if err := dec.Send(it.pkt); err == nil || ffmpeg.IsAgain(err) {
 			process()
 		}
 		freeItem(it)

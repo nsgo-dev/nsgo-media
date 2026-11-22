@@ -3,6 +3,8 @@ package pipeline
 import (
 	"sync"
 	"time"
+
+	"github.com/oneo-me/nsgo-media/internal/audioout"
 )
 
 // wallClock is the clock without audio: a media time running from a
@@ -51,16 +53,25 @@ func (c *wallClock) rebase(rate float64) {
 	c.mu.Unlock()
 }
 
-// chunk is decoded audio at the device's rate and channels. perFrame is
-// the media time each device frame plays, which the rate stretches.
+// chunk is decoded audio at the device's rate and channels, or an IEC
+// 61937 burst. perFrame is the media time each device frame plays, which
+// the rate stretches.
 type chunk struct {
 	samples  []float32
-	off      int // frames already played
+	data     []byte // a burst's 16-bit stereo frames, instead of samples
+	off      int    // frames already played
 	pts      time.Duration
 	perFrame float64 // nanoseconds
+	media    bool    // a burst of the media, not a pause
+	silent   bool    // a burst sent as pauses, muted
 }
 
-func (c *chunk) frames(ch int) int { return len(c.samples)/ch - c.off }
+func (c *chunk) frames(ch int) int {
+	if c.data != nil {
+		return len(c.data)/4 - c.off
+	}
+	return len(c.samples)/ch - c.off
+}
 
 // span maps device frames [dev, dev+n) to media time from pts, perFrame
 // nanoseconds each; perFrame 0 holds pts, as silence does.
@@ -94,6 +105,11 @@ type audioRing struct {
 	volume   float32
 	muted    bool
 	closed   bool
+
+	// An IEC 61937 stream's: bursts play whole, gaps are pause bursts.
+	iec   *audioout.IEC
+	pause []byte // a pause burst
+	burst chunk  // the burst being sent
 }
 
 func newAudioRing(gen uint64) *audioRing {
@@ -106,6 +122,24 @@ func (r *audioRing) setFormat(rate, ch int) {
 	r.mu.Lock()
 	r.rate, r.ch = rate, ch
 	r.capacity = rate * 3 / 10 // 300 ms
+	r.mu.Unlock()
+}
+
+// reset makes the ring a new device's, of rate and ch, carrying f's IEC
+// 61937 stream unless it is nil: the device has filled nothing yet, and
+// the clock holds where the flush put it.
+func (r *audioRing) reset(rate, ch int, f *audioout.IEC) {
+	r.mu.Lock()
+	r.rate, r.ch = rate, ch
+	r.capacity = rate * 3 / 10
+	r.iec, r.pause, r.burst = f, nil, chunk{}
+	if f != nil {
+		r.pause = pauseUnit(f)
+	}
+	r.chunks, r.frames = nil, 0
+	r.written = 0
+	r.spans = []span{{pts: r.hold}}
+	r.cond.Broadcast()
 	r.mu.Unlock()
 }
 
@@ -142,6 +176,8 @@ func (r *audioRing) flush(gen uint64, t time.Duration) {
 	r.eof, r.starved, r.running = false, false, false
 	r.hold, r.skipTo = t, -1
 	r.spans = []span{{dev: r.written, pts: t}}
+	// The burst being sent goes on to its end, holding the clock.
+	r.burst.media = false
 	r.cond.Broadcast()
 	r.mu.Unlock()
 }
@@ -212,6 +248,10 @@ func (r *audioRing) drained(played int64) bool {
 func (r *audioRing) fill(dst []float32) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.iec != nil {
+		clear(dst) // a PCM device closing as the ring changed
+		return
+	}
 	ch := r.ch
 	total := len(dst) / ch
 	i := 0
@@ -275,6 +315,72 @@ func (r *audioRing) addSpan(s span) {
 		}
 	}
 	r.spans = append(r.spans, s)
+}
+
+// fillIEC is an IEC 61937 device's fill: it sends the queued bursts
+// while running and not paused, each to its end, and pause bursts in
+// between. Muted, or at no volume, a burst's time passes in pause bursts,
+// as its bits cannot be made quieter; muting takes effect at the next
+// burst, so none is cut.
+func (r *audioRing) fillIEC(dst []byte) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.iec == nil {
+		clear(dst)
+		return
+	}
+	total := len(dst) / 4
+	play := r.running && !r.paused && !r.closed
+	silent := r.muted || r.volume == 0
+	for i := 0; i < total; {
+		if r.burst.frames(2) <= 0 {
+			r.burst = r.nextBurst(play)
+			r.burst.silent = r.burst.media && silent
+		}
+		b := &r.burst
+		n := min(total-i, b.frames(2))
+		out := dst[i*4 : (i+n)*4]
+		if b.silent {
+			for k := range out {
+				out[k] = r.pause[(b.off*4+k)%len(r.pause)]
+			}
+		} else {
+			copy(out, b.data[b.off*4:])
+		}
+		if b.media {
+			pts := b.pts + time.Duration(float64(b.off)*b.perFrame)
+			r.addSpan(span{dev: r.written + int64(i), n: int64(n), pts: pts, perFrame: b.perFrame})
+			r.hold = pts + time.Duration(float64(n)*b.perFrame)
+		} else {
+			r.addSpan(span{dev: r.written + int64(i), n: int64(n), pts: r.hold})
+		}
+		b.off += n
+		i += n
+	}
+	r.written += int64(total)
+	r.cond.Broadcast()
+}
+
+// nextBurst takes the next queued burst, dropping those before skipTo,
+// or makes a pause burst when there is none or play is false.
+func (r *audioRing) nextBurst(play bool) chunk {
+	if play {
+		for len(r.chunks) > 0 {
+			c := r.chunks[0]
+			r.chunks = r.chunks[1:]
+			r.frames -= c.frames(2)
+			if r.skipTo >= 0 && c.pts+burstDuration(&c) <= r.skipTo {
+				continue
+			}
+			r.skipTo = -1
+			c.media = true
+			return c
+		}
+		if !r.eof {
+			r.starved = true
+		}
+	}
+	return chunk{data: r.pause}
 }
 
 // position is the media time the device's frame played is at, trimming

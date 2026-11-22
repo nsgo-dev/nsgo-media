@@ -309,6 +309,24 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) co
 			core.View{Style: core.Style{Width: core.Pt(100)}, Children: []core.Node{
 				ui.Slider{TestID: "volume", Label: "Volume", Max: 1, Value: p.Volume, OnChange: p.SetVolume},
 			}},
+			ui.IconButton{
+				TestID:   "passthrough",
+				Icon:     lucide.HdmiPort,
+				Label:    "Pass AC-3, E-AC-3 and DTS to a receiver",
+				Selected: func() bool { return p.Passthrough() != 0 },
+				OnPress: func() {
+					if p.Passthrough() != 0 {
+						p.SetPassthrough(0)
+					} else {
+						p.SetPassthrough(player.PassthroughAC3 | player.PassthroughEAC3 | player.PassthroughDTS)
+					}
+				},
+			},
+			core.Text{
+				TestID:      "output",
+				ContentFunc: func() string { return outputText(p) },
+				Style:       core.Style{Color: core.RGB(0xaaaaaa), FontSize: 12},
+			},
 			ui.Select[float64]{
 				TestID:   "rate",
 				Label:    "Speed",
@@ -377,6 +395,30 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) co
 		},
 	}
 }
+
+// outputText is what the audio device plays: the codec passing through,
+// or PCM and why it is not passing through.
+func outputText(p *player.Player) string {
+	o := p.AudioOutput()
+	if o.SampleRate == 0 {
+		return ""
+	}
+	format := fmt.Sprintf("%g kHz · %d ch", float64(o.SampleRate)/1000, o.Channels)
+	if o.Passthrough {
+		return codecNames[o.Codec] + " passthrough · " + format
+	}
+	switch o.Fallback {
+	case player.FallbackRate:
+		return "PCM at this speed · " + format
+	case player.FallbackEnhancedDTS:
+		return "PCM for enhanced DTS · " + format
+	case player.FallbackDevice:
+		return "PCM, the device refused passthrough · " + format
+	}
+	return "PCM · " + format
+}
+
+var codecNames = map[string]string{"ac3": "AC-3", "eac3": "E-AC-3", "dts": "DTS"}
 
 // saveSnapshot saves the frame showing, at the source's size, as a PNG
 // the user places.

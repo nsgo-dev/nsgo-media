@@ -112,7 +112,7 @@ func (p *Pipeline) Tick() Status {
 		p.frames.mu.Lock()
 		videoDone := !hasVideo || p.frames.eof == gen && len(p.frames.frames) == 0
 		p.frames.mu.Unlock()
-		audioDone := !hasAudio || p.ring.drained(p.out.Played())
+		audioDone := !hasAudio || p.ring.drained(p.output().Played())
 		if videoDone && audioDone && !p.ended {
 			if loop {
 				p.Seek(0, false)
@@ -158,7 +158,7 @@ func (p *Pipeline) clock(hasAudio, paused bool) time.Duration {
 	// Devices tell their played position in steps of a buffer or a poll.
 	// Between steps the clock runs on at the rate, and it eases toward
 	// the device's position, jumping to it only when far off.
-	a := p.ring.position(p.out.Played())
+	a := p.ring.position(p.output().Played())
 	now := time.Now()
 	if !p.smooth.valid || !p.running || p.Paused() {
 		p.smooth = smoothClock{pos: a, at: now, valid: true}

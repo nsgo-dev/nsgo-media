@@ -174,6 +174,75 @@ func (c Cue) Place(b Bitmap, picture core.Bounds) core.Bounds {
 	}
 }
 
+// Passthrough is a set of codecs whose audio passes undecoded, in IEC
+// 61937 bursts, to a receiver that decodes it.
+type Passthrough int
+
+const (
+	PassthroughAC3  = Passthrough(pipeline.PassAC3)
+	PassthroughEAC3 = Passthrough(pipeline.PassEAC3)
+	// PassthroughDTS passes DTS' core. Enhanced DTS, such as DTS-HD,
+	// DTS-ES or DTS 96/24, plays as PCM.
+	PassthroughDTS = Passthrough(pipeline.PassDTS)
+)
+
+// Fallback is why the audio plays as PCM though passthrough was set for
+// its codec.
+type Fallback int
+
+const (
+	// FallbackNone is no fallback: the audio passes through, or
+	// passthrough was not set for its codec.
+	FallbackNone = Fallback(pipeline.FallbackNone)
+	// FallbackRate is a rate other than 1, which only PCM plays.
+	FallbackRate = Fallback(pipeline.FallbackRate)
+	// FallbackEnhancedDTS is DTS with extensions to its core.
+	FallbackEnhancedDTS = Fallback(pipeline.FallbackEnhancedDTS)
+	// FallbackDevice is the device or the system not taking the stream,
+	// refusing it or failing to start it; AudioOutput.Err says why.
+	FallbackDevice = Fallback(pipeline.FallbackDevice)
+)
+
+func (f Fallback) String() string {
+	switch f {
+	case FallbackNone:
+		return "none"
+	case FallbackRate:
+		return "rate"
+	case FallbackEnhancedDTS:
+		return "enhanced DTS"
+	case FallbackDevice:
+		return "device"
+	}
+	return "unknown"
+}
+
+// AudioOutput is what the audio device plays.
+type AudioOutput struct {
+	// Passthrough is set while the track's Codec, "ac3", "eac3" or "dts",
+	// passes through.
+	Passthrough bool
+	Codec       string
+	// SampleRate and Channels are the device stream's: the PCM's, or
+	// passing through, the IEC 61937 carrier's, 2 channels at the codec's
+	// rate or four times it for E-AC-3. The track's own are in its Track.
+	SampleRate, Channels int
+	// Fallback is why the audio plays as PCM, and Err the device's error
+	// for FallbackDevice.
+	Fallback Fallback
+	Err      error
+}
+
+func outputOf(o pipeline.Output) AudioOutput {
+	return AudioOutput{Passthrough: o.Passthrough, Codec: o.Codec, SampleRate: o.Rate, Channels: o.Channels, Fallback: Fallback(o.Fallback), Err: o.Err}
+}
+
+func sameOutput(a, b AudioOutput) bool {
+	return a.Passthrough == b.Passthrough && a.Codec == b.Codec && a.SampleRate == b.SampleRate &&
+		a.Channels == b.Channels && a.Fallback == b.Fallback &&
+		(a.Err == nil) == (b.Err == nil) && (a.Err == nil || a.Err.Error() == b.Err.Error())
+}
+
 func trackOf(t pipeline.Track) Track {
 	return Track{
 		ID: t.ID, Kind: Kind(t.Kind), Codec: t.Codec, Language: t.Language, Title: t.Title,

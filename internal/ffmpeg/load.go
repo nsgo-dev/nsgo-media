@@ -217,6 +217,13 @@ var (
 	avformatSeekFile        func(c *FormatContext, stream int32, minTS, ts, maxTS int64, flags int32) int32
 	avioAllocContext        func(buf ptr, size int32, write int32, opaque uintptr, read, writeFn, seek uintptr) ptr
 	avioContextFree         func(c *ptr)
+	avioFlush               func(pb ptr)
+	avGuessFormat           func(name string, filename, mime ptr) ptr
+	avformatAllocOutputCtx2 func(c **FormatContext, ofmt ptr, name string, filename ptr) int32
+	avformatNewStream       func(c *FormatContext, codec ptr) *Stream
+	avformatWriteHeader     func(c *FormatContext, opts *ptr) int32
+	avWriteFrame            func(c *FormatContext, p *Packet) int32
+	avformatFreeContext     func(c *FormatContext)
 	avfilterVersion         func() uint32
 	avfilterGraphAlloc      func() ptr
 	avfilterGraphFree       func(g *ptr)
@@ -304,6 +311,13 @@ var symbols = []sym{
 	{"avformat", "avformat_seek_file", &avformatSeekFile},
 	{"avformat", "avio_alloc_context", &avioAllocContext},
 	{"avformat", "avio_context_free", &avioContextFree},
+	{"avformat", "avio_flush", &avioFlush},
+	{"avformat", "av_guess_format", &avGuessFormat},
+	{"avformat", "avformat_alloc_output_context2", &avformatAllocOutputCtx2},
+	{"avformat", "avformat_new_stream", &avformatNewStream},
+	{"avformat", "avformat_write_header", &avformatWriteHeader},
+	{"avformat", "av_write_frame", &avWriteFrame},
+	{"avformat", "avformat_free_context", &avformatFreeContext},
 
 	{"avfilter", "avfilter_version", &avfilterVersion},
 	{"avfilter", "avfilter_graph_alloc", &avfilterGraphAlloc},

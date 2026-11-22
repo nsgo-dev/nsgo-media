@@ -62,6 +62,12 @@ type Options struct {
 	Software bool
 	// OpenOutput opens the audio device; nil opens the system's default.
 	OpenOutput func(audioout.Fill) (audioout.Output, error)
+	// Passthrough is the codecs passed undecoded to a receiver, until
+	// SetPassthrough changes them.
+	Passthrough Passthrough
+	// OpenPassthrough opens the device for an IEC 61937 stream; nil opens
+	// the system's default.
+	OpenPassthrough func(audioout.IEC, audioout.FillIEC) (audioout.Output, error)
 	// OnEvent receives events on the pipeline's goroutines; it must not
 	// block.
 	OnEvent func(Event)
@@ -89,13 +95,22 @@ type Pipeline struct {
 	subs        map[int]*ffmpeg.Decoder // the demuxer's subtitle decoders
 	subTrack    atomic.Int64            // the chosen subtitle track, whose bitmaps decode
 	ring        *audioRing
-	out         audioout.Output
+	dev         atomic.Pointer[device]
+	pass        atomic.Int64 // Passthrough
+	opened      atomic.Bool  // Open returned the source
 	vp          atomic.Pointer[videoParams]
 	hwDevice    atomic.Value // string
 	reopenVideo atomic.Bool
 
 	genA atomic.Uint64 // gen, for workers to read without the lock
 	rate atomic.Uint64 // float64 bits
+
+	// The audio device: the PCM format it opened with, whether a PCM
+	// device is paused, and what it plays.
+	outMu                sync.Mutex
+	outPaused            bool
+	outInfo              Output
+	pcmRate, pcmChannels int
 
 	mu          sync.Mutex
 	cond        *sync.Cond // the demuxer waits on it
@@ -167,6 +182,7 @@ func New(opts Options) *Pipeline {
 	p.cond = sync.NewCond(&p.mu)
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 	p.rate.Store(math.Float64bits(1))
+	p.pass.Store(int64(opts.Passthrough))
 	p.hwDevice.Store("")
 	p.vp.Store(&videoParams{tb: ffmpeg.Rational{Num: 1, Den: 1}, sar: 1})
 	return p
@@ -277,17 +293,16 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 		}
 	}
 
-	openOut := p.opts.OpenOutput
-	if openOut == nil {
-		openOut = audioout.Open
-	}
 	p.ring = newAudioRing(p.gen)
-	out, _ := openOut(p.ring.fill)
+	out, _ := p.openOutput(p.ring.fill)
 	if out == nil {
 		out = audioout.NewNull(48000, 2, p.ring.fill)
 	}
-	p.out = out
+	p.dev.Store(&device{out: out})
+	p.pcmRate, p.pcmChannels = out.Rate(), out.Channels()
+	p.outInfo = Output{Rate: out.Rate(), Channels: out.Channels()}
 	p.ring.setFormat(out.Rate(), out.Channels())
+	p.outPaused = true
 	out.SetPaused(true)
 	var adec *ffmpeg.Decoder
 	if p.audioStream >= 0 {
@@ -316,7 +331,22 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 	}
 	go p.decodeVideo(vdec, p.videoStream)
 	go p.decodeAudio(adec)
+	p.opened.Store(true)
 	return p.info, nil
+}
+
+func (p *Pipeline) openOutput(fill audioout.Fill) (audioout.Output, error) {
+	if p.opts.OpenOutput != nil {
+		return p.opts.OpenOutput(fill)
+	}
+	return audioout.Open(fill)
+}
+
+func (p *Pipeline) openIEC(f audioout.IEC, fill audioout.FillIEC) (audioout.Output, error) {
+	if p.opts.OpenPassthrough != nil {
+		return p.opts.OpenPassthrough(f, fill)
+	}
+	return audioout.OpenIEC(f, fill)
 }
 
 // setVideoParams makes track id the one frames are decoded and converted
@@ -440,10 +470,14 @@ func (p *Pipeline) Close() {
 	if p.pool != nil {
 		p.pool.wakeAll()
 	}
-	if p.out != nil {
-		p.out.Close()
+	if d := p.dev.Load(); d != nil {
+		d.out.Close()
 	}
 	p.wg.Wait()
+	// The audio decoder may have opened another device as it stopped.
+	if d := p.dev.Load(); d != nil {
+		d.out.Close()
+	}
 	for _, d := range p.subs {
 		d.Close()
 	}
@@ -491,7 +525,7 @@ func (p *Pipeline) SetPaused(paused bool) {
 	}
 	p.wall.setRunning(!paused && p.running, p.Rate())
 	p.ring.setPaused(paused)
-	p.out.SetPaused(paused)
+	p.setPausedOutput(paused)
 }
 
 // Paused reports whether playback is paused.
@@ -553,11 +587,16 @@ func (p *Pipeline) restart(target time.Duration, exact bool, vdrop time.Duration
 	return gen
 }
 
-// SetRate sets the speed, 0.25 to 4, keeping the pitch.
+// SetRate sets the speed, 0.25 to 4, keeping the pitch. Audio passing
+// through plays as PCM at other rates than 1, so changing to or from 1
+// starts its sound again from the position, as SetPassthrough does.
 func (p *Pipeline) SetRate(r float64) {
 	r = min(max(r, 0.25), 4)
 	p.wall.rebase(r)
-	p.rate.Store(math.Float64bits(r))
+	old := math.Float64frombits(p.rate.Swap(math.Float64bits(r)))
+	if p.opened.Load() && (old == 1) != (r == 1) && Passthrough(p.pass.Load()).passes(p.audioCodec()) {
+		p.restartAudio()
+	}
 }
 
 // Rate is the speed.

@@ -28,8 +28,9 @@ type Player struct {
 	stopFrame func()
 	views     map[*viewSize]struct{}
 	software  bool
-	// openOutput replaces the audio device in tests.
+	// openOutput and openIEC replace the audio device in tests.
 	openOutput func(audioout.Fill) (audioout.Output, error)
+	openIEC    func(audioout.IEC, audioout.FillIEC) (audioout.Output, error)
 
 	// What the app asked for, applied when the source opens.
 	wantPlay   bool
@@ -38,6 +39,7 @@ type Player struct {
 	volumeV    float64
 	mutedV     bool
 	loopV      bool
+	passV      Passthrough
 	pendSubs   []string
 	subtitleID int
 
@@ -57,6 +59,8 @@ type Player struct {
 	muted      *core.Signal[bool]
 	loop       *core.Signal[bool]
 	hardware   *core.Signal[string]
+	pass       *core.Signal[Passthrough]
+	output     *core.Signal[AudioOutput]
 }
 
 type pendingSeek struct {
@@ -100,6 +104,8 @@ func New(cx *core.Scope, opts ...Option) *Player {
 		muted:      core.NewSignal(cx, false),
 		loop:       core.NewSignal(cx, false),
 		hardware:   core.NewSignal(cx, ""),
+		pass:       core.NewSignal(cx, Passthrough(0)),
+		output:     core.NewSignalFunc(cx, AudioOutput{}, sameOutput),
 	}
 	for _, o := range opts {
 		o(p)
@@ -154,18 +160,23 @@ func (p *Player) Open(source string, opts ...OpenOption) {
 	p.subtitleID = -1
 	p.subTrack.Set(-1)
 	p.hardware.Set("")
+	p.output.Set(AudioOutput{})
 	p.pendSeek = nil
 	p.pendSubs = nil
 	p.state.Set(Opening)
 
 	var pl *pipeline.Pipeline
 	pl = pipeline.New(pipeline.Options{
-		Software:   p.software,
-		OpenOutput: p.openOutput,
+		Software:        p.software,
+		OpenOutput:      p.openOutput,
+		Passthrough:     pipeline.Passthrough(p.passV),
+		OpenPassthrough: p.openIEC,
 		OnEvent: func(e pipeline.Event) {
 			p.cx.Post(func() { p.event(seq, e) })
 		},
 	})
+	// The rate decides whether the audio passes through as it opens.
+	pl.SetRate(p.rateV)
 	go func() {
 		info, err := pl.OpenSources(pipeline.Source{Location: source, Header: cfg.header}, cfg.audio)
 		p.cx.Post(func() {
@@ -257,6 +268,7 @@ func (p *Player) tick() {
 	}
 	p.position.Set(st.Position)
 	p.buffered.Set(max(p.pl.Buffered(), st.Position))
+	p.output.Set(outputOf(p.pl.AudioOutput()))
 	// The bandwidth may have changed the variant.
 	p.videoTrack.Set(p.pl.VideoTrack())
 	p.audioTrack.Set(p.pl.AudioTrack())
@@ -383,6 +395,24 @@ func (p *Player) SetLoop(l bool) {
 	}
 }
 
+// SetPassthrough passes the audio of codecs, none for 0, undecoded to
+// the receiver the output device drives, such as an amplifier on HDMI or
+// S/PDIF, which decodes it: through WASAPI in exclusive mode on Windows,
+// a hogged CoreAudio device with an encoded format on macOS, and a
+// PulseAudio sink with passthrough formats on Linux. It is off unless
+// set. A track of another codec, a rate other than 1, enhanced DTS, and
+// a device that takes no such stream play as PCM, as AudioOutput tells.
+// Passing through, volume does not change the sound and muting sends
+// silence the receiver understands. Changing it while a track of the
+// codecs plays starts its sound again from the position.
+func (p *Player) SetPassthrough(codecs Passthrough) {
+	p.passV = codecs
+	p.pass.Set(codecs)
+	if p.ready() {
+		p.pl.SetPassthrough(pipeline.Passthrough(codecs))
+	}
+}
+
 // SelectAudio plays the audio track id, or no sound for -1.
 func (p *Player) SelectAudio(id int) error {
 	if !p.ready() {
@@ -485,6 +515,7 @@ func (p *Player) Close() {
 	p.closePipeline()
 	p.wantPlay = false
 	p.info.Set(nil)
+	p.output.Set(AudioOutput{})
 	p.state.Set(Idle)
 }
 
@@ -546,6 +577,14 @@ func (p *Player) Rate() float64   { return p.rate.Get() }
 func (p *Player) Volume() float64 { return p.volume.Get() }
 func (p *Player) Muted() bool     { return p.muted.Get() }
 func (p *Player) Loop() bool      { return p.loop.Get() }
+
+// Passthrough is the codecs SetPassthrough last set.
+func (p *Player) Passthrough() Passthrough { return p.pass.Get() }
+
+// AudioOutput is what the audio output plays now: the playing track
+// passing through or PCM, the device stream's rate and channels, and why
+// it plays PCM though passthrough was set for its codec.
+func (p *Player) AudioOutput() AudioOutput { return p.output.Get() }
 
 // HardwareDevice is the device video decodes on: "videotoolbox",
 // "d3d11va" or "vaapi", or empty for software decoding.

@@ -99,3 +99,29 @@ func TestBitmapSubtitlesShowOverThePicture(t *testing.T) {
 	play(t, app, 5*time.Second, func() bool { return len(app.Query("id:bitmap-cue")) == 2 })
 	play(t, app, 5*time.Second, func() bool { return !app.Exists("id:bitmap-cue") })
 }
+
+// TestPassthroughShowsTheOutput turns passthrough on for the AC-3 track
+// and reads what the device plays: the stream passing through where the
+// device takes it, or PCM with the device refusing it.
+func TestPassthroughShowsTheOutput(t *testing.T) {
+	src, err := filepath.Abs(filepath.Join("..", "..", "testdata", "passthrough.mkv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NSGO_MEDIA_DEMO_SOURCE", src)
+	app := nsgotest.Start(t, Root)
+	output := func() string {
+		if q := app.Query("id:output"); len(q) > 0 {
+			return q[0].Text
+		}
+		return ""
+	}
+	play(t, app, 5*time.Second, func() bool { return strings.HasPrefix(output(), "PCM · ") })
+	app.Press("id:passthrough")
+	play(t, app, 5*time.Second, func() bool {
+		return strings.HasPrefix(output(), "AC-3 passthrough · 48 kHz · 2 ch") || strings.HasPrefix(output(), "PCM, the device refused")
+	})
+	t.Logf("output: %s", output())
+	app.Press("id:passthrough")
+	play(t, app, 5*time.Second, func() bool { return strings.HasPrefix(output(), "PCM · ") })
+}

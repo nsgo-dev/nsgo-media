@@ -38,6 +38,10 @@ HLS and DASH, on demand and live, with the variant chosen by the bandwidth or by
 
 PGS, DVD and DVB tracks and external VobSub files decoded to RGBA bitmaps on their canvas, in the cues text subtitles use, with the placement of a canvas over the view's picture.
 
+## 9. Audio passthrough
+
+AC-3, E-AC-3 and DTS' core passed through in IEC 61937 bursts, which FFmpeg's spdif muxer wraps, on the three desktops, with PCM where the device, the rate or the codec does not allow it.
+
 ## Later
 
 | Goal | Depends on |
@@ -45,4 +49,4 @@ PGS, DVD and DVB tracks and external VobSub files decoded to RGBA bitmaps on the
 | Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
 | HDR output and tone mapping | GPU rendering |
 | iOS and Android | FFmpeg builds for them and a loader for their app packages |
-| Audio passthrough | Requests from apps |
+| Audio passthrough on iOS and Android, and of DTS-HD and TrueHD | Mobile targets; HDMI's 8-channel high bit rate carrier on each desktop |

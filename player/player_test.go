@@ -339,3 +339,38 @@ func TestPlaceOnTheView(t *testing.T) {
 		t.Errorf("DVD bitmap placed at %+v", got)
 	}
 }
+
+// TestPlayerPassesAudioThrough checks SetPassthrough and AudioOutput: the
+// AC-3 track passing through a device that takes it, PCM at another rate,
+// and PCM again once passthrough is off.
+func TestPlayerPassesAudioThrough(t *testing.T) {
+	var p *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.openIEC = func(f audioout.IEC, fill audioout.FillIEC) (audioout.Output, error) {
+			return audioout.NewNullIEC(f, fill), nil
+		}
+		p.SetPassthrough(PassthroughAC3 | PassthroughDTS)
+		p.Open(fixture(t, "passthrough.mkv"))
+		p.Play()
+		return View{Player: p}
+	})
+	if p.Passthrough() != PassthroughAC3|PassthroughDTS {
+		t.Fatalf("passthrough %v", p.Passthrough())
+	}
+	play(t, app, 3*time.Second, func() bool { return p.AudioOutput().Passthrough })
+	if o := p.AudioOutput(); o.Codec != "ac3" || o.SampleRate != 48000 || o.Channels != 2 {
+		t.Fatalf("output %+v", o)
+	}
+	p.SetRate(2)
+	play(t, app, 3*time.Second, func() bool { return p.AudioOutput().Fallback == FallbackRate })
+	p.SetRate(1)
+	play(t, app, 3*time.Second, func() bool { return p.AudioOutput().Passthrough })
+	p.SetPassthrough(0)
+	play(t, app, 3*time.Second, func() bool { o := p.AudioOutput(); return !o.Passthrough && o.Fallback == FallbackNone })
+	p.Close()
+	if o := p.AudioOutput(); o != (AudioOutput{}) {
+		t.Fatalf("output %+v after Close", o)
+	}
+}
