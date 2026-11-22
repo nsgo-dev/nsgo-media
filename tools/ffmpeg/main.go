@@ -1,10 +1,11 @@
 // Command ffmpeg builds the FFmpeg shared libraries NSGo Media loads, with
-// LGPL components only, at the pinned version, for each desktop target, into
-// archives that nsgo-media bundle puts into an app's packages, and FFmpeg's
-// source with its diff into source/, which an app offers beside them.
+// LGPL components only, at the pinned version, for each desktop target and
+// as frameworks for iOS, into archives that nsgo-media bundle puts into an
+// app's packages, and FFmpeg's source with its diff into source/, which an
+// app offers beside them.
 //
-// It runs on macOS with Xcode and Go: Xcode's clang builds the macOS
-// targets, and a pinned Zig, which it downloads, cross-compiles Windows and
+// It runs on macOS with Xcode and Go: Xcode's clang builds the macOS and
+// iOS targets, and a pinned Zig, which it downloads, cross-compiles Windows and
 // Linux. Every download is checked against its pinned SHA-256.
 //
 //	go run ./tools/ffmpeg                        # every target into dist/ffmpeg

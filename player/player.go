@@ -5,12 +5,18 @@
 // A Player belongs to the scope that made it and to its engine's
 // goroutine: call its methods from components, effects and event handlers.
 // It decodes on its own goroutines and closes when its scope is disposed.
+//
+// On iOS a player pauses as an interruption, such as a call or Siri,
+// begins, and plays again as it ends if the system allows it; it pauses for
+// good as headphones are unplugged or the app goes to the background,
+// since it does not play there.
 package player
 
 import (
 	"errors"
 	"image"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/nsgo-dev/nsgo/core"
@@ -33,15 +39,18 @@ type Player struct {
 	openIEC    func(audioout.IEC, audioout.FillIEC) (audioout.Output, error)
 
 	// What the app asked for, applied when the source opens.
-	wantPlay   bool
-	pendSeek   *pendingSeek
-	rateV      float64
-	volumeV    float64
-	mutedV     bool
-	loopV      bool
-	passV      Passthrough
-	pendSubs   []string
-	subtitleID int
+	wantPlay bool
+	// interrupted is a pause an iOS interruption made, which its end may
+	// undo.
+	interrupted bool
+	pendSeek    *pendingSeek
+	rateV       float64
+	volumeV     float64
+	mutedV      bool
+	loopV       bool
+	passV       Passthrough
+	pendSubs    []string
+	subtitleID  int
 
 	state      *core.Signal[State]
 	err        *core.Signal[error]
@@ -110,8 +119,44 @@ func New(cx *core.Scope, opts ...Option) *Player {
 	for _, o := range opts {
 		o(p)
 	}
+	cx.Cleanup(audioout.Watch(func(e audioout.Event) { cx.Post(func() { p.system(e) }) }))
+	if runtime.GOOS == "ios" {
+		// The app may start in the background, before its scene shows:
+		// only going there pauses.
+		was, seen := core.LifecycleActive, false
+		cx.Effect(func() {
+			now := cx.Env().Lifecycle()
+			left := seen && now == core.LifecycleBackground && was != core.LifecycleBackground
+			was, seen = now, true
+			if left {
+				cx.Post(func() {
+					if p.wantPlay {
+						p.Pause()
+					}
+				})
+			}
+		})
+	}
 	cx.Cleanup(p.Close)
 	return p
+}
+
+// system follows what iOS did to the audio output: an interruption pauses
+// the player and, if the system says so as it ends, plays it again; a lost
+// route, such as headphones unplugged, pauses it.
+func (p *Player) system(e audioout.Event) {
+	switch e.Kind {
+	case audioout.Interrupted, audioout.RouteLost:
+		if p.wantPlay {
+			p.Pause()
+			p.interrupted = e.Kind == audioout.Interrupted
+		}
+	case audioout.InterruptionEnded:
+		if p.interrupted && e.Resume {
+			p.Play()
+		}
+		p.interrupted = false
+	}
 }
 
 // OpenOption configures how Open reads a source.
@@ -292,6 +337,7 @@ func (p *Player) tick() {
 // Play plays, from the start when it ended.
 func (p *Player) Play() {
 	p.wantPlay = true
+	p.interrupted = false
 	if p.ready() {
 		p.pl.SetPaused(false)
 		p.tick()
@@ -301,6 +347,7 @@ func (p *Player) Play() {
 // Pause pauses.
 func (p *Player) Pause() {
 	p.wantPlay = false
+	p.interrupted = false
 	if p.ready() {
 		p.pl.SetPaused(true)
 		p.tick()

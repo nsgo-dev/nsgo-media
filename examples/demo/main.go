@@ -5,6 +5,13 @@
 //	go tool nsgo dev examples/demo              # pick a file or enter a URL in the app
 //	go run ./examples/demo movie.mkv            # or open one at start
 //	go run ./examples/demo https://…/index.m3u8 # an HLS or DASH stream
+//
+// On the iOS simulator, from examples/demo, after go run ./tools/ffmpeg
+// -target ios_simulator in the repository's root:
+//
+//	go tool nsgo build -target ios_simulator
+//	go tool nsgo-media bundle dist/*ios_simulator
+//	xcrun simctl install booted "dist/NSGo Media Demo-0.1.0-ios_simulator/NSGo Media Demo.app"
 package main
 
 import (
@@ -29,6 +36,9 @@ import (
 // NSGO_MEDIA_DEMO_SOURCE.
 func startSource() string {
 	for _, a := range os.Args[1:] {
+		if strings.HasPrefix(a, "-test.") {
+			break // the demo's tests run as the app, given go test's flags
+		}
 		if !strings.HasPrefix(a, "-") {
 			return a
 		}
@@ -58,8 +68,11 @@ func Root(cx *core.Scope) core.Node {
 		p.Open(path)
 		p.Play()
 	}
+	// A touch screen keeps the controls out of the system's areas, makes
+	// them larger and plays or pauses with a tap on the picture.
+	touch := !cx.Env().Desktop()
 	return core.View{
-		Style: core.Style{FlexGrow: 1, Background: core.RGB(0x000000)},
+		Style: core.Style{FlexGrow: 1, Background: core.RGB(0x000000), PaddingEnv: core.EnvAll(core.EnvSafeArea)},
 		OnFileDrop: func(uris []string) {
 			for _, u := range uris {
 				open(strings.TrimPrefix(u, "file://"))
@@ -73,13 +86,14 @@ func Root(cx *core.Scope) core.Node {
 				TestID:  "video",
 				Style:   core.Style{FlexGrow: 1, FlexShrink: 1},
 				Children: []core.Node{
+					tapToPlay(p, touch),
 					bitmapSubtitles(cx, p, fit.Get),
 					subtitles(p),
 					status(p),
 				},
 			},
 			progress(p),
-			controls(cx, p, fit),
+			controls(cx, p, fit, touch),
 		},
 	}
 }
@@ -115,6 +129,31 @@ func topBar(cx *core.Scope, p *player.Player, url *core.Signal[string], open fun
 				TestID: "url",
 				Style:  core.Style{FlexGrow: 1},
 			},
+		},
+	}
+}
+
+// playing tells the player playing or about to.
+func playing(p *player.Player) bool {
+	s := p.State()
+	return s == player.Playing || s == player.Buffering
+}
+
+// tapToPlay is, on a touch screen, a layer over the picture whose tap
+// plays or pauses.
+func tapToPlay(p *player.Player, touch bool) core.Node {
+	if !touch {
+		return nil
+	}
+	return core.View{
+		TestID: "picture",
+		Style:  core.Style{Position: core.Absolute, Left: core.Pt(0), Right: core.Pt(0), Top: core.Pt(0), Bottom: core.Pt(0)},
+		OnPress: func(core.PressEvent) {
+			if playing(p) {
+				p.Pause()
+			} else {
+				p.Play()
+			}
 		},
 	}
 }
@@ -257,12 +296,34 @@ func progress(p *player.Player) core.Node {
 	}
 }
 
-func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) core.Node {
-	playing := func() bool { s := p.State(); return s == player.Playing || s == player.Buffering }
+func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit], touch bool) core.Node {
+	playing := func() bool { return playing(p) }
+	// A finger needs 44 pt; the system passes no audio through on a phone
+	// or tablet.
+	var size core.Points
+	var passthrough core.Node
+	if touch {
+		size = 44
+	} else {
+		passthrough = ui.IconButton{
+			TestID:   "passthrough",
+			Icon:     lucide.HdmiPort,
+			Label:    "Pass AC-3, E-AC-3 and DTS to a receiver",
+			Selected: func() bool { return p.Passthrough() != 0 },
+			OnPress: func() {
+				if p.Passthrough() != 0 {
+					p.SetPassthrough(0)
+				} else {
+					p.SetPassthrough(player.PassthroughAC3 | player.PassthroughEAC3 | player.PassthroughDTS)
+				}
+			},
+		}
+	}
 	return core.View{
 		Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 6, Padding: core.All(8), Wrap: core.Wrap},
 		Children: []core.Node{
 			ui.IconButton{
+				Size:   size,
 				TestID: "play",
 				Icon: func() *core.SVG {
 					if playing() {
@@ -284,18 +345,19 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) co
 					}
 				},
 			},
-			ui.IconButton{TestID: "stop", Icon: lucide.Square, Label: "Stop", OnPress: p.Stop},
-			ui.IconButton{TestID: "step-back", Icon: lucide.StepBack, Label: "Previous frame", OnPress: func() {
+			ui.IconButton{Size: size, TestID: "stop", Icon: lucide.Square, Label: "Stop", OnPress: p.Stop},
+			ui.IconButton{Size: size, TestID: "step-back", Icon: lucide.StepBack, Label: "Previous frame", OnPress: func() {
 				p.Pause()
 				p.StepBackward()
 			}},
-			ui.IconButton{TestID: "step", Icon: lucide.StepForward, Label: "Next frame", OnPress: func() {
+			ui.IconButton{Size: size, TestID: "step", Icon: lucide.StepForward, Label: "Next frame", OnPress: func() {
 				p.Pause()
 				p.StepForward()
 			}},
-			ui.IconButton{TestID: "snapshot", Icon: lucide.Camera, Label: "Save snapshot", OnPress: func() { saveSnapshot(cx, p) }},
-			ui.IconButton{TestID: "loop", Icon: lucide.Repeat, Label: "Loop", Selected: p.Loop, OnPress: func() { p.SetLoop(!p.Loop()) }},
+			ui.IconButton{Size: size, TestID: "snapshot", Icon: lucide.Camera, Label: "Save snapshot", OnPress: func() { saveSnapshot(cx, p) }},
+			ui.IconButton{Size: size, TestID: "loop", Icon: lucide.Repeat, Label: "Loop", Selected: p.Loop, OnPress: func() { p.SetLoop(!p.Loop()) }},
 			ui.IconButton{
+				Size:   size,
 				TestID: "mute",
 				Icon: func() *core.SVG {
 					if p.Muted() {
@@ -309,19 +371,7 @@ func controls(cx *core.Scope, p *player.Player, fit *core.Signal[player.Fit]) co
 			core.View{Style: core.Style{Width: core.Pt(100)}, Children: []core.Node{
 				ui.Slider{TestID: "volume", Label: "Volume", Max: 1, Value: p.Volume, OnChange: p.SetVolume},
 			}},
-			ui.IconButton{
-				TestID:   "passthrough",
-				Icon:     lucide.HdmiPort,
-				Label:    "Pass AC-3, E-AC-3 and DTS to a receiver",
-				Selected: func() bool { return p.Passthrough() != 0 },
-				OnPress: func() {
-					if p.Passthrough() != 0 {
-						p.SetPassthrough(0)
-					} else {
-						p.SetPassthrough(player.PassthroughAC3 | player.PassthroughEAC3 | player.PassthroughDTS)
-					}
-				},
-			},
+			passthrough,
 			core.Text{
 				TestID:      "output",
 				ContentFunc: func() string { return outputText(p) },

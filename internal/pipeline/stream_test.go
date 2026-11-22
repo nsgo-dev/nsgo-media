@@ -21,7 +21,7 @@ import (
 // streamServer serves testdata over HTTP, as a CDN serves HLS and DASH.
 func streamServer(t *testing.T, extra map[string]http.HandlerFunc) *httptest.Server {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", "testdata"))
+	root, err := filepath.Abs(testdata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,7 +336,7 @@ func TestDASH(t *testing.T) {
 
 func TestStreamCloseCancelsRequests(t *testing.T) {
 	// A segment that never comes: Close must cancel its request.
-	root, err := filepath.Abs(filepath.Join("..", "..", "testdata"))
+	root, err := filepath.Abs(testdata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestStreamCloseCancelsRequests(t *testing.T) {
 
 func TestStreamSendsHeaders(t *testing.T) {
 	// Every playlist and segment request carries the source's headers.
-	root, err := filepath.Abs(filepath.Join("..", "..", "testdata"))
+	root, err := filepath.Abs(testdata())
 	if err != nil {
 		t.Fatal(err)
 	}

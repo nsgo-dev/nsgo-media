@@ -13,7 +13,7 @@ import (
 
 func fixture(t *testing.T, name string) string {
 	t.Helper()
-	path, err := filepath.Abs(filepath.Join("..", "..", "testdata", name))
+	path, err := filepath.Abs(filepath.Join(testdata(), name))
 	if err != nil {
 		t.Fatal(err)
 	}

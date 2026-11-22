@@ -34,6 +34,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 | --- | --- |
 | Adaptive streams | HLS and DASH over HTTP(S), on demand and live: a live stream reports no duration and, keeping only a sliding window, no seeking. The variant follows the measured bandwidth unless the app lists the variants and chooses one. HLS segments encrypted with AES-128 |
 | Audio passthrough | AC-3, E-AC-3 and DTS' core sent undecoded, in IEC 61937 bursts, to a receiver on HDMI or S/PDIF, for the codecs the app turns it on for, off by default: WASAPI in exclusive mode on Windows, a hogged CoreAudio device with an encoded format on macOS, a PulseAudio or PipeWire sink with passthrough formats on Linux. PCM plays instead where the device takes no such stream, refuses or fails to start it, at rates other than 1×, and for enhanced DTS such as DTS-HD, and the state tells which plays, the device stream's rate and channels and why. Volume does not change passed-through sound and muting sends pause bursts; it stays the clock through seeking and changing the track |
+| iOS | iOS 15 or later on devices (arm64) and the arm64 simulator, with everything above but passthrough, which iOS offers no app: FFmpeg as frameworks in the app, VideoToolbox decoding and an AudioQueue on the system's output. A call, Siri or another interruption pauses the player, which plays again as it ends where the system allows it; headphones unplugged and the app going to the background pause it until the app plays. It plays nothing in the background, and in the session's category the app or NSGo set: until NSGo lets a library hold the session ([nsgo#1931](https://github.com/nsgo-dev/nsgo/issues/1931)), iOS's default one, which the Ring/Silent switch silences |
 | Bitmap subtitles | PGS, DVD and DVB subtitle tracks of the source and external VobSub files (`.idx` with its `.sub`), delivered as the same cues as text, each with its seek generation and RGBA bitmaps placed on the source's canvas. A cue replaces the one before it, as PGS updates and clears its picture; cues hold while paused and none of the old position stays after a seek. The core places a canvas over the picture as the view fits and turns it, and the app draws the bitmaps |
 
 ## Out of scope
@@ -43,7 +44,7 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 - Recording, capture, transcoding and encoding.
 - DRM, disc images and protocol receivers such as DLNA or AirPlay.
 - Rendering subtitles into the picture, and ASS styling beyond text.
-- Mobile targets, the web and mini programs; the [roadmap](roadmap.md) orders them.
+- Android, background playback on iOS, the web and mini programs; the [roadmap](roadmap.md) orders them.
 
 ## Constraints
 

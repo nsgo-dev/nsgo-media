@@ -1,6 +1,7 @@
 // Package library finds FFmpeg's shared libraries: the directory the
 // NSGO_MEDIA_FFMPEG environment variable names, the app's package, beside
-// the executable, then the system's.
+// the executable, then the system's. An iOS app has them as frameworks in
+// its Frameworks, and no others.
 package library
 
 import (
@@ -16,9 +17,12 @@ const EnvDir = "NSGO_MEDIA_FFMPEG"
 
 // FileName is the file a library has on goos at a major version, as
 // FFmpeg's build names it: libavutil.61.dylib, avutil-61.dll or
-// libavutil.so.61.
+// libavutil.so.61, and on iOS the binary of the framework tools/ffmpeg
+// makes, libavutil.framework/libavutil, whose major the loader checks.
 func FileName(goos, lib string, major int) string {
 	switch goos {
+	case "ios":
+		return fmt.Sprintf("lib%s.framework/lib%s", lib, lib)
 	case "darwin":
 		return fmt.Sprintf("lib%s.%d.dylib", lib, major)
 	case "windows":
@@ -51,6 +55,14 @@ func dirs(goos, env, exe string) []string {
 	}
 	if env != "" {
 		add(env)
+	}
+	if goos == "ios" {
+		// An iOS app's executable is at its bundle's root, beside its
+		// Frameworks, and loads no library from elsewhere.
+		if exe != "" {
+			add(filepath.Join(filepath.Dir(exe), "Frameworks"))
+		}
+		return out
 	}
 	if exe != "" {
 		bin := filepath.Dir(exe)

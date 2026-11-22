@@ -1,7 +1,8 @@
 // Command nsgo-media puts the FFmpeg libraries NSGo Media loads into an
 // app's packages that nsgo build wrote: a macOS app's Contents/Frameworks,
-// signed again with the app, and beside the executable of a Windows or
-// Linux package, with FFmpeg's license and build note.
+// signed again with the app, an iOS app's Frameworks, and beside the
+// executable of a Windows or Linux package, with FFmpeg's license and build
+// note.
 //
 // Add it to an app's tools and run it after building:
 //
@@ -28,7 +29,7 @@ func main() {
 	fs := flag.NewFlagSet("bundle", flag.ExitOnError)
 	libs := fs.String("libs", "", "the directory of the ffmpeg-<version>-<target>.zip archives tools/ffmpeg wrote; by default dist/ffmpeg in the current directory, or else in the NSGo Media module's directory")
 	target := fs.String("target", "", "the packages' target, such as macos_arm64; by default the end of each package's name, as nsgo build names them")
-	sign := fs.String("sign", "", "the identity a macOS app is signed again with; by default the one it is signed with")
+	sign := fs.String("sign", "", "the identity a macOS or iOS app is signed again with; by default the one it is signed with")
 	fs.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: nsgo-media bundle [-libs DIR] [-target T] [-sign IDENTITY] PACKAGE...")
 		fs.PrintDefaults()

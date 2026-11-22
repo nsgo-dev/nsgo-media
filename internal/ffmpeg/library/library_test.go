@@ -11,6 +11,7 @@ func TestFileName(t *testing.T) {
 		{"darwin", "libavutil.61.dylib"},
 		{"windows", "avutil-61.dll"},
 		{"linux", "libavutil.so.61"},
+		{"ios", "libavutil.framework/libavutil"},
 	} {
 		if got := FileName(c.goos, "avutil", 61); got != c.want {
 			t.Errorf("FileName(%s) = %s, want %s", c.goos, got, c.want)
@@ -32,5 +33,11 @@ func TestDirsOrder(t *testing.T) {
 	got = dirs("linux", "", filepath.Join("/opt", "demo", "demo"))
 	if !slices.Equal(got, []string{filepath.Join("/opt", "demo"), ""}) {
 		t.Fatalf("linux dirs = %v", got)
+	}
+
+	app := filepath.Join("/private", "var", "containers", "Bundle", "Application", "ID", "Demo.app")
+	got = dirs("ios", "", filepath.Join(app, "Demo"))
+	if !slices.Equal(got, []string{filepath.Join(app, "Frameworks")}) {
+		t.Fatalf("ios dirs = %v", got)
 	}
 }

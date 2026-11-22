@@ -19,7 +19,7 @@ func TestMain(m *testing.M) { nsgotest.Main(m) }
 
 func fixture(t *testing.T, name string) string {
 	t.Helper()
-	path, err := filepath.Abs(filepath.Join("..", "testdata", name))
+	path, err := filepath.Abs(filepath.Join(testdata(), name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestPlayerSubtitlesAndTracks(t *testing.T) {
 
 func TestPlayerExternalAudioWithHeaders(t *testing.T) {
 	header := http.Header{"Referer": {"https://www.example.com/"}}
-	files := http.FileServer(http.Dir(filepath.Join("..", "testdata")))
+	files := http.FileServer(http.Dir(testdata()))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Referer") != header.Get("Referer") {
 			http.Error(w, "no referer", http.StatusForbidden)

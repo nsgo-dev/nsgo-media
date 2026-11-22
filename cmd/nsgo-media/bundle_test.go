@@ -30,7 +30,8 @@ func TestPackageTarget(t *testing.T) {
 		"dist/My App-1.0.0-windows_x64": "windows_x64",
 		"dist/My App-1.0.0-macos_arm64": "macos_arm64",
 		"dist/releases":                 "",
-		"dist/My App-1.0.0-ios":         "",
+		"dist/My App-1.0.0-ios":         "ios",
+		"dist/My App-1.0.0-tvos":        "",
 	} {
 		if got := packageTarget(dir); got != want {
 			t.Errorf("packageTarget(%q) = %q, want %q", dir, got, want)
@@ -112,5 +113,47 @@ func TestVersionMatchesTheBuildTool(t *testing.T) {
 	}
 	if want := `const FFmpegVersion = "` + ffmpegVersion + `"`; !strings.Contains(string(pinned), want) {
 		t.Errorf("tools/ffmpeg/pinned.go has no %s", want)
+	}
+}
+
+func TestBundlePutsFrameworksIntoAnIOSApp(t *testing.T) {
+	libs, dist := t.TempDir(), t.TempDir()
+	writeArchive(t, libs, "ios", map[string]string{
+		"libavutil.framework/libavutil": "avutil", "libavutil.framework/Info.plist": "plist",
+		"COPYING.LGPLv2.1": "license", "BUILD.txt": "note",
+	})
+	pkg := filepath.Join(dist, "My App-1.0.0-ios")
+	app := filepath.Join(pkg, "My App.app")
+	os.MkdirAll(app, 0o755)
+	os.WriteFile(filepath.Join(app, "My App"), []byte("exe"), 0o755)
+	ipa := filepath.Join(pkg, "My App.ipa")
+	os.WriteFile(ipa, nil, 0o644)
+
+	// The device app is unsigned, so its frameworks are left for its
+	// signing.
+	if err := bundle(pkg, "", "", &source{dir: libs}); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{
+		"Frameworks/libavutil.framework/libavutil":  "avutil",
+		"Frameworks/libavutil.framework/Info.plist": "plist",
+		"FFmpeg/COPYING.LGPLv2.1":                   "license",
+	} {
+		got, err := os.ReadFile(filepath.Join(app, name))
+		if err != nil || string(got) != want {
+			t.Errorf("%s = %q, %v", name, got, err)
+		}
+	}
+	zr, err := zip.OpenReader(ipa)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zr.Close()
+	found := false
+	for _, f := range zr.File {
+		found = found || f.Name == "Payload/My App.app/Frameworks/libavutil.framework/libavutil"
+	}
+	if !found {
+		t.Error("the IPA lacks the framework")
 	}
 }

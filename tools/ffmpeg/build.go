@@ -157,20 +157,29 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		args = append(args,
-			"--cc="+clang+" -arch "+t.arch,
-			"--extra-cflags=-mmacosx-version-min="+macOSMin,
-			"--extra-ldflags=-mmacosx-version-min="+macOSMin+" -Wl,-rpath,@loader_path",
-		)
-		if t.arch != hostArch() {
+		sdkOut, err := exec.Command("xcrun", "--sdk", t.sdk, "--show-sdk-path").Output()
+		if err != nil {
+			return nil, nil, fmt.Errorf("xcrun --sdk %s --show-sdk-path: %w; install Xcode", t.sdk, err)
+		}
+		sdk := strings.TrimSpace(string(sdkOut))
+		cc := clang + " -arch " + t.arch + " -target " + t.clangTarget() + " -isysroot " + sdk
+		// A macOS library finds its siblings beside it, an iOS framework's
+		// binary in the frameworks beside its own.
+		rpath := "@loader_path"
+		if t.ios() {
+			rpath = "@loader_path/.."
+		}
+		args = append(args, "--cc="+cc, "--extra-ldflags=-Wl,-rpath,"+rpath)
+		if t.arch != hostArch() || t.ios() {
 			args = append(args, "--enable-cross-compile")
 		}
-		sdk, err := exec.Command("xcrun", "--show-sdk-path").Output()
-		if err != nil {
-			return nil, nil, fmt.Errorf("xcrun --show-sdk-path: %w; install Xcode", err)
+		if !t.ios() {
+			// Host tools FFmpeg builds and runs, such as swscale's
+			// assembly generator, take SDKROOT too: an iOS one would make
+			// them iOS programs.
+			env = append(env, "SDKROOT="+sdk)
 		}
-		env = append(env, "SDKROOT="+strings.TrimSpace(string(sdk)))
-		xml, err := b.buildLibxml2(t, clang+" -arch "+t.arch+" -mmacosx-version-min="+macOSMin, env)
+		xml, err := b.buildLibxml2(t, cc, env)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -252,6 +261,12 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 				return "", err
 			}
 		}
+		if t.ios() {
+			if err := addFramework(zw, t, dir, lib, path); err != nil {
+				return "", err
+			}
+			continue
+		}
 		if err := addFile(zw, entries[i].Name(), path, 0o755); err != nil {
 			return "", err
 		}
@@ -296,6 +311,66 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 	}
 	fmt.Printf("== %s: %s\n", t.name, name)
 	return name, f.Close()
+}
+
+// addFramework adds an iOS target's library at path as the framework
+// lib<name>.framework, whose binary is lib<name>: its install name and
+// those of the libraries it links become the frameworks', and Info.plist
+// names it for the target's platform. The app's signing signs it.
+func addFramework(zw *zip.Writer, t target, dir, lib, path string) error {
+	fw := "lib" + lib + ".framework"
+	bin := filepath.Join(dir, "frameworks", fw, "lib"+lib)
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(bin, data, 0o755); err != nil {
+		return err
+	}
+	args := []string{"-id", "@rpath/" + fw + "/lib" + lib}
+	out, err := exec.Command("otool", "-L", bin).Output()
+	if err != nil {
+		return fmt.Errorf("otool -L %s: %w", bin, err)
+	}
+	for _, m := range regexp.MustCompile(`@rpath/lib([a-z]+)\.\d+\.dylib`).FindAllStringSubmatch(string(out), -1) {
+		if m[1] != lib {
+			args = append(args, "-change", m[0], "@rpath/lib"+m[1]+".framework/lib"+m[1])
+		}
+	}
+	if err := run(dir, nil, "install_name_tool", append(args, bin)...); err != nil {
+		return err
+	}
+	if err := addFile(zw, fw+"/lib"+lib, bin, 0o755); err != nil {
+		return err
+	}
+	w, err := zw.Create(fw + "/Info.plist")
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(w, frameworkPlist(t, lib))
+	return err
+}
+
+// frameworkPlist is the Info.plist of lib's framework for t.
+func frameworkPlist(t target, lib string) string {
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key><string>lib` + lib + `</string>
+	<key>CFBundleIdentifier</key><string>org.ffmpeg.lib` + lib + `</string>
+	<key>CFBundleName</key><string>lib` + lib + `</string>
+	<key>CFBundlePackageType</key><string>FMWK</string>
+	<key>CFBundleShortVersionString</key><string>` + FFmpegVersion + `</string>
+	<key>CFBundleVersion</key><string>` + FFmpegVersion + `</string>
+	<key>CFBundleSupportedPlatforms</key><array><string>` + t.platform() + `</string></array>
+	<key>MinimumOSVersion</key><string>` + iOSMin + `</string>
+</dict>
+</plist>
+`
 }
 
 func addFile(zw *zip.Writer, name, path string, mode os.FileMode) error {

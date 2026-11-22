@@ -8,4 +8,4 @@ dev:
 
 build:
   output: dist
-  targets: [macos_arm64, macos_x64, windows_x64, linux_x64]
+  targets: [macos_arm64, macos_x64, windows_x64, linux_x64, ios, ios_simulator]

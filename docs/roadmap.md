@@ -42,11 +42,16 @@ PGS, DVD and DVB tracks and external VobSub files decoded to RGBA bitmaps on the
 
 AC-3, E-AC-3 and DTS' core passed through in IEC 61937 bursts, which FFmpeg's spdif muxer wraps, on the three desktops, with PCM where the device, the rate or the codec does not allow it.
 
+## 10. iOS
+
+FFmpeg built as frameworks for iOS devices and the simulator with VideoToolbox, the loader finding them in the app, an AudioQueue output that follows interruptions, unplugged headphones and the background, `bundle` for iOS apps, and the demo's controls for touch. Verified on the simulator and once on an iPhone (2026-11-22).
+
 ## Later
 
 | Goal | Depends on |
 | --- | --- |
 | Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
 | HDR output and tone mapping | GPU rendering |
-| iOS and Android | FFmpeg builds for them and a loader for their app packages |
-| Audio passthrough on iOS and Android, and of DTS-HD and TrueHD | Mobile targets; HDMI's 8-channel high bit rate carrier on each desktop |
+| Android | FFmpeg builds for it and a loader for its app packages |
+| The iOS audio session at Playback, so the Ring/Silent switch does not silence a movie, and playing in the background | NSGo letting a library hold the session ([nsgo#1931](https://github.com/nsgo-dev/nsgo/issues/1931)), or its planned `audio.Output` ([nsgo#1057](https://github.com/nsgo-dev/nsgo/issues/1057)); the background also needs the app's `audio` background mode |
+| Audio passthrough on Android, and of DTS-HD and TrueHD | Android; HDMI's 8-channel high bit rate carrier on each desktop |

@@ -399,7 +399,7 @@ func (p *Pipeline) setDiscards() {
 
 func hardwareDevice() string {
 	switch runtime.GOOS {
-	case "darwin":
+	case "darwin", "ios":
 		return "videotoolbox"
 	case "windows":
 		return "d3d11va"

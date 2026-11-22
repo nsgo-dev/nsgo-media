@@ -1,10 +1,13 @@
 package main
 
-// target is one desktop the libraries are built for.
+// target is one platform the libraries are built for.
 type target struct {
 	name string
-	os   string // darwin, windows or linux
+	os   string // darwin (macOS and iOS), windows or linux
 	arch string // FFmpeg's: arm64 or x86_64
+	// sdk is the Xcode SDK an Apple target builds with; a device or
+	// simulator SDK makes an iOS target, whose libraries are frameworks.
+	sdk string
 	// zig is Zig's target triple; empty builds with Xcode's clang.
 	zig string
 	// flags are what this target adds to commonFlags.
@@ -12,8 +15,12 @@ type target struct {
 }
 
 var targets = []target{
-	{name: "macos_arm64", os: "darwin", arch: "arm64", flags: macFlags},
-	{name: "macos_x64", os: "darwin", arch: "x86_64", flags: macFlags},
+	{name: "macos_arm64", os: "darwin", arch: "arm64", sdk: "macosx", flags: macFlags},
+	{name: "macos_x64", os: "darwin", arch: "x86_64", sdk: "macosx", flags: macFlags},
+	// iOS loads native code only from frameworks, so each library is one,
+	// as NSGo's iOS targets name them: devices and the arm64 simulator.
+	{name: "ios", os: "darwin", arch: "arm64", sdk: "iphoneos", flags: macFlags},
+	{name: "ios_simulator", os: "darwin", arch: "arm64", sdk: "iphonesimulator", flags: macFlags},
 	{name: "windows_x64", os: "windows", arch: "x86_64", zig: "x86_64-windows-gnu", flags: []string{
 		"--target-os=mingw32", "--enable-w32threads", "--enable-d3d11va", "--enable-dxva2", "--enable-zlib",
 	}},
@@ -40,8 +47,35 @@ func targetByName(name string) (target, bool) {
 	return target{}, false
 }
 
-// macOSMin is the oldest macOS the libraries run on.
-const macOSMin = "11.0"
+// macOSMin is the oldest macOS the libraries run on, iOSMin the oldest
+// iOS, NSGo's own.
+const (
+	macOSMin = "11.0"
+	iOSMin   = "15.0"
+)
+
+// ios tells an iOS target, whose libraries are frameworks.
+func (t target) ios() bool { return t.sdk == "iphoneos" || t.sdk == "iphonesimulator" }
+
+// clangTarget is the triple Xcode's clang compiles an Apple target for.
+func (t target) clangTarget() string {
+	switch t.sdk {
+	case "iphoneos":
+		return t.arch + "-apple-ios" + iOSMin
+	case "iphonesimulator":
+		return t.arch + "-apple-ios" + iOSMin + "-simulator"
+	}
+	return t.arch + "-apple-macos" + macOSMin
+}
+
+// platform is the CFBundleSupportedPlatforms entry of an iOS target's
+// frameworks.
+func (t target) platform() string {
+	if t.sdk == "iphonesimulator" {
+		return "iPhoneSimulator"
+	}
+	return "iPhoneOS"
+}
 
 var macFlags = []string{
 	"--target-os=darwin", "--enable-pthreads", "--enable-videotoolbox", "--enable-zlib",

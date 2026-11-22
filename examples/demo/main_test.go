@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/nsgotest"
 )
 
@@ -33,7 +34,7 @@ func play(t *testing.T, app *nsgotest.App, timeout time.Duration, cond func() bo
 }
 
 func TestControlsDriveThePlayer(t *testing.T) {
-	src, err := filepath.Abs(filepath.Join("..", "..", "testdata", "av.mkv"))
+	src, err := filepath.Abs(filepath.Join(testdata(), "av.mkv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +66,7 @@ func TestControlsDriveThePlayer(t *testing.T) {
 }
 
 func TestQualityChoosesTheVariant(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", "testdata"))
+	root, err := filepath.Abs(testdata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +85,7 @@ func TestQualityChoosesTheVariant(t *testing.T) {
 }
 
 func TestBitmapSubtitlesShowOverThePicture(t *testing.T) {
-	src, err := filepath.Abs(filepath.Join("..", "..", "testdata", "bitmap.mkv"))
+	src, err := filepath.Abs(filepath.Join(testdata(), "bitmap.mkv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,12 +105,12 @@ func TestBitmapSubtitlesShowOverThePicture(t *testing.T) {
 // and reads what the device plays: the stream passing through where the
 // device takes it, or PCM with the device refusing it.
 func TestPassthroughShowsTheOutput(t *testing.T) {
-	src, err := filepath.Abs(filepath.Join("..", "..", "testdata", "passthrough.mkv"))
+	src, err := filepath.Abs(filepath.Join(testdata(), "passthrough.mkv"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("NSGO_MEDIA_DEMO_SOURCE", src)
-	app := nsgotest.Start(t, Root)
+	app := nsgotest.Start(t, Root, nsgotest.Idiom(core.IdiomDesktop))
 	output := func() string {
 		if q := app.Query("id:output"); len(q) > 0 {
 			return q[0].Text
@@ -117,6 +118,9 @@ func TestPassthroughShowsTheOutput(t *testing.T) {
 		return ""
 	}
 	play(t, app, 5*time.Second, func() bool { return strings.HasPrefix(output(), "PCM · ") })
+	if !app.Exists("id:passthrough") {
+		t.Skip("a touch screen's demo has no passthrough") // under nsgo test -target ios_simulator
+	}
 	app.Press("id:passthrough")
 	play(t, app, 5*time.Second, func() bool {
 		return strings.HasPrefix(output(), "AC-3 passthrough · 48 kHz · 2 ch") || strings.HasPrefix(output(), "PCM, the device refused")
@@ -124,4 +128,33 @@ func TestPassthroughShowsTheOutput(t *testing.T) {
 	t.Logf("output: %s", output())
 	app.Press("id:passthrough")
 	play(t, app, 5*time.Second, func() bool { return strings.HasPrefix(output(), "PCM · ") })
+}
+
+// TestTouchControls runs the demo as a phone shows it: a tap on the
+// picture pauses and plays, the buttons are 44 pt, and no passthrough
+// switch shows.
+func TestTouchControls(t *testing.T) {
+	src, err := filepath.Abs(filepath.Join(testdata(), "av.mkv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NSGO_MEDIA_DEMO_SOURCE", src)
+	app := nsgotest.Start(t, Root, nsgotest.Idiom(core.IdiomPhone))
+	if app.Exists("id:passthrough") {
+		t.Error("a phone shows the passthrough switch")
+	}
+	if b := app.Find("id:play").Bounds(); b.Size.Width != 44 || b.Size.Height != 44 {
+		t.Errorf("play button %v", b.Size)
+	}
+	label := func() string {
+		if app.Exists("label:Pause") {
+			return "Pause"
+		}
+		return "Play"
+	}
+	play(t, app, 5*time.Second, func() bool { return label() == "Pause" })
+	app.Press("id:picture")
+	play(t, app, time.Second, func() bool { return label() == "Play" })
+	app.Press("id:picture")
+	play(t, app, time.Second, func() bool { return label() == "Pause" })
 }

@@ -8,10 +8,11 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-// The macOS backend is an AudioQueue of float32 stereo at 48 kHz, which
-// converts to the device's own rate. Its callback refills each buffer the
-// queue has played, on the queue's own thread, and its timeline counts the
-// samples the device played.
+// The macOS and iOS backend is an AudioQueue of float32 stereo at 48 kHz,
+// which converts to the device's own rate. Its callback refills each
+// buffer the queue has played, on the queue's own thread, and its timeline
+// counts the samples the device played. An iOS interruption stops the
+// queue, whose timeline starts again from zero when it starts again.
 
 const (
 	aqRate       = 48000
@@ -84,6 +85,9 @@ type audioQueue struct {
 	closed bool
 	paused bool
 	played int64
+	// raw is the timeline's last sample time and base what timelines
+	// before it, which an interruption ended, played.
+	raw, base int64
 }
 
 func open(fill Fill) (Output, error) {
@@ -157,7 +161,12 @@ func (a *audioQueue) Played() int64 {
 	}
 	var ts [64]byte // AudioTimeStamp, mSampleTime first
 	if audioQueueGetCurrentTime(a.q, 0, unsafe.Pointer(&ts[0]), nil) == 0 {
-		if s := int64(*(*float64)(unsafe.Pointer(&ts[0]))); s > a.played {
+		s := int64(*(*float64)(unsafe.Pointer(&ts[0])))
+		if s < a.raw {
+			a.base += a.raw
+		}
+		a.raw = s
+		if s := a.base + s; s > a.played {
 			a.played = s
 		}
 	}

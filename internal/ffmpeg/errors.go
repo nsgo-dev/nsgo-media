@@ -38,7 +38,7 @@ var (
 
 // eagain is EAGAIN in the C library FFmpeg was built against.
 func eagain() int32 {
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "ios" {
 		return 35
 	}
 	return 11

@@ -18,7 +18,7 @@
 
 ## Status
 
-In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows and Linux for local use, with no published release. The [requirements](docs/requirements.md) define the first version and the [roadmap](docs/roadmap.md) records what comes later.
+In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows, Linux and iOS for local use, with no published release. The [requirements](docs/requirements.md) define the first version and the [roadmap](docs/roadmap.md) records what comes later.
 
 ## Usage
 
@@ -37,7 +37,7 @@ func Root(cx *core.Scope) core.Node {
 
 The player's state, such as `p.State()`, `p.Position()` and `p.Cues()`, is NSGo signals the app's views read. [`examples/demo`](examples/demo) is a complete player with its own controls.
 
-The core loads FFmpeg's shared libraries at run time: the ones `tools/ffmpeg` builds, from the directory `NSGO_MEDIA_FFMPEG` names or beside the executable, or else the system's FFmpeg 9 (`brew install ffmpeg` on macOS). An app's packages get them with `go tool nsgo-media bundle` after `nsgo build`. See [FFmpeg libraries](docs/ffmpeg.md).
+The core loads FFmpeg's shared libraries at run time: the ones `tools/ffmpeg` builds, from the directory `NSGO_MEDIA_FFMPEG` names, beside the executable or as frameworks in an iOS app, or else the system's FFmpeg 9 (`brew install ffmpeg` on macOS). An app's packages get them with `go tool nsgo-media bundle` after `nsgo build`. See [FFmpeg libraries](docs/ffmpeg.md).
 
 ## Development
 

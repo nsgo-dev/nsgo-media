@@ -1,9 +1,10 @@
 // Package audioout plays interleaved float32 PCM on the system's default
-// output device, with one backend per desktop: CoreAudio's AudioQueue on
-// macOS, WASAPI on Windows and PulseAudio (or PipeWire's server for it) on
-// Linux. It also passes IEC 61937 streams through to a receiver that
-// decodes them: CoreAudio's encoded formats with the device hogged,
-// WASAPI's exclusive mode and PulseAudio's passthrough formats.
+// output device, with one backend per system: CoreAudio's AudioQueue on
+// macOS and iOS, WASAPI on Windows and PulseAudio (or PipeWire's server for
+// it) on Linux. It also passes IEC 61937 streams through to a receiver
+// that decodes them on the desktops: CoreAudio's encoded formats with the
+// device hogged, WASAPI's exclusive mode and PulseAudio's passthrough
+// formats. Watch reports what iOS does to the output under the app.
 package audioout
 
 import (
