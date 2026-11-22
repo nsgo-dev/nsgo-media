@@ -1,6 +1,7 @@
 // Command ffmpeg builds the FFmpeg shared libraries NSGo Media loads, with
 // LGPL components only, at the pinned version, for each desktop target, into
-// archives that nsgo-media bundle puts into an app's packages.
+// archives that nsgo-media bundle puts into an app's packages, and FFmpeg's
+// source with its diff into source/, which an app offers beside them.
 //
 // It runs on macOS with Xcode and Go: Xcode's clang builds the macOS
 // targets, and a pinned Zig, which it downloads, cross-compiles Windows and
@@ -54,6 +55,9 @@ func main() {
 		if _, err := b.build(t); err != nil {
 			fail(fmt.Errorf("%s: %w", t.name, err))
 		}
+	}
+	if err := b.writeSource(); err != nil {
+		fail(fmt.Errorf("source: %w", err))
 	}
 }
 

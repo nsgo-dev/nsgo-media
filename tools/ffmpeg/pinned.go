@@ -34,7 +34,7 @@ var (
 		sha256: "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
 	}
 	// libxml2 parses DASH manifests. It is linked statically into
-	// Windows' and Linux' libraries; macOS uses the system's.
+	// every target's libavformat.
 	libxml2Source = download{
 		name:   "libxml2-2.15.4.tar.xz",
 		url:    "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz",

@@ -53,6 +53,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the design and [AGENTS.md](AGENTS.md)
 
 ## License
 
-Licensed under the [MIT License](LICENSE). The FFmpeg libraries the project builds are under the LGPL 2.1 or later.
+Licensed under the [MIT License](LICENSE). The FFmpeg libraries the project builds are under the LGPL 2.1 or later; [FFmpeg libraries](docs/ffmpeg.md#what-an-app-that-ships-them-owes) lists what an app that ships them owes.
 
 Unless you explicitly state otherwise, any contribution you submit is licensed under the MIT License, without any additional terms or conditions.

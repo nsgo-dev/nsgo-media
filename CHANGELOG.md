@@ -14,6 +14,6 @@
 - HLS and DASH streams, on demand and live, read in Go: `Info.Live` and `Info.Seekable` tell a live stream, `Info.Variants` lists the variants and `Player.SelectVariant` chooses one, or lets the bandwidth choose; HLS segments encrypted with AES-128 decrypt.
 - `Player.SetPassthrough` passes AC-3, E-AC-3 and DTS' core undecoded in IEC 61937 bursts to a receiver, through WASAPI's exclusive mode, a hogged CoreAudio device or a PulseAudio sink's passthrough formats, and `Player.AudioOutput` tells what plays and why PCM plays instead: the device, a rate other than 1× or enhanced DTS.
 - Hardware decoding through VideoToolbox, D3D11VA and VAAPI, falling back to software.
-- `tools/ffmpeg` builds FFmpeg 9's LGPL shared libraries for each desktop into `dist/ffmpeg`, with libxml2 for DASH and the spdif muxer for passthrough.
-- `go tool nsgo-media bundle` puts those libraries into the packages `nsgo build` wrote, signing a macOS app again.
+- `tools/ffmpeg` builds FFmpeg 9's LGPL shared libraries for each desktop into `dist/ffmpeg`, with libxml2 for DASH and the spdif muxer for passthrough, their licenses, the diff of FFmpeg's source and the source to offer beside an app.
+- `go tool nsgo-media bundle` puts those libraries and their notices into the packages `nsgo build` wrote, signing a macOS app again.
 - A demo app with its own controls, among them stepping both ways, saving a snapshot, choosing an HLS or DASH stream's quality, bitmap subtitles drawn over the picture and a passthrough switch with the output it gives.

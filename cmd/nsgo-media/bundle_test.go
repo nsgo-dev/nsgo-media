@@ -42,7 +42,7 @@ func TestBundlePutsLibrariesBesideTheExecutable(t *testing.T) {
 	libs, dist := t.TempDir(), t.TempDir()
 	writeArchive(t, libs, "windows_x64", map[string]string{
 		"avutil-61.dll": "avutil", "avcodec-63.dll": "avcodec",
-		"COPYING.LGPLv2.1": "license", "BUILD.txt": "note",
+		"COPYING.LGPLv2.1": "license", "COPYING.libxml2": "xml", "ffmpeg.patch": "diff", "BUILD.txt": "note",
 	})
 	pkg := filepath.Join(dist, "My App-1.0.0-windows_x64")
 	os.MkdirAll(pkg, 0o755)
@@ -57,7 +57,8 @@ func TestBundlePutsLibrariesBesideTheExecutable(t *testing.T) {
 	}
 	for name, want := range map[string]string{
 		"avutil-61.dll": "avutil", "avcodec-63.dll": "avcodec",
-		"FFmpeg/COPYING.LGPLv2.1": "license", "FFmpeg/BUILD.txt": "note",
+		"FFmpeg/COPYING.LGPLv2.1": "license", "FFmpeg/COPYING.libxml2": "xml",
+		"FFmpeg/ffmpeg.patch": "diff", "FFmpeg/BUILD.txt": "note",
 	} {
 		got, err := os.ReadFile(filepath.Join(pkg, name))
 		if err != nil || string(got) != want {
@@ -75,6 +76,32 @@ func TestBundleWithoutLibraries(t *testing.T) {
 	err := bundle(pkg, "", "", &source{dir: t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "go run ./tools/ffmpeg") {
 		t.Fatalf("bundle without libraries: %v", err)
+	}
+}
+
+func TestBundleWithoutLicense(t *testing.T) {
+	libs := t.TempDir()
+	writeArchive(t, libs, "linux_x64", map[string]string{"libavutil.so.61": "avutil", "BUILD.txt": "note"})
+	pkg := filepath.Join(t.TempDir(), "App-1.0.0-linux_x64")
+	os.MkdirAll(pkg, 0o755)
+	err := bundle(pkg, "", "", &source{dir: libs})
+	if err == nil || !strings.Contains(err.Error(), "COPYING.LGPLv2.1") {
+		t.Fatalf("bundle without the license: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(pkg, "libavutil.so.61")); err == nil {
+		t.Error("bundled libraries without their license")
+	}
+}
+
+func TestUniversalNoticesJoinBothBuildNotes(t *testing.T) {
+	dir := t.TempDir()
+	arm := &libSet{notices: map[string][]byte{"COPYING.LGPLv2.1": []byte("license"), "BUILD.txt": []byte("arm64")}}
+	x64 := &libSet{notices: map[string][]byte{"COPYING.LGPLv2.1": []byte("license"), "BUILD.txt": []byte("x86_64")}}
+	if err := writeNotices(dir, arm, x64); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, "BUILD.txt")); string(got) != "arm64\nx86_64" {
+		t.Errorf("BUILD.txt = %q", got)
 	}
 }
 

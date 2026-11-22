@@ -53,6 +53,6 @@ go tool nsgo test               # 运行所有包的测试
 
 ## 许可证
 
-本项目以 [MIT 许可证](LICENSE) 授权。项目构建的 FFmpeg 库以 LGPL 2.1 或更新版本授权。
+本项目以 [MIT 许可证](LICENSE) 授权。项目构建的 FFmpeg 库以 LGPL 2.1 或更新版本授权；分发这些库的 app 需要履行的义务见 [FFmpeg libraries](docs/ffmpeg.md#what-an-app-that-ships-them-owes)。
 
 除非你明确声明，否则你提交的任何贡献均以 MIT 许可证授权，不附加任何额外条款或条件。

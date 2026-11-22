@@ -60,9 +60,10 @@ func newBuilder(work, out string, jobs int) (*builder, error) {
 }
 
 // ffmpegPatches are changes to FFmpeg's source, each an old text and its
-// replacement, which BUILD.txt lists.
-var ffmpegPatches = []struct{ file, why, old, new string }{{
+// replacement, made on date, which BUILD.txt lists and ffmpeg.patch holds.
+var ffmpegPatches = []struct{ file, date, why, old, new string }{{
 	file: "libavformat/dashdec.c",
+	date: "2026-11-22",
 	why:  "an interrupted dash_read_packet returns AVERROR_EXIT instead of 0 with no packet, which av_read_frame calls again without end",
 	old:  "    }\n    return ret;\n}\n\nstatic int dash_close(",
 	new:  "    }\n    if (!ret)\n        ret = AVERROR_EXIT;\n    return ret;\n}\n\nstatic int dash_close(",
@@ -223,8 +224,10 @@ func libraryFile(t target, lib string) *regexp.Regexp {
 	return regexp.MustCompile(`^lib` + lib + `\.so\.\d+$`)
 }
 
-// pack zips t's libraries with FFmpeg's license and a note of how they
-// were built, which the LGPL asks to go with them.
+// pack zips t's libraries with the licenses of what they hold, the diff of
+// FFmpeg's source and a note of how they were built, which the LGPL asks to
+// go with them. nsgo-media bundle copies every file but the libraries into
+// an app.
 func (b *builder) pack(t target, dir string, args []string) (string, error) {
 	name := filepath.Join(b.out, "ffmpeg-"+FFmpegVersion+"-"+t.name+".zip")
 	f, err := os.Create(name)
@@ -261,10 +264,24 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 		return "", err
 	}
 	var patches strings.Builder
-	for _, p := range ffmpegPatches {
-		fmt.Fprintf(&patches, "  %s: %s\n", p.file, p.why)
+	if len(ffmpegPatches) > 0 {
+		diff, err := b.ffmpegDiff()
+		if err != nil {
+			return "", err
+		}
+		w, err := zw.Create(patchName)
+		if err != nil {
+			return "", err
+		}
+		if _, err := io.WriteString(w, diff); err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&patches, "Changed, as the diff in %s holds:\n", patchName)
+		for _, p := range ffmpegPatches {
+			fmt.Fprintf(&patches, "  %s on %s: %s\n", p.file, p.date, p.why)
+		}
 	}
-	note := fmt.Sprintf("FFmpeg %s, built for %s by NSGo Media's tools/ffmpeg under the LGPL 2.1 or later.\n\nSource: %s\nSHA-256: %s\n\nChanged:\n%s\nConfigured with:\n  %s\n\n"+
+	note := fmt.Sprintf("FFmpeg %s, built for %s by NSGo Media's tools/ffmpeg (https://github.com/oneo-me/nsgo-media/tree/main/tools/ffmpeg) under the LGPL 2.1 or later.\n\nSource: %s\nSHA-256: %s\n\n%s\nConfigured with:\n  %s\n\n"+
 		"libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.\nSource: %s\nSHA-256: %s\n",
 		FFmpegVersion, t.name, ffmpegSource.url, ffmpegSource.sha256, patches.String(), strings.Join(args, "\n  "), libxml2Source.url, libxml2Source.sha256)
 	w, err := zw.Create("BUILD.txt")

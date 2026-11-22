@@ -19,13 +19,17 @@ var targets = map[string]bool{
 	"windows_x64": true, "linux_x64": true,
 }
 
-// libSet is one target's archive: its libraries by file name, FFmpeg's
-// license and the note of how they were built.
+// libSet is one target's archive: its libraries and its notices, the
+// licenses, the diff of FFmpeg's source and the note of how they were
+// built, by file name.
 type libSet struct {
 	libs    map[string][]byte
-	license []byte
-	note    []byte
+	notices map[string][]byte
 }
+
+// requiredNotices are the notices an archive must hold: the LGPL asks for
+// the library's license and how it was built to go with it.
+var requiredNotices = []string{"COPYING.LGPLv2.1", "BUILD.txt"}
 
 // source finds the archives tools/ffmpeg built in dir.
 type source struct {
@@ -75,7 +79,7 @@ func (s *source) load(target string) (*libSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	set := &libSet{libs: map[string][]byte{}}
+	set := &libSet{libs: map[string][]byte{}, notices: map[string][]byte{}}
 	for _, f := range zr.File {
 		rc, err := f.Open()
 		if err != nil {
@@ -89,14 +93,17 @@ func (s *source) load(target string) (*libSet, error) {
 		switch {
 		case libraryName.MatchString(f.Name):
 			set.libs[f.Name] = b
-		case f.Name == "COPYING.LGPLv2.1":
-			set.license = b
-		case f.Name == "BUILD.txt":
-			set.note = b
+		case !strings.ContainsAny(f.Name, "/\\") && !f.FileInfo().IsDir():
+			set.notices[f.Name] = b
 		}
 	}
 	if len(set.libs) == 0 {
 		return nil, fmt.Errorf("%s holds no libraries", archiveName(target))
+	}
+	for _, name := range requiredNotices {
+		if set.notices[name] == nil {
+			return nil, fmt.Errorf("%s has no %s, which the LGPL asks to ship with the libraries; %s", archiveName(target), name, buildHint)
+		}
 	}
 	if s.cache == nil {
 		s.cache = map[string]*libSet{}
@@ -176,14 +183,25 @@ func bundle(pkg, target, sign string, src *source) error {
 	return nil
 }
 
-func writeNotices(dir string, set *libSet) error {
+// writeNotices writes every notice of the sets into dir: the first set's,
+// with the build notes of all, as a universal app's libraries join two.
+func writeNotices(dir string, sets ...*libSet) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(dir, "COPYING.LGPLv2.1"), set.license, 0o644); err != nil {
-		return err
+	for name, data := range sets[0].notices {
+		if name == "BUILD.txt" {
+			var notes [][]byte
+			for _, set := range sets {
+				notes = append(notes, set.notices[name])
+			}
+			data = bytes.Join(notes, []byte("\n"))
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
+			return err
+		}
 	}
-	return os.WriteFile(filepath.Join(dir, "BUILD.txt"), set.note, 0o644)
+	return nil
 }
 
 // bundleMac puts the libraries into the app's Frameworks, joining both
@@ -223,7 +241,7 @@ func bundleMac(app, target, sign string, src *source) error {
 			}
 			libs = append(libs, out)
 		}
-		if err := writeNotices(filepath.Join(app, "Contents", "Resources", "FFmpeg"), arm); err != nil {
+		if err := writeNotices(filepath.Join(app, "Contents", "Resources", "FFmpeg"), arm, x64); err != nil {
 			return err
 		}
 	} else {
