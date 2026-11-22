@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones run in order. The [requirements](requirements.md#first-version) define the first version; all of them are built, for local use: nothing is published online. Milestones after the first version take the [later goals](#later) one at a time.
+Milestones run in order. The [requirements](requirements.md#first-version) define the first version; all of them are built, for local use: nothing is published online. Every later goal that needs nothing from NSGo is built too; each one left waits for the NSGo issue its row names.
 
 ## 0. Skeleton
 
@@ -54,8 +54,9 @@ DTS-HD and TrueHD passed through on HDMI's 8-channel, 192 kHz carrier, in DTS ty
 
 | Goal | Depends on |
 | --- | --- |
-| Zero-copy GPU rendering of hardware-decoded frames | NSGo's planned `gpu` package, or a native component where overlays are not needed |
+| Zero-copy GPU rendering of hardware-decoded frames | The backends of NSGo's `gpu` package: [nsgo#1105](https://github.com/nsgo-dev/nsgo/issues/1105) on macOS and iOS, [nsgo#1106](https://github.com/nsgo-dev/nsgo/issues/1106) on Windows, [nsgo#1107](https://github.com/nsgo-dev/nsgo/issues/1107) on Linux |
 | HDR output and tone mapping | GPU rendering |
+| Installers carrying the FFmpeg libraries, so `bundle` needs no `-installers=false` | NSGo's tool shipping a package's native libraries ([nsgo#1722](https://github.com/nsgo-dev/nsgo/issues/1722)) |
 | The iOS audio session at Playback, so the Ring/Silent switch does not silence a movie, and playing in the background | NSGo letting a library hold the session ([nsgo#1931](https://github.com/nsgo-dev/nsgo/issues/1931)), or its planned `audio.Output` ([nsgo#1057](https://github.com/nsgo-dev/nsgo/issues/1057)); the background also needs the app's `audio` background mode |
 
 Android is set aside for now (decided by the user, 2026-11-22).
