@@ -3,7 +3,7 @@ title: 编写插件
 description: 用一个 JavaScript 或 TypeScript 文件和一份 YAML 清单，给 NSGo Player 添加视频来源。
 ---
 
-插件把一个视频来源变成 [NSGo Player](../app/) 显示的页面和播放的流。应用调用你模块的导出函数，所有页面都由应用自己画，所以插件不带界面，在每个桌面平台上都一样。[`app/examples/demo-plugin`](https://github.com/nsgo-dev/nsgo-media/tree/main/app/examples/demo-plugin) 用到了每个导出函数和宿主函数。
+插件把一个视频来源变成 [NSGo Player](../) 显示的页面和播放的流。应用调用你模块的导出函数，所有页面都由应用自己画，所以插件不带界面，在每个桌面平台上都一样。[`app/examples/demo-plugin`](https://github.com/nsgo-dev/nsgo-media/tree/main/app/examples/demo-plugin) 用到了每个导出函数和宿主函数。
 
 ## 插件的文件夹
 

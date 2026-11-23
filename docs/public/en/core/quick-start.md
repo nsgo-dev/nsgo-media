@@ -64,7 +64,7 @@ The repository's demo is a complete player with its own controls: stepping both 
 go tool nsgo dev examples/demo
 ```
 
-[NSGo Player](../app/), in `app/`, is the first-party desktop app built on the core: it plays your video folders through its built-in local files plugin, and other sources through plugins. It is a Go module of its own:
+[NSGo Player](../../), in `app/`, is the first-party desktop app built on the core: it plays your video folders through its built-in local files plugin, and other sources through plugins. It is a Go module of its own:
 
 ```sh
 cd app && go tool nsgo dev

@@ -64,7 +64,7 @@ func Root(cx *core.Scope) core.Node {
 go tool nsgo dev examples/demo
 ```
 
-`app/` 里的 [NSGo Player](../app/) 是基于内核的第一方桌面应用：用内置的本地文件插件播放你的视频文件夹，其他来源由插件提供。它是独立的 Go 模块：
+`app/` 里的 [NSGo Player](../../) 是基于内核的第一方桌面应用：用内置的本地文件插件播放你的视频文件夹，其他来源由插件提供。它是独立的 Go 模块：
 
 ```sh
 cd app && go tool nsgo dev

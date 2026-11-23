@@ -3,7 +3,7 @@ title: Writing plugins
 description: How to add a source of videos to NSGo Player with one JavaScript or TypeScript file and a YAML manifest.
 ---
 
-A plugin turns one source of videos into pages and streams that [NSGo Player](../app/) shows and plays. The app calls your module's exports and draws every page itself, so a plugin carries no UI and works the same on every desktop. [`app/examples/demo-plugin`](https://github.com/nsgo-dev/nsgo-media/tree/main/app/examples/demo-plugin) uses every export and host function.
+A plugin turns one source of videos into pages and streams that [NSGo Player](../) shows and plays. The app calls your module's exports and draws every page itself, so a plugin carries no UI and works the same on every desktop. [`app/examples/demo-plugin`](https://github.com/nsgo-dev/nsgo-media/tree/main/app/examples/demo-plugin) uses every export and host function.
 
 ## A plugin's folder
 
