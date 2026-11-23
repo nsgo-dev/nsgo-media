@@ -1,0 +1,24 @@
+component name="Sidebar/Sidebar" width=232 height=760
+box class="w-[232px] gap-0.5 border-r border-black/5 bg-zinc-100/90 px-2.5 pb-3" note="The window's sidebar, translucent over the desktop as macOS sidebars are. A section per enabled plugin, in the order of the settings' list, with home, search and the manifest's navigation entries for the exports it has."
+  box class="h-[52px] flex-row items-center gap-2 px-1.5" note="The window's own buttons; the sidebar runs under the title bar."
+    box class="size-3 rounded-full bg-[#FF5F57]"
+    end
+    box class="size-3 rounded-full bg-[#FEBC2E]"
+    end
+    box class="size-3 rounded-full bg-[#28C840]"
+    end
+  end
+  use sidebar-item name=open icon=folder-open label="Open"
+  use sidebar-section name=local-heading title="Local Files" variant=no-account
+  use sidebar-item name=local-home icon=house label="Home"
+  use sidebar-item name=local-search icon=search label="Search"
+  use sidebar-section name=demo-heading title="Demo"
+  use sidebar-item name=demo-home icon=house label="Home"
+  use sidebar-item name=demo-search icon=search label="Search"
+  use sidebar-item name=demo-following variant=badged icon=tv label="Following" badge="3" note="The shows the viewer follows on the plugin's account; shown for a plugin with following. The badge counts those with new episodes."
+  use sidebar-item name=demo-popular icon=flame label="Popular" note="A navigation entry of the plugin's manifest; its icon is a list unless the manifest names one of the app's icons."
+  use sidebar-item name=demo-favorites icon=star label="Favorites"
+  box class="flex-1"
+  end
+  use sidebar-item name=settings icon=settings label="Settings" variant=badged note="The badge counts the plugins with an update."
+end

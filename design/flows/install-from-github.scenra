@@ -1,0 +1,24 @@
+flow name="Install a plugin from GitHub" direction=down
+node start "Add Plugin › From GitHub…" kind=start note="Settings, or the empty plugins list"
+node type "Type owner/repo or its URL"
+node release "Find the latest release" note="Never a pre-release"
+node found "A release with a plugin zip?" kind=decision
+node download "Download the zip and read its manifest" note="No code runs yet"
+node newer "Needs a newer app?" kind=decision
+node approve "Approve its hosts" note="approve-plugin"
+node agree "Approved?" kind=decision
+node install "Copy into the plugins folder" kind=data note="Remembers owner/repo and the release to check for updates"
+node done "Sidebar section appears, its home opens" kind=end
+node error "Show why in the sheet" note="No repository, no plugin zip, offline or rate-limited"
+node stop "Nothing installed" kind=end
+start -> type -> release -> found
+found -> download "yes"
+found -> error "no"
+download -> newer
+newer -> error "yes"
+newer -> approve "no"
+approve -> agree
+agree -> install "Install"
+agree -> stop "Cancel"
+install -> done
+error ..> type "fix and retry"

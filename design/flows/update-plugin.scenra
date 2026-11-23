@@ -1,0 +1,24 @@
+flow name="Update a plugin from GitHub" direction=down
+node check "Check each GitHub plugin's repository" kind=start note="At start and every few hours, or Refresh in the settings"
+node newer "A newer release, not a pre-release?" kind=decision
+node badge "Badge on Settings and the plugin's row"
+node quiet "Nothing shown" kind=end
+node ask "Update dialog with its release notes" note="update-plugin"
+node hosts "Adds hosts?" kind=decision
+node approve "Approve the new hosts"
+node agree "Agreed?" kind=decision
+node replace "Replace the plugin's folder" kind=data note="Its settings, data and sign-in stay"
+node reload "Its pages load again with the new version" kind=end
+node keep "The installed version stays" kind=end
+check -> newer
+newer -> badge "yes"
+newer -> quiet "no"
+badge -> ask "viewer opens it"
+ask -> hosts
+hosts -> approve "yes"
+hosts -> agree "no"
+approve -> agree
+agree -> replace "Update"
+agree -> keep "Cancel"
+replace -> reload
+replace ..> keep "fails"

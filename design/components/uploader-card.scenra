@@ -1,0 +1,8 @@
+component name="Cards/Uploader" width=132
+box class="items-center gap-2 py-1"
+  image "Uploader's avatar" name=image src="assets/thumbs/avatar2.jpg" class="size-[88px] rounded-full border border-black/5 shadow-sm"
+  box class="items-center gap-0.5"
+    text "Morning Trails" name=title class="truncate text-center text-[13px] font-medium text-zinc-900"
+    text "128 videos" name=subtitle class="truncate text-center text-xs text-zinc-500"
+  end
+end

@@ -1,0 +1,11 @@
+component name="Settings/Row" width=fill preview=680
+box name=row class="min-h-[48px] flex-row items-center gap-3 border-b border-zinc-100 px-4 py-2.5"
+  box class="flex-1 gap-0.5"
+    text "Language" name=title class="text-[13px] font-medium text-zinc-900"
+    text "" name=detail class="hidden text-xs text-zinc-500"
+  end
+  slot control class="flex-row items-center gap-2"
+  end
+end
+variant detailed detail.class="flex"
+variant last row.class="border-b-0"

@@ -1,0 +1,8 @@
+component name="Player/Top bar" width=fill preview=1200 backdrop="bg-zinc-700"
+box class="h-[64px] flex-row items-center gap-3 bg-linear-to-b from-black/70 to-transparent pr-5 pl-20"
+  box name=back class="size-8 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20"
+    icon chevron-left class="size-[18px] text-white"
+  end
+  text "Sunrise over an alpine lake, four hours of calm – The ridge catches the sun" name=title class="flex-1 truncate text-sm font-semibold text-white"
+end
+variant fullscreen class="pl-5"

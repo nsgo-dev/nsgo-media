@@ -1,0 +1,11 @@
+component name="Controls/Button"
+box name=button class="h-8 flex-row items-center justify-center gap-1.5 rounded-lg bg-[#E8553A] px-3.5 shadow-sm hover:bg-[#d94a30]"
+  icon play name=icon class="size-3.5 text-white"
+  text "Play" name=label class="text-[13px] font-medium text-white"
+end
+variant secondary button.class="border border-zinc-200 bg-white shadow-none hover:bg-zinc-50" icon.class="text-zinc-600" label.class="text-zinc-800"
+variant ghost button.class="bg-transparent px-2.5 shadow-none hover:bg-zinc-100" icon.class="text-zinc-600" label.class="text-zinc-700"
+variant danger button.class="bg-rose-600 hover:bg-rose-700"
+variant large button.class="h-10 rounded-xl px-5" icon.class="size-4" label.class="text-sm"
+variant text icon.class="hidden"
+variant busy button.class="opacity-70" icon=loader-circle

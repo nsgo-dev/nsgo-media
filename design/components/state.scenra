@@ -1,0 +1,14 @@
+component name="Content/State" width=fill preview=968
+box class="flex-1 items-center justify-center gap-3 px-10 py-16"
+  box name=badge class="size-14 items-center justify-center rounded-2xl bg-zinc-100"
+    icon inbox name=icon class="size-6 text-zinc-400"
+  end
+  box class="max-w-[360px] items-center gap-1"
+    text "Nothing here" name=title class="text-center text-[15px] font-semibold text-zinc-900"
+    text "This page has no videos yet." name=message class="text-center text-[13px] leading-relaxed text-zinc-500"
+  end
+  slot action class="mt-1 flex-row gap-2"
+  end
+end
+variant error badge.class="bg-rose-50" icon=circle-alert icon.class="text-rose-500"
+variant sign-in badge.class="bg-amber-50" icon=log-in icon.class="text-amber-600"

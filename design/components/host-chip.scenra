@@ -1,0 +1,6 @@
+component name="Dialogs/Host"
+box name=chip class="flex-row items-center gap-1.5 rounded-md bg-zinc-100 px-2 py-1"
+  icon globe name=icon class="size-3 text-zinc-500"
+  text "api.example.com" name=host class="text-xs font-medium text-zinc-700"
+end
+variant new chip.class="bg-amber-100" icon=plus icon.class="text-amber-700" host.class="text-amber-900"

@@ -1,0 +1,9 @@
+component name="Content/Section heading" width=fill preview=912
+box class="h-7 flex-row items-center gap-2"
+  text "Popular this week" name=title class="flex-1 truncate text-[17px] font-semibold text-zinc-900"
+  box name=more class="flex-row items-center gap-0.5 rounded-md px-2 py-1 hover:bg-zinc-100" note="Shown when the section has a more id; opens it as a page of its own."
+    text "More" name=more-label class="text-[13px] font-medium text-[#E8553A]"
+    icon chevron-right class="size-3.5 text-[#E8553A]"
+  end
+end
+variant no-more more.class="hidden"

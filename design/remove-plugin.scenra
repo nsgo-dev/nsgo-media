@@ -1,0 +1,23 @@
+design remove name="Dialogs/Remove a plugin" device=desktop width=420 height=220 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-3 px-6 pt-6 pb-5"
+    box class="size-11 items-center justify-center rounded-2xl bg-rose-50"
+      icon trash-2 class="size-5 text-rose-500"
+    end
+    text "Remove Demo?" class="text-[17px] font-bold text-zinc-900"
+    text "Its settings and data are removed with it." class="text-[13px] leading-relaxed text-zinc-600"
+  end
+  use dialog-actions confirm/label="Remove" confirm.variant="danger text" cancel.tap="close" confirm.tap="close"
+end
+
+design linked name="Remove a plugin · Used from a path" device=desktop width=420 height=220 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-3 px-6 pt-6 pb-5"
+    box class="size-11 items-center justify-center rounded-2xl bg-rose-50"
+      icon trash-2 class="size-5 text-rose-500"
+    end
+    text "Remove Sample Feeds?" class="text-[17px] font-bold text-zinc-900"
+    text "Its settings and data are removed; its folder stays." class="text-[13px] leading-relaxed text-zinc-600"
+  end
+  use dialog-actions confirm/label="Remove" confirm.variant="danger text" cancel.tap="close" confirm.tap="close"
+end

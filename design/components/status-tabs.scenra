@@ -1,0 +1,15 @@
+component name="Controls/Follow status tabs"
+box class="flex-row gap-1 rounded-lg bg-zinc-100 p-0.5" note="The statuses the plugin answers for its follows; shown when it answers more than one."
+  box name=all class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "All" class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+  box name=watching class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "Watching" class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+  box name=planned class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "Plan to Watch" class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+  box name=finished class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "Completed" class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+end

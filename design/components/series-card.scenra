@@ -1,0 +1,22 @@
+component name="Cards/Followed show" width=213
+box name=card class="group gap-2"
+  box class="h-[120px] overflow-hidden rounded-xl bg-zinc-200 shadow-sm"
+    image "Show cover" name=image src="assets/thumbs/nebula.jpg" class="size-full"
+    text "New" name=new class="absolute top-1.5 left-1.5 rounded-md bg-[#E8553A] px-1.5 py-0.5 text-[11px] font-semibold text-white" note="The plugin says an episode came out since the viewer last watched."
+    box name=progress class="absolute right-0 bottom-0 left-0 h-[3px] bg-white/40" note="Episodes watched of those out."
+      box name=progress-bar class="h-full w-5/12 bg-[#FF6B4A]"
+      end
+    end
+  end
+  box class="gap-0.5 px-0.5"
+    text "Journey through the nebulae" name=title class="line-clamp-1 text-[13px] leading-snug font-medium text-zinc-900"
+    box class="flex-row items-center gap-1.5"
+      text "Watched EP 5" name=watched class="truncate text-xs text-zinc-500"
+      text "·" class="text-xs text-zinc-300"
+      text "Updated to EP 12" name=latest class="truncate text-xs font-medium text-[#C8442B]"
+    end
+  end
+end
+variant seen new.class="hidden" latest.class="font-normal text-zinc-500"
+variant unstarted progress.class="hidden" new.class="hidden" latest.class="font-normal text-zinc-500"
+variant finished new.class="hidden" progress-bar.class="w-full" latest.class="font-normal text-zinc-500"

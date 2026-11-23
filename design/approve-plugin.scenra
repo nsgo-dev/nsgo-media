@@ -1,0 +1,99 @@
+design github name="Dialogs/Approve a plugin" device=desktop width=480 height=400 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1" note="Asked before any plugin is installed or used, from GitHub, a folder, a zip or a path: what it is and every host it may reach."
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3.5"
+      box class="size-12 items-center justify-center rounded-2xl bg-linear-to-br from-[#FF8A6B] to-[#E8553A] shadow-md"
+        text "D" class="text-xl font-bold text-white"
+      end
+      box class="flex-1 gap-0.5"
+        text "Install Demo 1.2.0?" class="text-[17px] font-bold text-zinc-900"
+        box class="flex-row items-center gap-1"
+          icon git-fork class="size-3 text-zinc-400"
+          text "example-org/demo-plugin · Released Nov 22, 2026" class="truncate text-xs text-zinc-500"
+        end
+      end
+    end
+    box class="gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50/60 px-4 py-3.5"
+      box class="flex-row items-center gap-2"
+        icon shield-check class="size-4 text-[#16A88E]"
+        text "It can connect to:" class="text-[13px] font-semibold text-zinc-900"
+      end
+      box class="flex-row flex-wrap gap-1.5"
+        use host-chip host="api.example.com"
+        use host-chip host="img.example.com"
+        use host-chip host="media.example.net"
+      end
+      text "It cannot reach any other host, your files or other plugins." class="text-xs leading-relaxed text-zinc-500"
+    end
+  end
+  use dialog-actions cancel.tap="close" confirm.tap="open #installing"
+end
+
+design folder name="Approve a plugin · Use from its folder" device=desktop width=480 height=360 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3.5"
+      box class="size-12 items-center justify-center rounded-2xl bg-linear-to-br from-[#FFD25C] to-[#F0A800] shadow-md"
+        text "S" class="text-xl font-bold text-white"
+      end
+      box class="flex-1 gap-0.5"
+        text "Use Sample Feeds 0.4.0 from its folder?" class="text-[17px] font-bold text-zinc-900"
+        box class="flex-row items-center gap-1"
+          icon folder class="size-3 text-zinc-400"
+          text "~/code/sample-feeds" class="truncate text-xs text-zinc-500"
+        end
+      end
+    end
+    box class="gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50/60 px-4 py-3.5"
+      box class="flex-row items-center gap-2"
+        icon wifi-off class="size-4 text-zinc-500"
+        text "It cannot connect to the network." class="text-[13px] font-semibold text-zinc-900"
+      end
+      text "It cannot reach your files or other plugins either." class="text-xs leading-relaxed text-zinc-500"
+    end
+  end
+  use dialog-actions confirm/label="Use" cancel.tap="close"
+end
+
+design installing name="Approve a plugin · Installing" device=desktop width=480 height=400 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3.5"
+      box class="size-12 items-center justify-center rounded-2xl bg-linear-to-br from-[#FF8A6B] to-[#E8553A] shadow-md"
+        text "D" class="text-xl font-bold text-white"
+      end
+      box class="flex-1 gap-0.5"
+        text "Installing Demo 1.2.0…" class="text-[17px] font-bold text-zinc-900"
+        text "example-org/demo-plugin" class="truncate text-xs text-zinc-500"
+      end
+    end
+    box class="flex-1 justify-center gap-2" note="Copies the plugin into the app's plugins folder. When it is done, the sheet closes, the plugin's section appears in the sidebar and its home opens."
+      box class="h-1.5 overflow-hidden rounded-full bg-zinc-100"
+        box class="h-full w-3/5 rounded-full bg-[#E8553A]"
+        end
+      end
+      text "Installing…" class="text-xs text-zinc-500"
+    end
+  end
+  use dialog-actions confirm.variant="text busy" cancel.class="opacity-40"
+end
+
+design failed name="Approve a plugin · Failed" device=desktop width=480 height=400 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3.5"
+      box class="size-12 items-center justify-center rounded-2xl bg-linear-to-br from-[#FF8A6B] to-[#E8553A] shadow-md"
+        text "D" class="text-xl font-bold text-white"
+      end
+      box class="flex-1 gap-0.5"
+        text "The plugin cannot be installed" class="text-[17px] font-bold text-zinc-900"
+        text "Demo 1.2.0 · example-org/demo-plugin" class="truncate text-xs text-zinc-500"
+      end
+    end
+    box class="flex-row gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5"
+      icon circle-alert class="size-4 text-rose-500"
+      text "The download stopped before it finished. Check your connection and try again." class="flex-1 text-[13px] leading-relaxed text-rose-800"
+    end
+  end
+  use dialog-actions confirm/label="Try Again" cancel.tap="close"
+end
