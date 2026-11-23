@@ -1,0 +1,263 @@
+---
+// The app section's picture of NSGo Player: its sidebar of plugins beside
+// the Local Files plugin's page of a folder. Drawn in CSS after the app's
+// layout; the folders and videos are made up.
+const words = {
+	en: {
+		label: 'NSGo Player: the sidebar of plugins beside the Local Files plugin’s page of a folder',
+		open: 'Open',
+		settings: 'Settings',
+		local: 'Local Files',
+		home: 'Home',
+		search: 'Search',
+		plugin: 'Demo',
+		popular: 'Popular',
+		folder: 'Movies',
+		folders: ['Travel', 'Concerts'],
+		videos: [
+			{ title: 'Evening Hills', time: '12:48' },
+			{ title: 'Harbor Morning', time: '8:05' },
+			{ title: 'City Lights', time: '1:42:10' },
+			{ title: 'Spring Fields', time: '24:31' },
+		],
+	},
+	zh: {
+		label: 'NSGo Player：插件侧栏旁边是本地文件插件的文件夹页面',
+		open: '打开',
+		settings: '设置',
+		local: '本地文件',
+		home: '首页',
+		search: '搜索',
+		plugin: 'Demo',
+		popular: '热门',
+		folder: '影片',
+		folders: ['旅行', '演唱会'],
+		videos: [
+			{ title: '傍晚的山丘', time: '12:48' },
+			{ title: '港口的早晨', time: '8:05' },
+			{ title: '城市灯火', time: '1:42:10' },
+			{ title: '春天的田野', time: '24:31' },
+		],
+	},
+};
+
+interface Props {
+	lang: keyof typeof words;
+}
+const t = words[Astro.props.lang] ?? words.en;
+
+// Each video's thumbnail, a sky of its own.
+const skies = [
+	'linear-gradient(160deg, #1e3a8a, #6d28d9 55%, #f97316)',
+	'linear-gradient(160deg, #0f766e, #0ea5e9 60%, #e0f2fe)',
+	'linear-gradient(160deg, #111827, #312e81 50%, #db2777)',
+	'linear-gradient(160deg, #064e3b, #65a30d 60%, #fde68a)',
+];
+const icon = {
+	open: 'M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z',
+	settings: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+	home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+	search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3',
+	list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+};
+---
+
+<figure class="app-mock" role="img" aria-label={t.label}>
+	<div class="app-window" aria-hidden="true">
+		<div class="app-bar"><span></span><span></span><span></span></div>
+		<div class="app-body">
+			<nav class="app-side">
+				<span class="entry"><svg viewBox="0 0 24 24"><path d={icon.open}></path></svg>{t.open}</span>
+				<span class="entry"><svg viewBox="0 0 24 24"><path d={icon.settings}></path></svg>{t.settings}</span>
+				<span class="group">{t.local}</span>
+				<span class="entry selected"><svg viewBox="0 0 24 24"><path d={icon.home}></path></svg>{t.home}</span>
+				<span class="entry"><svg viewBox="0 0 24 24"><path d={icon.search}></path></svg>{t.search}</span>
+				<span class="group">{t.plugin}</span>
+				<span class="entry"><svg viewBox="0 0 24 24"><path d={icon.home}></path></svg>{t.home}</span>
+				<span class="entry"><svg viewBox="0 0 24 24"><path d={icon.search}></path></svg>{t.search}</span>
+				<span class="entry"><svg viewBox="0 0 24 24"><path d={icon.list}></path></svg>{t.popular}</span>
+			</nav>
+			<div class="app-page">
+				<p class="page-title">{t.folder}</p>
+				<ul class="cards">
+					{
+						t.folders.map((name) => (
+							<li class="card">
+								<span class="thumb folder">
+									<svg viewBox="0 0 24 24"><path d={icon.open}></path></svg>
+								</span>
+								<span class="card-title">{name}</span>
+							</li>
+						))
+					}
+					{
+						t.videos.map((v, i) => (
+							<li class="card">
+								<span class="thumb" style={`background: ${skies[i % skies.length]}`}>
+									<span class="hill"></span>
+									<span class="time">{v.time}</span>
+								</span>
+								<span class="card-title">{v.title}</span>
+							</li>
+						))
+					}
+				</ul>
+			</div>
+		</div>
+	</div>
+</figure>
+
+<style>
+	.app-mock {
+		width: min(100%, 38rem);
+		margin: 0 auto;
+	}
+	.app-window {
+		overflow: hidden;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		background-color: var(--bg);
+		box-shadow:
+			0 1px 2px rgb(0 0 0 / 0.06),
+			0 30px 60px -30px rgb(0 0 0 / 0.45);
+	}
+	.app-bar {
+		display: flex;
+		gap: 0.375rem;
+		padding: 0.625rem 0.75rem;
+		border-bottom: 1px solid var(--border);
+		background-color: var(--surface);
+	}
+	.app-bar span {
+		width: 0.625rem;
+		height: 0.625rem;
+		border-radius: 50%;
+		background-color: var(--border-strong);
+	}
+	.app-body {
+		display: grid;
+		grid-template-columns: 8.5rem minmax(0, 1fr);
+		min-height: 17rem;
+	}
+
+	/* The sidebar: the app's entries, then a section per plugin. */
+	.app-side {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		padding: 0.625rem 0.5rem;
+		border-right: 1px solid var(--border);
+		background-color: var(--surface);
+		font-size: 0.75rem;
+	}
+	.entry {
+		display: flex;
+		align-items: center;
+		gap: 0.4375rem;
+		padding: 0.3125rem 0.5rem;
+		border-radius: var(--radius-sm);
+		color: var(--text);
+		white-space: nowrap;
+	}
+	.entry svg,
+	.thumb.folder svg {
+		width: 0.875rem;
+		height: 0.875rem;
+		flex: none;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		opacity: 0.75;
+	}
+	.entry.selected {
+		background-color: var(--accent-soft);
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.group {
+		margin: 0.625rem 0.5rem 0.1875rem;
+		color: var(--faint);
+		font-size: 0.6875rem;
+		font-weight: 650;
+		white-space: nowrap;
+	}
+
+	/* The page: a folder's subfolders, then its videos. */
+	.app-page {
+		padding: 0.875rem 1rem 1rem;
+	}
+	.page-title {
+		margin: 0 0 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 650;
+	}
+	.cards {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.75rem 0.625rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.card {
+		display: grid;
+		gap: 0.3125rem;
+		min-width: 0;
+	}
+	.thumb {
+		position: relative;
+		display: block;
+		aspect-ratio: 16 / 9;
+		overflow: hidden;
+		border-radius: var(--radius-sm);
+	}
+	.thumb.folder {
+		display: grid;
+		place-items: center;
+		border: 1px solid var(--border);
+		background-color: var(--surface-2);
+		color: var(--accent);
+	}
+	.thumb.folder svg {
+		width: 1.5rem;
+		height: 1.5rem;
+		opacity: 1;
+	}
+	.hill {
+		position: absolute;
+		inset: auto -20% -45%;
+		height: 80%;
+		border-radius: 50% 50% 0 0;
+		background-color: rgb(10 11 13 / 0.55);
+	}
+	.time {
+		position: absolute;
+		right: 0.25rem;
+		bottom: 0.25rem;
+		padding: 0 0.25rem;
+		border-radius: 0.25rem;
+		background-color: rgb(0 0 0 / 0.6);
+		color: #fff;
+		font-size: 0.5625rem;
+		font-variant-numeric: tabular-nums;
+		line-height: 1.5;
+	}
+	.card-title {
+		overflow: hidden;
+		font-size: 0.6875rem;
+		line-height: 1.3;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	@media (max-width: 30rem) {
+		.app-body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.app-side {
+			display: none;
+		}
+	}
+</style>

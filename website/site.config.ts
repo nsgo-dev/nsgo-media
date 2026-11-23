@@ -18,6 +18,7 @@ const usage = `func Root(cx *core.Scope) core.Node {
 // Each highlight's icon in a color of its own.
 const featureColors = ['#3b82f6', '#8b5cf6', '#22a45d', '#f59e0b', '#0ea5e9', '#ec4899'];
 const usageColors = ['#6366f1', '#14b8a6', '#d97706'];
+const appColors = ['#22a45d', '#8b5cf6', '#0ea5e9', '#f59e0b'];
 const platformColors = ['#3b82f6', '#0ea5e9', '#d97706', '#8b5cf6'];
 const paint = <T,>(items: T[], colors: string[]) => items.map((item, i) => ({ ...item, color: colors[i] }));
 
@@ -32,6 +33,7 @@ export default defineSite({
 	logo: './src/assets/logo.png',
 	appleTouchIcon: '/apple-touch-icon.png',
 	repo,
+	nav: ['features', { label: { en: 'App', zh: '应用' }, href: '#app' }, 'docs', 'roadmap', 'community', 'feedback'],
 	accounts: [{ label: 'ONEO', note: '@oneo666', href: 'https://x.com/oneo666', icon: 'x.com', avatar: './src/assets/avatars/oneo.jpg' }],
 	community: [
 		{ label: 'NSGo', note: { en: 'The UI engine NSGo Media plays in', zh: 'NSGo Media 所在的 UI 引擎' }, href: 'https://nsgo.dev', icon: 'nsgo' },
@@ -44,6 +46,7 @@ export default defineSite({
 			{ label: { en: 'Start', zh: '开始' }, items: ['docs', 'docs/quick-start'] },
 			{ label: { en: 'Guides', zh: '指南' }, items: ['docs/playback', 'docs/subtitles', 'docs/streams', 'docs/passthrough'] },
 			{ label: { en: 'Shipping', zh: '发布' }, items: ['docs/ffmpeg'] },
+			{ label: { en: 'App', zh: '应用' }, items: ['docs/app', 'docs/plugins'] },
 		],
 	},
 	roadmap: {
@@ -102,7 +105,7 @@ export default defineSite({
 					type: 'split',
 					eyebrow: 'Usage',
 					title: 'Your controls, its picture',
-					text: 'An app opens a player, places its view and calls its methods from its own controls. The demo app is a complete player built this way.',
+					text: 'An app opens a player, places its view and calls its methods from its own controls. NSGo Player, the project’s own app, is built this way.',
 					items: paint(
 						[
 							{ icon: 'layers', title: 'Views draw above it', text: 'The picture is an ordinary image view on every desktop, never a native window, so the app’s controls and overlays sit on top.' },
@@ -112,6 +115,23 @@ export default defineSite({
 						usageColors,
 					),
 					code: { lang: 'go', code: usage },
+				},
+				{
+					type: 'split',
+					id: 'app',
+					eyebrow: 'The app',
+					title: 'NSGo Player, built on the core',
+					text: 'The project’s own desktop app: its player page drives the core with its own controls, and its pages draw what plugins answer. The app itself knows no site.',
+					items: paint(
+						[
+							{ icon: 'folder-open', title: 'Your video folders', text: 'The built-in Local Files plugin lists your folders, searches their names and plays each video with the subtitle files beside it.' },
+							{ icon: 'puzzle', title: 'Every other source a plugin', text: 'One JavaScript or TypeScript file and a YAML manifest add a source: its pages, search, qualities, subtitles and sign-in.' },
+							{ icon: 'shield-check', title: 'Sandboxed', text: 'Each plugin runs in its own moejs sandbox and reaches only the hosts you approved, never your files.' },
+							{ icon: 'file-code', title: 'Used from a path', text: 'Type a plugin folder’s path in the settings and the app reads it where it is, while you write it.' },
+						],
+						appColors,
+					),
+					component: './src/components/AppMock.astro',
 				},
 				{
 					type: 'cards',
@@ -160,7 +180,7 @@ export default defineSite({
 					type: 'split',
 					eyebrow: '用法',
 					title: '控件归你，画面归它',
-					text: '应用打开一个播放器，放好它的视图，再从自己的控件里调用它的方法。演示应用就是这样做出的一个完整播放器。',
+					text: '应用打开一个播放器，放好它的视图，再从自己的控件里调用它的方法。项目自己的应用 NSGo Player 就是这样做的。',
 					items: paint(
 						[
 							{ icon: 'layers', title: '视图可以画在上面', text: '画面在每个桌面平台上都是普通的图像视图，而不是原生窗口，所以应用的控件和浮层都能盖在上面。' },
@@ -170,6 +190,23 @@ export default defineSite({
 						usageColors,
 					),
 					code: { lang: 'go', code: usage },
+				},
+				{
+					type: 'split',
+					id: 'app',
+					eyebrow: '应用',
+					title: 'NSGo Player，基于内核',
+					text: '项目自己的桌面应用：播放页用自己的控件驱动内核，其他页面画的是插件给出的内容。应用本身不认识任何网站。',
+					items: paint(
+						[
+							{ icon: 'folder-open', title: '你的视频文件夹', text: '内置的本地文件插件列出你的文件夹，按名字搜索，并连同旁边的字幕文件播放每个视频。' },
+							{ icon: 'puzzle', title: '其他来源都是插件', text: '一个 JavaScript 或 TypeScript 文件加一份 YAML 清单，就能添加一个来源：页面、搜索、清晰度、字幕和登录。' },
+							{ icon: 'shield-check', title: '沙箱运行', text: '每个插件运行在自己的 moejs 沙箱里，只能访问你确认过的主机，碰不到你的文件。' },
+							{ icon: 'file-code', title: '从路径使用', text: '在设置里填插件文件夹的路径，应用就从原处读取，边写边用。' },
+						],
+						appColors,
+					),
+					component: './src/components/AppMock.astro',
 				},
 				{
 					type: 'cards',
