@@ -411,6 +411,18 @@ func TestLanguageChoice(t *testing.T) {
 	app.WaitFor("id:nav-settings >> text:Settings", wait)
 }
 
+func TestStatsSwitch(t *testing.T) {
+	data := t.TempDir()
+	app, _ := start(t, data)
+	app.Press("id:nav-settings")
+	app.Press("id:stats")
+	path := filepath.Join(data, "settings.json")
+	app.WaitUntil(wait, func() bool {
+		s, err := store.OpenSettings(path)
+		return err == nil && !s.Stats()
+	})
+}
+
 // TestLocalFilesPlay plays a clip of NSGo Media's testdata from the
 // local files plugin's home.
 func TestLocalFilesPlay(t *testing.T) {

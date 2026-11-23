@@ -68,6 +68,9 @@ language: Language
 systemLanguage:
   message: System
   description: The language choice that follows the system's language.
+sendStats:
+  message: Send Usage Statistics
+  description: The switch that sends anonymous counts of the app's use to its website.
 plugins: Plugins
 installFromFolder: Install from Folder…
 installFromZip: Install from Zip…

@@ -35,6 +35,7 @@ func (sh *shell) settingsPage(cx *core.Scope) core.Node {
 		Children: []core.Node{
 			ui.FormSection{Children: []core.Node{
 				ui.FormRow{Title: locales.Language(cx), Control: sh.languageSelect(cx)},
+				ui.FormRow{Title: locales.SendStats(cx), Control: sh.statsSwitch(cx)},
 			}},
 			ui.FormSection{
 				Title: locales.Plugins(cx),
@@ -81,6 +82,17 @@ func (sh *shell) languageSelect(cx *core.Scope) core.Node {
 			})
 		},
 	}
+}
+
+// statsSwitch turns the usage statistics on or off.
+func (sh *shell) statsSwitch(cx *core.Scope) core.Node {
+	on := core.NewSignal(cx, sh.settings.Stats())
+	return ui.Switch{TestID: "stats", Label: locales.SendStats(cx), Checked: on.Get, OnChange: func(v bool) {
+		on.Set(v)
+		if err := sh.settings.SetStats(v); err != nil {
+			log.Printf("settings: %v", err)
+		}
+	}}
 }
 
 // pluginRow is a plugin's name, version and the hosts it reaches, with

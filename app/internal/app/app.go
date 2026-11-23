@@ -20,6 +20,7 @@ import (
 	"github.com/oneo-me/nsgo-media/app/internal/store"
 	"github.com/oneo-me/nsgo-media/app/locales"
 	"github.com/oneo-me/nsgo-media/app/plugins/local"
+	"github.com/oneo-me/nsgo-media/internal/stats"
 )
 
 // Version is the app's version, which plugins' minAppVersion is checked
@@ -41,10 +42,12 @@ type App struct {
 
 	// started hands tests the player.
 	started func(*player)
+	// report counts the app's use (stats.Report).
+	report bool
 }
 
 // Root is the installed app.
-func Root(cx *core.Scope) core.Node { return App{}.Render(cx) }
+func Root(cx *core.Scope) core.Node { return App{report: true}.Render(cx) }
 
 // Render implements core.Node.
 func (a App) Render(cx *core.Scope) core.Node {
@@ -111,6 +114,19 @@ func (a App) Render(cx *core.Scope) core.Node {
 	if a.started != nil {
 		a.started(pl)
 	}
+	if a.report {
+		// Pages are counted by their kind, never a plugin's own.
+		stats.Report(cx, stats.Options{Tag: "app",
+			Page: func() (string, string) {
+				if pl.playing.Get() != nil {
+					return "/app/player", "Player"
+				}
+				k := statsPages[sh.top().kind]
+				return "/app/" + k, k
+			},
+			On:   settings.Stats,
+			Busy: func() bool { return pl.playing.Get() != nil }})
+	}
 	return core.View{
 		Style: core.Style{FlexGrow: 1, FlexShrink: 1},
 		OnFileDrop: func(uris []string) {
@@ -175,6 +191,10 @@ const (
 	routeVideo
 	routeSettings
 )
+
+// statsPages name the kinds of page in the app's statistics.
+var statsPages = map[routeKind]string{routeOpen: "open", routeHome: "home", routeBrowse: "browse",
+	routeSearch: "search", routeVideo: "video", routeSettings: "settings"}
 
 // route is a page: the open page, or one of a plugin's.
 type route struct {
