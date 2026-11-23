@@ -35,7 +35,7 @@ func Root(cx *core.Scope) core.Node {
 }
 ```
 
-播放器的状态（如 `p.State()`、`p.Position()` 和 `p.Cues()`）是 NSGo 信号，应用的视图直接读取。[`examples/demo`](examples/demo) 是一个带完整自定义控件的播放器。
+播放器的状态（如 `p.State()`、`p.Position()` 和 `p.Cues()`）是 NSGo 信号，应用的视图直接读取。[`examples/demo`](examples/demo) 是一个带自定义控件的小播放器，`app/` 里的 [NSGo Player](docs/app.md) 是第一方桌面应用：用内置插件浏览本地文件夹，其他来源由使用 YAML 清单的插件提供。
 
 内核在运行时加载 FFmpeg 动态库：优先使用 `tools/ffmpeg` 构建的库，从 `NSGO_MEDIA_FFMPEG` 指定的目录、可执行文件旁或 iOS 应用里的 framework 加载，否则使用系统的 FFmpeg 9（macOS 上可 `brew install ffmpeg`）。应用的包在 `nsgo build` 之后用 `go tool nsgo-media bundle` 放入这些库。详见 [FFmpeg 库](docs/ffmpeg.md)。
 
@@ -47,6 +47,7 @@ func Root(cx *core.Scope) core.Node {
 go tool nsgo dev examples/demo  # 以热重载运行 demo 应用
 go tool nsgo check              # 检查所有包
 go tool nsgo test               # 运行所有包的测试
+cd app && go tool nsgo dev      # 运行 NSGo Player，它是独立的模块，也在那里检查和测试
 ```
 
 设计见 [ARCHITECTURE.md](ARCHITECTURE.md)，参与方式见 [AGENTS.md](AGENTS.md)。

@@ -1,0 +1,26 @@
+id: demo
+name: Demo
+version: 1.0.0
+minAppVersion: 0.1.0
+main: index.ts
+media: video
+permissions:
+  network: [demo.example.com]
+settings:
+  - key: quality
+    label: Default quality
+    type: choice
+    default: "720"
+    choices:
+      - { value: "1080", label: 1080p }
+      - { value: "720", label: 720p }
+      - { value: "480", label: 480p }
+  - key: apiKey
+    label: API key for 1080p
+    type: secret
+  - key: browserSignIn
+    label: Sign in in the browser
+    type: toggle
+navigation:
+  - { id: popular, label: Popular }
+  - { id: favorites, label: Favorites }

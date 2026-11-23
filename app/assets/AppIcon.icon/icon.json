@@ -1,0 +1,26 @@
+{
+  "fill": {
+    "automatic-gradient": "display-p3:1.00,1.00,1.00,1"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "01-blade-coral.svg",
+          "name": "01-blade-coral"
+        },
+        {
+          "image-name": "02-blade-amber.svg",
+          "name": "02-blade-amber"
+        },
+        {
+          "image-name": "03-blade-teal.svg",
+          "name": "03-blade-teal"
+        }
+      ]
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}
