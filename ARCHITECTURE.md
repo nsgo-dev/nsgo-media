@@ -13,6 +13,7 @@ NSGo Media is a Go module that NSGo apps import. A player reads a source with FF
 | `internal/audioout` | Audio output, one backend per target: CoreAudio on macOS, WASAPI on Windows, PulseAudio on Linux, each with PCM and an IEC 61937 stream for passthrough; CoreAudio's AudioQueue for PCM on iOS, and what iOS does to the output under the app |
 | `cmd/nsgo-media` | `bundle`, which puts the libraries into the packages `nsgo build` wrote and signs a macOS or iOS app again |
 | `tools/ffmpeg` | The command that builds FFmpeg's LGPL shared libraries for each desktop target, and frameworks for iOS, at the pinned version |
+| `internal/stats` | Counting the demo's and NSGo Player's use in the website's Umami, tagged `demo` and `app` beside the site's `website`: a pageview per page and heartbeats while in use, with a random install ID; `nsgo dev` builds and tests send nothing |
 | `examples/demo` | A player app with its own controls, showing how an app drives the core |
 | `app` | NSGo Player, the first-party desktop app on plugins, a Go module of its own ([NSGo Player](docs/app.md)) |
 | `website` | The official site, Astro with Starlight, whose docs it reads from `docs/public/<language>/` and GitHub Pages serves at media.nsgo.dev |

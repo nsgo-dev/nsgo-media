@@ -10,8 +10,8 @@ import (
 )
 
 // Settings are the app's own settings in one JSON file: the language it
-// shows, the plugins the viewer disabled and the folders of the plugins
-// used where they are. Its methods may be called
+// shows, the plugins the viewer disabled, the folders of the plugins
+// used where they are and whether it sends usage statistics. Its methods may be called
 // from any goroutine; the setters write the file before returning.
 type Settings struct {
 	path string
@@ -26,6 +26,8 @@ type settings struct {
 	// Linked are the folders of plugins loaded where they are, not
 	// installed into the plugins folder.
 	Linked []string `json:"linked,omitempty"`
+	// NoStats turns the usage statistics off.
+	NoStats bool `json:"noStats,omitempty"`
 }
 
 // OpenSettings reads the settings kept at path. A missing file holds the
@@ -94,6 +96,22 @@ func (s *Settings) SetLinked(dir string, on bool) error {
 	if on {
 		s.v.Linked = append(s.v.Linked, dir)
 	}
+	return s.write()
+}
+
+// Stats reports whether the app sends usage statistics, as it does until
+// the viewer turns them off.
+func (s *Settings) Stats() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.v.NoStats
+}
+
+// SetStats turns the usage statistics on or off.
+func (s *Settings) SetStats(on bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.v.NoStats = !on
 	return s.write()
 }
 

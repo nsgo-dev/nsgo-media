@@ -44,6 +44,7 @@ related: 相关视频
 settings: 设置
 language: 语言
 systemLanguage: 跟随系统
+sendStats: 发送使用统计
 plugins: 插件
 installFromFolder: 从文件夹安装…
 installFromZip: 从 zip 安装…

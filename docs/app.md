@@ -56,7 +56,9 @@ Out of scope: danmaku, comments and posting to a site; downloading, casting, liv
 
 ## Data
 
-The app keeps its data in the user's configuration directory: its settings, which list the folders of the plugins used where they are, the installed plugins' folders, each plugin's data folder with its storage and settings, and the resume positions. Only the app writes them; a plugin writes only its own storage, through the host object.
+The app keeps its data in the user's configuration directory: its settings, which list the folders of the plugins used where they are and whether it sends usage statistics, the installed plugins' folders, each plugin's data folder with its storage and settings, and the resume positions. Only the app writes them; a plugin writes only its own storage, through the host object.
+
+The installed app counts its use in the website's Umami (`internal/stats`): a pageview for each kind of page, never a plugin's own, heartbeats while a page is new or a video is open, and a random ID kept in its storage, until the viewer turns it off in the settings.
 
 ## Verification
 

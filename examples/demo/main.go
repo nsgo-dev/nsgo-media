@@ -29,6 +29,7 @@ import (
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
 
+	"github.com/oneo-me/nsgo-media/internal/stats"
 	"github.com/oneo-me/nsgo-media/player"
 )
 
@@ -51,6 +52,9 @@ var rates = []float64{0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4}
 // Root is the main window's content.
 func Root(cx *core.Scope) core.Node {
 	p := player.New(cx)
+	stats.Report(cx, stats.Options{Tag: "demo",
+		Page: func() (string, string) { return "/demo/", "NSGo Media Demo" },
+		Busy: func() bool { return p.State() == player.Playing }})
 	fit := core.NewSignal(cx, player.Contain)
 	url := core.NewSignal(cx, "")
 	if src := startSource(); src != "" {

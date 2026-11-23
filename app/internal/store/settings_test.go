@@ -14,10 +14,13 @@ func TestSettingsOutliveReopening(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Language() != "" || !s.Enabled("demo") {
+	if s.Language() != "" || !s.Enabled("demo") || !s.Stats() {
 		t.Fatal("new settings are not the defaults")
 	}
 	if err := s.SetLanguage("zh-Hans"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetStats(false); err != nil {
 		t.Fatal(err)
 	}
 	for _, step := range []struct {
@@ -45,7 +48,7 @@ func TestSettingsOutliveReopening(t *testing.T) {
 	if linked := again.Linked(); len(linked) != 1 || linked[0] != "/a" {
 		t.Fatalf("linked folders = %q", linked)
 	}
-	if again.Language() != "zh-Hans" || again.Enabled("demo") || !again.Enabled("other") {
+	if again.Language() != "zh-Hans" || again.Enabled("demo") || !again.Enabled("other") || again.Stats() {
 		t.Fatalf("reopened settings = %+v", again.v)
 	}
 }

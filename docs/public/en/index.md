@@ -51,3 +51,7 @@ Before a plugin is added, the app shows the hosts it may connect to and asks you
 ## Language
 
 The app speaks English and Simplified Chinese, and follows the system unless you pick one under **Settings → Language**. Plugins' own texts follow it too.
+
+## Usage statistics
+
+The app counts its use anonymously: which kind of page shows, never a plugin's or a video's, the window's size, the system and its language, with a random ID for the install. Turn it off under **Settings → Send Usage Statistics**.

@@ -118,6 +118,7 @@ const (
 	textSettings
 	textLanguage
 	textSystemLanguage
+	textSendStats
 	textPlugins
 	textInstallFromFolder
 	textInstallFromZip
@@ -179,6 +180,7 @@ var keyOfText = [numTexts]string{
 	"settings",
 	"language",
 	"systemLanguage",
+	"sendStats",
 	"plugins",
 	"installFromFolder",
 	"installFromZip",
@@ -238,6 +240,7 @@ var textsEn = i18n.NewTexts(""+
 	"Settings"+
 	"Language"+
 	"System"+
+	"Send Usage Statistics"+
 	"Plugins"+
 	"Install from Folder…"+
 	"Install from Zip…"+
@@ -294,6 +297,7 @@ var textsEn = i18n.NewTexts(""+
 		8,
 		8,
 		6,
+		21,
 		7,
 		22,
 		19,
@@ -353,6 +357,7 @@ var textsZhHans = i18n.NewTexts(""+
 	"设置"+
 	"语言"+
 	"跟随系统"+
+	"发送使用统计"+
 	"插件"+
 	"从文件夹安装…"+
 	"从 zip 安装…"+
@@ -409,6 +414,7 @@ var textsZhHans = i18n.NewTexts(""+
 		6,
 		6,
 		12,
+		18,
 		6,
 		21,
 		17,
@@ -944,6 +950,15 @@ func SystemLanguage(cx *core.Scope) string { return For(cx).SystemLanguage() }
 
 // SystemLanguage is the package's SystemLanguage in the language of msgs.
 func (msgs Messages) SystemLanguage() string { return msgs.text(textSystemLanguage) }
+
+// SendStats says "Send Usage Statistics"
+// in the language the app shows under cx.
+//
+// The switch that sends anonymous counts of the app's use to its website.
+func SendStats(cx *core.Scope) string { return For(cx).SendStats() }
+
+// SendStats is the package's SendStats in the language of msgs.
+func (msgs Messages) SendStats() string { return msgs.text(textSendStats) }
 
 // Plugins says "Plugins"
 // in the language the app shows under cx.
