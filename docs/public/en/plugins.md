@@ -1,0 +1,107 @@
+---
+title: Writing plugins
+description: How to add a source of videos to NSGo Player with one JavaScript or TypeScript file and a YAML manifest.
+---
+
+A plugin turns one source of videos into pages and streams that [NSGo Player](../app/) shows and plays. The app calls your module's exports and draws every page itself, so a plugin carries no UI and works the same on every desktop. [`app/examples/demo-plugin`](https://github.com/nsgo-dev/nsgo-media/tree/main/app/examples/demo-plugin) uses every export and host function.
+
+## A plugin's folder
+
+```text
+my-plugin/
+├── plugin.yaml        the manifest
+├── index.ts           one module, without imports
+└── locales/
+    └── zh-CN.yaml     translations of the plugin's own texts
+```
+
+A plugin is one JavaScript or TypeScript module. One that uses libraries bundles them into it.
+
+## The manifest
+
+`plugin.yaml` declares everything you must approve or fill in before any of the plugin's code runs:
+
+```yaml
+id: demo
+name: Demo
+version: 1.0.0
+minAppVersion: 0.1.0
+main: index.ts
+media: video
+permissions:
+  network: [demo.example.com, "*.cdn.example.com"]
+settings:
+  - key: quality
+    label: Default quality
+    type: choice          # text, secret, toggle or choice
+    default: "720"
+    choices:
+      - { value: "1080", label: 1080p }
+      - { value: "720", label: 720p }
+navigation:
+  - { id: favorites, label: Favorites }
+```
+
+- `permissions.network` lists the only hosts `fetch` reaches, and the only hosts the app fetches your pictures, streams and subtitles from. `*.example.com` matches its subdomains.
+- `settings` appear in the app's settings; your code reads them with `host.settings.get`.
+- `navigation` adds sidebar entries, each opening `browse` with its `id`.
+- An unknown field is refused. A `minAppVersion` newer than the app is refused with a message to update it.
+
+## Translations
+
+`locales/<language>.yaml` maps each text as your plugin writes it to its translation. It covers the name, labels and anything passed to `host.t`:
+
+```yaml
+Demo: 演示
+Favorites: 收藏
+Default quality: 默认清晰度
+```
+
+## Exports
+
+Export the functions you support; the app leaves out what you do not export. A plugin without `search` gets no search box.
+
+| Export | Answers |
+| --- | --- |
+| `home`, `browse` | A page of sections of videos, uploaders, collections and links; `browse` opens one by id |
+| `search`, `suggest`, `resolve` | Search results by kind, completions, and the item a pasted link names |
+| `video` | A video's details, its parts, the part to start with and related videos |
+| `stream` | The video and audio URLs of a part at a quality, their request headers, the qualities and the subtitle tracks |
+| `progress` | Nothing; it tells you the position the viewer reached |
+| `account`, `signIn`, `signOut` | The signed-in account, or `null` |
+| `setSetting` | Nothing; it tells you a setting changed |
+
+```ts
+export async function stream({ video, part, quality }) {
+  return {
+    video: { url: "https://cdn.example.com/v.m4s", headers: { Referer: "https://example.com/" } },
+    audio: { url: "https://cdn.example.com/a.m4s", headers: { Referer: "https://example.com/" } },
+    quality: "720",
+    qualities: [{ id: "1080", label: "1080p" }, { id: "720", label: "720p" }],
+    subtitles: [{ label: "English", url: "https://cdn.example.com/en.vtt" }],
+  };
+}
+```
+
+A subtitle track is a URL of SRT, WebVTT or ASS, or its `text`; convert a site's own format in the plugin. Throw an error with a `code` to tell the app what to do: `signIn` asks the viewer to sign in, `setup` opens your settings and `unavailable` marks the video unplayable. Any other error shows its message.
+
+## The host object
+
+Besides the JavaScript standard library, timers, `fetch`, `URL` and `console`, a plugin has `host`:
+
+| Member | Purpose |
+| --- | --- |
+| `language`, `t(text)` | The viewer's language and your translation of a text |
+| `storage.get`, `set`, `remove` | JSON values that outlive the app, in the plugin's own data folder |
+| `settings.get(key)` | The viewer's value of a setting |
+| `md5(text)` | An MD5 hash, for sites that sign requests with one |
+| `showSignIn({ qrCode, message })`, `closeSignIn()` | A sign-in prompt with a QR code; its promise tells whether the viewer closed it |
+| `openURL(url)` | Opens a page in the browser |
+
+## The sandbox
+
+Each plugin runs in its own [moejs](https://github.com/MoeForge/moejs) runtime with a memory limit, and each call has a deadline. A plugin has no file system, no processes and no `eval`. A runtime that runs too long without waiting, or uses too much memory, is stopped, and the next call starts a fresh one.
+
+## Trying it
+
+While you write a plugin, open **Settings → Plugins → Use from Path** in NSGo Player and type its folder's path. The app reads it where it is at every start, so restart the app to load your changes. To share a plugin, zip its folder; others install it from the zip.
