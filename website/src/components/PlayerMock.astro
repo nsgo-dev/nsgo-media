@@ -2,10 +2,25 @@
 // The hero's picture of the split NSGo Media makes: the core draws the
 // frame, the app draws everything above it. The scene is drawn in CSS, not
 // taken from any video.
+const words = {
+	en: {
+		label: 'A player view with the app’s controls drawn above the picture',
+		core: 'The core draws',
+		app: 'Your app draws',
+		cue: 'Subtitles reach the app as cues.',
+	},
+	zh: {
+		label: '一个播放器视图，应用的控件画在画面之上',
+		core: '内核绘制',
+		app: '应用绘制',
+		cue: '字幕以 cue 的形式交给应用。',
+	},
+};
+
 interface Props {
-	t: { label: string; core: string; app: string; cue: string };
+	lang: keyof typeof words;
 }
-const { t } = Astro.props;
+const t = words[Astro.props.lang] ?? words.en;
 ---
 
 <figure class="mock" role="img" aria-label={t.label}>
