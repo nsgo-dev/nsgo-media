@@ -55,7 +55,7 @@ The core persists nothing. A player's state lives in memory until `Close`; the a
 
 ## Open questions
 
-None now. Packaging the libraries is a step of the core's own after `nsgo build` (decided by the user, 2026-11-22; [FFmpeg libraries](docs/ffmpeg.md#packaging-an-app)); the `nsgo` tool carrying third-party packages' native libraries itself is proposed to NSGo.
+None now. Until a goal moves it, packaging the libraries is `bundle`'s step after `nsgo build` ([FFmpeg libraries](docs/ffmpeg.md#packaging-an-app)). The user chose (2026-11-24) to publish the libraries and let NSGo's tool package them on desktops ([nsgo#1722](https://github.com/nsgo-dev/nsgo/issues/1722)), keeping `bundle` for iOS.
 
 ## Verification
 
@@ -65,7 +65,7 @@ Pipeline and player tests decode the clips in `testdata/` headless, through a si
 
 | Document | Read before changing |
 | --- | --- |
-| [Requirements](docs/requirements.md) | What the first version includes or leaves out |
+| [Requirements](docs/requirements.md) | What the core includes, aims at or leaves out |
 | [Roadmap](https://github.com/oneo-me/nsgo-media/issues/2) (issues) | The order of milestones or what comes after the first version |
 | [Performance](docs/performance.md) | The presenter, the frame conversion or anything on the per-frame path |
 | [NSGo Player](docs/app.md) | The first-party app in `app/` |

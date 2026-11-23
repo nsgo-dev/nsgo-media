@@ -4,9 +4,9 @@ NSGo Player, in `app/`, is NSGo Media's first-party desktop app and its fullest 
 
 ## Scope
 
-Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
+It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Linux x64. Its first release is on macOS; Windows and Linux follow it.
 
-| Area | Included |
+| Area | Built |
 | --- | --- |
 | Local playback | Opening a local file or a URL, and every format the core decodes |
 | Player | Play, pause, a progress bar with the buffered range, seeking, volume, mute, rate, subtitle and audio track choice, fullscreen, keyboard shortcuts, and resuming where a video was left |
@@ -16,7 +16,15 @@ Desktop targets: macOS (arm64 and x64), Windows x64 and Linux x64.
 | Plugin management | Listing, enabling and disabling plugins, installing one from a folder or zip, or using one where its folder is from a path typed in the settings, each after approving its hosts; removing it with its data, and editing its settings |
 | Languages | Simplified Chinese and English, for the app and for plugins' own text |
 
-Out of scope: danmaku, comments and posting to a site; downloading, casting, live streams and DRM; installing plugins from a catalog and updating them; playlists; mobile targets; publishing releases. No plugin for a particular site ships in this repository.
+### First version on macOS
+
+Goals, in the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
+
+- A designed look: every page drawn from designs made before it is built.
+- Installing from GitHub: typing a repository as `owner/repo` or its URL installs the plugin zip of its latest release, after the viewer approves its hosts. The app checks the repositories of plugins installed this way for a newer release, never a pre-release, and updates one when the viewer agrees.
+- A release: one universal disk image, signed with a Developer ID, notarized and published on this repository's GitHub releases by a local command. A plugin from its own repository, installed from GitHub, plays in it.
+
+Out of scope: danmaku, comments and posting to a site; downloading, casting, live streams and DRM; a catalog of plugins; the app updating itself; playlists; mobile targets. No plugin for a particular site ships in this repository.
 
 ## Code map
 
