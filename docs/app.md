@@ -4,7 +4,7 @@ NSGo Player, in `app/`, is NSGo Media's first-party desktop app and its fullest 
 
 ## Scope
 
-It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Linux x64. Its first release is on macOS; Windows and Linux follow it.
+It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Linux x64. Its first version is on macOS, and Windows and Linux follow it; no release is published.
 
 | Area | Built |
 | --- | --- |
@@ -17,13 +17,7 @@ It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Lin
 | Look | Every page and state of the designs in `design/` but the following page and following a show, which wait for a plugin export of their own |
 | Languages | Simplified Chinese and English, for the app and for plugins' own text |
 
-### First version on macOS
-
-Goals, in the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
-
-- A release: one universal disk image, signed with a Developer ID, notarized and published on this repository's GitHub releases by a local command. A plugin from its own repository, installed from GitHub, plays in it.
-
-Out of scope: danmaku, comments and posting to a site; downloading, casting, live streams and DRM; a catalog of plugins; the app updating itself; playlists; mobile targets. No plugin for a particular site ships in this repository.
+Out of scope: danmaku, comments and posting to a site; downloading, casting, live streams and DRM; a catalog of plugins; the app updating itself; publishing releases; playlists; mobile targets. No plugin for a particular site ships in this repository.
 
 ## Code map
 

@@ -18,7 +18,7 @@
 
 ## Status
 
-In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows, Linux and iOS for local use, with no published release. Next is [NSGo Player](docs/app.md)'s first release on macOS, and the core serves what it needs; the [requirements](docs/requirements.md) record what the core does and the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2) orders what comes next.
+In development: playback, sound, seeking, subtitles and hardware decoding work on macOS, Windows, Linux and iOS for local use, with no published release. [NSGo Player](docs/app.md)'s first version runs on macOS from a checkout, Windows and Linux come next, and the core serves what it needs; the [requirements](docs/requirements.md) record what the core does and the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2) orders what comes next.
 
 ## Usage
 

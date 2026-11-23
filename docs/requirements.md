@@ -37,7 +37,7 @@ Targets: macOS (arm64 and x64), Windows x64 and Linux x64, and iOS as its row sa
 
 In the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
 
-- What NSGo Player's first version on macOS needs.
+- What NSGo Player needs, as it comes to Windows and Linux after macOS.
 - Zero-copy GPU rendering of hardware-decoded frames, then HDR output and tone mapping.
 - The iOS Playback audio session and background playback.
 
