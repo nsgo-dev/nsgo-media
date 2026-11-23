@@ -1,0 +1,7 @@
+component name="Dialogs/Actions" width=fill preview=460
+box class="flex-row items-center justify-end gap-2 border-t border-zinc-100 bg-zinc-50/80 px-5 py-3.5"
+  slot class="flex-1 flex-row items-center"
+  end
+  use button name=cancel variant="secondary text" label="Cancel"
+  use button name=confirm variant=text label="Install"
+end

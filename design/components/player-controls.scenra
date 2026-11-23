@@ -1,0 +1,51 @@
+component name="Player/Controls" width=fill preview=1200 backdrop="bg-zinc-700"
+box class="gap-2 bg-linear-to-t from-black/80 via-black/45 to-transparent px-5 pt-14 pb-4"
+  box name=seek class="h-4 justify-center" note="Seeks where pressed or dragged, showing the time under the pointer; the lighter range is what is buffered."
+    box class="h-1 overflow-hidden rounded-full bg-white/25"
+      box class="absolute top-0 bottom-0 left-0 w-[72%] bg-white/35"
+      end
+      box name=played class="absolute top-0 bottom-0 left-0 w-[56%] bg-[#FF6B4A]"
+      end
+    end
+    box name=thumb class="absolute left-[56%] -ml-1.5 size-3 rounded-full bg-white shadow-md"
+    end
+  end
+  box class="flex-row items-center gap-1"
+    box name=play class="size-9 items-center justify-center rounded-lg hover:bg-white/10"
+      icon pause name=play-icon class="size-5 text-white"
+    end
+    box name=next class="size-9 items-center justify-center rounded-lg hover:bg-white/10" note="Plays the next part; shown for a video of several parts."
+      icon skip-forward class="size-[18px] text-white"
+    end
+    box name=volume class="flex-row items-center gap-2 pr-2"
+      box class="size-9 items-center justify-center rounded-lg hover:bg-white/10"
+        icon volume-2 name=volume-icon class="size-[18px] text-white"
+      end
+      box class="h-1 w-20 rounded-full bg-white/25"
+        box class="h-full w-3/4 rounded-full bg-white"
+        end
+      end
+    end
+    text "1:31:05 / 1:46:32" name=time class="text-[13px] font-medium text-white/90"
+    box class="flex-1"
+    end
+    box name=parts class="h-8 flex-row items-center gap-1.5 rounded-lg px-2.5 hover:bg-white/10" note="The parts of the video; shown when it has several."
+      icon list-video class="size-[18px] text-white"
+      text "P2/3" name=parts-label class="text-[13px] font-medium text-white"
+    end
+    box name=speed class="h-8 items-center justify-center rounded-lg px-2.5 hover:bg-white/10"
+      text "1×" name=speed-label class="text-[13px] font-semibold text-white"
+    end
+    box name=subtitles class="size-9 items-center justify-center rounded-lg hover:bg-white/10" note="Subtitle and audio tracks, in one menu; shown when the source has a choice."
+      icon captions class="size-5 text-white"
+    end
+    box name=quality class="h-8 items-center justify-center rounded-lg px-2.5 hover:bg-white/10" note="The qualities the plugin's stream offers; shown when it offers several."
+      text "1080p" name=quality-label class="text-[13px] font-semibold text-white"
+    end
+    box name=fullscreen class="size-9 items-center justify-center rounded-lg hover:bg-white/10"
+      icon maximize name=fullscreen-icon class="size-[18px] text-white"
+    end
+  end
+end
+variant local parts.class="hidden" next.class="hidden" quality.class="hidden"
+variant fullscreen fullscreen-icon=minimize

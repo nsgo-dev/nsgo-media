@@ -1,0 +1,156 @@
+design en in="main#content" name="Main/Plugin settings"
+box class="flex-1"
+  use toolbar title="Demo" back.tap="close"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-5"
+      box class="flex-row items-center gap-4"
+        box class="size-14 items-center justify-center rounded-2xl bg-linear-to-br from-[#FF8A6B] to-[#E8553A] shadow-md"
+          text "D" class="text-2xl font-bold text-white"
+        end
+        box class="flex-1 gap-1"
+          text "Demo" class="text-xl font-bold text-zinc-900"
+          box class="flex-row items-center gap-1.5"
+            text "Version 1.2.0" class="text-[13px] text-zinc-500"
+            text "·" class="text-[13px] text-zinc-300"
+            icon git-fork class="size-3.5 text-zinc-400"
+            text "example-org/demo-plugin" class="text-[13px] font-medium text-[#E8553A]" note="Opens the repository in the browser."
+          end
+        end
+        use switch
+      end
+      box class="flex-row items-center gap-3 rounded-xl bg-[#FF6B4A]/[0.08] px-4 py-3" note="Shown when the repository has a newer release; Update asks first, showing any host it adds."
+        icon circle-arrow-up class="size-5 text-[#E8553A]"
+        box class="flex-1 gap-0.5"
+          text "Version 1.3.0 is available" class="text-[13px] font-semibold text-zinc-900"
+          text "Released 2 days ago" class="text-xs text-zinc-500"
+        end
+        use button variant="text" label="Update…" button.tap="open update-plugin"
+      end
+      box class="gap-2"
+        text "Account" class="px-1 text-xs font-semibold text-zinc-500"
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+          box class="min-h-[52px] flex-row items-center gap-3 px-4 py-2.5" note="For a plugin with account exports: who is signed in, with Sign Out, or else Sign In."
+            image "Viewer's avatar" src="assets/thumbs/avatar1.jpg" class="size-8 rounded-full"
+            box class="flex-1"
+              text "Alex Lin" class="text-[13px] font-medium text-zinc-900"
+              text "Signed in" class="text-xs text-zinc-500"
+            end
+            use button variant="secondary text" label="Sign Out"
+          end
+        end
+      end
+      box class="gap-2" note="The settings the manifest declares, in its order, with the plugin's own labels; a change goes to the plugin's setSetting."
+        text "Settings" class="px-1 text-xs font-semibold text-zinc-500"
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+          use settings-row title="Default quality"
+            fill control
+              use select value="720p"
+            end
+          end
+          use settings-row title="API key for 1080p"
+            fill control
+              use text-field variant=secret
+            end
+          end
+          use settings-row variant=last title="Sign in in the browser"
+            fill control
+              use switch variant=off
+            end
+          end
+        end
+      end
+      box class="gap-2"
+        text "Network" class="px-1 text-xs font-semibold text-zinc-500"
+        box class="gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3" note="The hosts of the manifest's network permission, approved when it was installed."
+          text "It can connect to these hosts, and no others:" class="text-xs text-zinc-500"
+          box class="flex-row flex-wrap gap-1.5"
+            box class="flex-row items-center gap-1.5 rounded-md bg-zinc-100 px-2 py-1"
+              icon globe class="size-3 text-zinc-500"
+              text "api.example.com" class="text-xs font-medium text-zinc-700"
+            end
+            box class="flex-row items-center gap-1.5 rounded-md bg-zinc-100 px-2 py-1"
+              icon globe class="size-3 text-zinc-500"
+              text "img.example.com" class="text-xs font-medium text-zinc-700"
+            end
+            box class="flex-row items-center gap-1.5 rounded-md bg-zinc-100 px-2 py-1"
+              icon globe class="size-3 text-zinc-500"
+              text "media.example.net" class="text-xs font-medium text-zinc-700"
+            end
+          end
+        end
+      end
+      box class="flex-row items-center pt-1"
+        use button variant="secondary text" label="Remove Plugin…" label.class="text-rose-600" button.tap="open remove-plugin"
+      end
+    end
+  end
+end
+
+design builtin in="main#content" name="Plugin settings · Built-in"
+box class="flex-1"
+  use toolbar title="Local Files" back.tap="close"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-5" note="A built-in plugin can be disabled, never removed, and reaches no network."
+      box class="flex-row items-center gap-4"
+        box class="size-14 items-center justify-center rounded-2xl bg-linear-to-br from-[#3BD6B8] to-[#16A88E] shadow-md"
+          text "L" class="text-2xl font-bold text-white"
+        end
+        box class="flex-1 gap-1"
+          text "Local Files" class="text-xl font-bold text-zinc-900"
+          text "Built into NSGo Player" class="text-[13px] text-zinc-500"
+        end
+        use switch
+      end
+      box class="gap-2"
+        text "Settings" class="px-1 text-xs font-semibold text-zinc-500"
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+          use settings-row variant="detailed last" title="Video folders" detail="Leave empty to use the Movies folder."
+            fill control
+              use text-field variant=placeholder value="~/Movies, ~/Videos" field.class="w-[240px]"
+            end
+          end
+        end
+      end
+      box class="gap-2"
+        text "Network" class="px-1 text-xs font-semibold text-zinc-500"
+        box class="flex-row items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3"
+          icon wifi-off class="size-4 text-zinc-400"
+          text "It cannot connect to the network." class="text-[13px] text-zinc-600"
+        end
+      end
+    end
+  end
+end
+
+design refused in="main#content" name="Plugin settings · Refused"
+box class="flex-1"
+  use toolbar title="Night Shows" back.tap="close"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-5" note="A plugin the app refused to load: one needing a newer app, or whose manifest is invalid, with what is wrong. It keeps its data until removed."
+      box class="flex-row items-center gap-4"
+        box class="size-14 items-center justify-center rounded-2xl bg-linear-to-br from-zinc-300 to-zinc-400"
+          text "N" class="text-2xl font-bold text-white"
+        end
+        box class="flex-1 gap-1"
+          text "Night Shows" class="text-xl font-bold text-zinc-900"
+          box class="flex-row items-center gap-1.5"
+            text "Version 2.0.0" class="text-[13px] text-zinc-500"
+            text "·" class="text-[13px] text-zinc-300"
+            icon git-fork class="size-3.5 text-zinc-400"
+            text "example-org/night-shows" class="text-[13px] font-medium text-[#E8553A]"
+          end
+        end
+      end
+      box class="flex-row gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+        icon triangle-alert class="mt-0.5 size-5 text-amber-600"
+        box class="flex-1 gap-0.5"
+          text "This plugin cannot be loaded" class="text-[13px] font-semibold text-amber-900"
+          text "It needs NSGo Player 0.3.0 or later. Update the app to use it." class="text-[13px] text-amber-800"
+        end
+      end
+      box class="flex-row items-center pt-1"
+        use button variant="secondary text" label="Remove Plugin…" label.class="text-rose-600" button.tap="open remove-plugin"
+      end
+    end
+  end
+end

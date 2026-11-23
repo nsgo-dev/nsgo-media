@@ -1,0 +1,121 @@
+design enter name="Dialogs/Install from GitHub" device=desktop width=480 height=290 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1" note="A sheet over the main window, from Add Plugin › From GitHub…"
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3"
+      box class="size-10 items-center justify-center rounded-xl bg-zinc-900"
+        icon git-fork class="size-5 text-white"
+      end
+      text "Install from GitHub" class="text-[17px] font-bold text-zinc-900"
+    end
+    text "Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates." class="text-[13px] leading-relaxed text-zinc-600"
+    box class="h-10 flex-row items-center gap-2 rounded-xl border-2 border-[#E8553A]/50 bg-white px-3 ring-4 ring-[#FF6B4A]/10"
+      text "owner/repo" class="flex-1 text-sm text-zinc-400"
+    end
+  end
+  use dialog-actions confirm/label="Continue" confirm.class="opacity-40" cancel.tap="close" confirm.tap="open #typed"
+end
+
+design typed name="Install from GitHub · Typed" device=desktop width=480 height=290 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3"
+      box class="size-10 items-center justify-center rounded-xl bg-zinc-900"
+        icon git-fork class="size-5 text-white"
+      end
+      text "Install from GitHub" class="text-[17px] font-bold text-zinc-900"
+    end
+    text "Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates." class="text-[13px] leading-relaxed text-zinc-600"
+    box class="h-10 flex-row items-center gap-2 rounded-xl border-2 border-[#E8553A]/50 bg-white px-3 ring-4 ring-[#FF6B4A]/10"
+      text "example-org/demo-plugin" class="flex-1 text-sm text-zinc-900"
+    end
+  end
+  use dialog-actions confirm/label="Continue" cancel.tap="close" confirm.tap="open #fetching"
+end
+
+design fetching name="Install from GitHub · Finding the release" device=desktop width=480 height=290 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1" note="Asks GitHub for the repository's latest release, never a pre-release, downloads its plugin zip and reads its manifest; nothing runs before the hosts are approved."
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3"
+      box class="size-10 items-center justify-center rounded-xl bg-zinc-900"
+        icon git-fork class="size-5 text-white"
+      end
+      text "Install from GitHub" class="text-[17px] font-bold text-zinc-900"
+    end
+    text "Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates." class="text-[13px] leading-relaxed text-zinc-600"
+    box class="h-10 flex-row items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3"
+      text "example-org/demo-plugin" class="flex-1 text-sm text-zinc-500"
+      icon loader-circle class="size-4 text-zinc-400"
+    end
+    text "Finding the latest release…" class="text-xs text-zinc-500"
+  end
+  use dialog-actions confirm/label="Continue" confirm.variant="text busy" cancel.tap="close" confirm.tap="open approve-plugin"
+end
+
+design not-found name="Install from GitHub · No repository" device=desktop width=480 height=310 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3"
+      box class="size-10 items-center justify-center rounded-xl bg-zinc-900"
+        icon git-fork class="size-5 text-white"
+      end
+      text "Install from GitHub" class="text-[17px] font-bold text-zinc-900"
+    end
+    text "Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates." class="text-[13px] leading-relaxed text-zinc-600"
+    box class="gap-2"
+      box class="h-10 flex-row items-center gap-2 rounded-xl border-2 border-rose-400 bg-white px-3"
+        text "example-org/demo-plugn" class="flex-1 text-sm text-zinc-900"
+      end
+      box class="flex-row items-center gap-1.5"
+        icon circle-alert class="size-3.5 text-rose-500"
+        text "There is no repository example-org/demo-plugn on GitHub." class="text-xs text-rose-600"
+      end
+    end
+  end
+  use dialog-actions confirm/label="Continue" cancel.tap="close"
+end
+
+design no-release name="Install from GitHub · No plugin release" device=desktop width=480 height=310 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1" note="Also when GitHub cannot be reached or limits requests, with that reason."
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3"
+      box class="size-10 items-center justify-center rounded-xl bg-zinc-900"
+        icon git-fork class="size-5 text-white"
+      end
+      text "Install from GitHub" class="text-[17px] font-bold text-zinc-900"
+    end
+    text "Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates." class="text-[13px] leading-relaxed text-zinc-600"
+    box class="gap-2"
+      box class="h-10 flex-row items-center gap-2 rounded-xl border-2 border-rose-400 bg-white px-3"
+        text "example-org/notes" class="flex-1 text-sm text-zinc-900"
+      end
+      box class="flex-row items-center gap-1.5"
+        icon circle-alert class="size-3.5 text-rose-500"
+        text "Its latest release has no plugin zip." class="text-xs text-rose-600"
+      end
+    end
+  end
+  use dialog-actions confirm/label="Continue" cancel.tap="close"
+end
+
+design too-new name="Install from GitHub · Needs a newer app" device=desktop width=480 height=310 class="overflow-hidden rounded-2xl bg-white"
+box class="flex-1"
+  box class="flex-1 gap-4 px-6 pt-6 pb-5"
+    box class="flex-row items-center gap-3"
+      box class="size-10 items-center justify-center rounded-xl bg-zinc-900"
+        icon git-fork class="size-5 text-white"
+      end
+      text "Install from GitHub" class="text-[17px] font-bold text-zinc-900"
+    end
+    text "Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates." class="text-[13px] leading-relaxed text-zinc-600"
+    box class="gap-2"
+      box class="h-10 flex-row items-center gap-2 rounded-xl border-2 border-amber-400 bg-white px-3"
+        text "example-org/night-shows" class="flex-1 text-sm text-zinc-900"
+      end
+      box class="flex-row items-center gap-1.5"
+        icon triangle-alert class="size-3.5 text-amber-600"
+        text "Night Shows 2.0.0 needs NSGo Player 0.3.0 or later. Update the app to install it." class="text-xs text-amber-700"
+      end
+    end
+  end
+  use dialog-actions confirm/label="Continue" cancel.tap="close"
+end

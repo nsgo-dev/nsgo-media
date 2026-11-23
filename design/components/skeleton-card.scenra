@@ -1,0 +1,9 @@
+component name="Cards/Skeleton" width=213
+box class="gap-2"
+  box class="h-[120px] rounded-xl bg-zinc-200/70"
+  end
+  box class="h-3 w-11/12 rounded bg-zinc-200/70"
+  end
+  box class="h-3 w-3/5 rounded bg-zinc-100"
+  end
+end

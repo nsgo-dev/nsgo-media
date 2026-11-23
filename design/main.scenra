@@ -1,0 +1,7 @@
+design name="Main window" device=desktop class="overflow-hidden rounded-xl bg-white"
+box class="flex-1 flex-row"
+  use sidebar open.tap="open open" local-home.tap="open home" local-search.tap="open search" demo-home.tap="open home" demo-search.tap="open search" demo-following.tap="open following" demo-popular.tap="open browse" demo-favorites.tap="open browse#signin" settings.tap="open settings"
+  box class="flex-1 bg-white" outlet=content note="The page the sidebar opened, or one opened from it. Back returns through the pages opened from it; choosing a sidebar entry starts over."
+    use home class="flex-1"
+  end
+end

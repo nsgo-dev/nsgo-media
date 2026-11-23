@@ -1,0 +1,15 @@
+component name="Controls/Kind tabs"
+box class="flex-row gap-1 rounded-lg bg-zinc-100 p-0.5" note="Asks search again with the kind chosen; All sends none. Shown once a search answered."
+  box name=all class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "All" name=all-label class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+  box name=videos class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "Videos" name=videos-label class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+  box name=uploaders class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "Uploaders" name=uploaders-label class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+  box name=collections class="group rounded-md px-3 py-1 selected:bg-white selected:shadow-sm"
+    text "Collections" name=collections-label class="text-[13px] text-zinc-600 group-selected:font-medium group-selected:text-zinc-900"
+  end
+end

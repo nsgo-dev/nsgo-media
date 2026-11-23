@@ -1,0 +1,249 @@
+design en in="main#content" name="Main/Video"
+box class="flex-1"
+  use toolbar title="Sunrise over an alpine lake, four hours of calm" back.tap="close"
+  box class="flex-1 gap-7 overflow-hidden px-7 py-6"
+    box class="flex-row gap-7"
+      box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg" tap="open player" note="The video's picture; pressing it plays as Play does."
+        image "Alpine lake at sunrise" src="assets/thumbs/mountains.jpg" class="size-full"
+        box class="absolute inset-0 items-center justify-center bg-black/10"
+          box class="size-16 items-center justify-center rounded-full bg-white/85 shadow-xl"
+            icon play class="ml-1 size-7 text-zinc-900"
+          end
+        end
+        box class="absolute right-0 bottom-0 left-0 h-1 bg-white/30"
+          box class="h-full w-[38%] bg-[#FF6B4A]"
+          end
+        end
+      end
+      box class="flex-1 gap-3 py-1"
+        text "Sunrise over an alpine lake, four hours of calm" class="line-clamp-2 text-[22px] leading-tight font-bold text-zinc-900"
+        box class="flex-row items-center gap-3"
+          box class="flex-row items-center gap-2 rounded-full bg-zinc-100 py-1 pr-3 pl-1 hover:bg-zinc-200" tap="open browse#uploader" note="The uploader the plugin answered, opened as a page."
+            image "Uploader's avatar" src="assets/thumbs/avatar2.jpg" class="size-6 rounded-full"
+            text "Morning Trails" class="text-[13px] font-medium text-zinc-800"
+          end
+          text "Nov 21, 2026 · 4:02:18 · 3 parts" class="text-[13px] text-zinc-500" note="The date published and the length, when the plugin answers them, and the number of parts when there are several."
+        end
+        box class="flex-row items-center gap-2 pt-1"
+          use button variant=large label="Resume P2 at 1:31:05" button.tap="open player" note="Play starts with the part the plugin names, else the first; where the viewer left a part, it resumes there, as the player's resume offer does today."
+          use button variant="secondary large" icon=rotate-ccw label="Play from Start" button.tap="open player"
+          use button variant="secondary large" icon=plus label="Follow" button.tap="open #show" note="Goal: shown when the plugin has follow and the video belongs to a show it can follow; follows it on the plugin's account."
+        end
+        text "A slow, uncut morning at a lake high in the Alps: the light comes over the ridge, the mist lifts off the water and the first hikers pass. Recorded in three parts with only natural sound." class="line-clamp-3 pt-1 text-[13px] leading-relaxed text-zinc-600" note="The description, selectable; More expands it."
+        text "More" class="text-[13px] font-medium text-[#E8553A]"
+      end
+    end
+    box class="gap-3" note="Shown for a video of several parts. The part playing or last played is marked; a part played shows how far."
+      use section-header title="Parts" variant=no-more
+      box class="flex-row flex-wrap gap-3"
+        use part-row variant=watched number="P1" title="Before first light" duration="1:24:10" row.tap="open player"
+        use part-row variant=current number="P2" title="The ridge catches the sun" duration="1:46:32" row.tap="open player"
+        use part-row number="P3" title="Mist off the water" duration="51:36" row.tap="open player"
+      end
+    end
+    box class="gap-3"
+      use section-header title="Related" variant=no-more
+      box class="flex-row gap-5"
+        use video-card image.src="assets/thumbs/forest.jpg" title="A misty forest walk with only the sound of rain" subtitle="Morning Trails · 6 days ago" duration="31:44" card.tap="open video"
+        use video-card image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="Blue Hours · 2 days ago" duration="9:31" card.tap="open video"
+        use video-card image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55" card.tap="open video"
+        use video-card image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10" card.tap="open video"
+      end
+    end
+  end
+end
+
+design show in="main#content" name="Video · Followed show"
+box class="flex-1" note="A video of a followed show: its parts are the show's episodes, and the episode to play next starts."
+  use toolbar title="Journey through the nebulae" back.tap="close"
+  box class="flex-1 gap-7 overflow-hidden px-7 py-6"
+    box class="flex-row gap-7"
+      box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg" tap="open player"
+        image "Space nebula" src="assets/thumbs/nebula.jpg" class="size-full"
+        box class="absolute inset-0 items-center justify-center bg-black/10"
+          box class="size-16 items-center justify-center rounded-full bg-white/85 shadow-xl"
+            icon play class="ml-1 size-7 text-zinc-900"
+          end
+        end
+      end
+      box class="flex-1 gap-3 py-1"
+        text "Journey through the nebulae" class="line-clamp-2 text-[22px] leading-tight font-bold text-zinc-900"
+        box class="flex-row items-center gap-3"
+          box class="flex-row items-center gap-2 rounded-full bg-zinc-100 py-1 pr-3 pl-1"
+            image "Uploader's avatar" src="assets/thumbs/avatar1.jpg" class="size-6 rounded-full"
+            text "Deep Field" class="text-[13px] font-medium text-zinc-800"
+          end
+          text "Updated to EP 12 · New episodes on Fridays" class="text-[13px] text-zinc-500" note="The plugin's own words about the show's schedule, when it answers them."
+        end
+        box class="flex-row items-center gap-2 pt-1"
+          use button variant=large label="Watch EP 6" button.tap="open player" note="The first episode after the last watched, from the plugin's account and the resume positions."
+          use button name=follow variant="secondary large" icon=check label="Watching" button.tap="open #follow-menu" note="Followed: its status, which opens the menu to change it or unfollow."
+        end
+        text "A twelve-part tour of the nebulae of our galaxy, told with telescope images and the people who took them." class="line-clamp-3 pt-1 text-[13px] leading-relaxed text-zinc-600"
+      end
+    end
+    box class="gap-3"
+      use section-header title="Episodes" variant=no-more note="The video's parts, under the name the plugin gives them."
+      box class="flex-row flex-wrap gap-3"
+        use part-row variant=watched number="EP 4" title="The Orion Nebula" duration="38:12"
+        use part-row variant=watched number="EP 5" title="Pillars of Creation" duration="41:05"
+        use part-row variant=current number="EP 6" title="The Crab, after the supernova" duration="39:47"
+        use part-row number="EP 11" title="Dark nebulae" duration="40:30"
+        use part-row number="EP 12" title="The Carina Nebula" duration="44:18" playing=sparkles playing.class="flex text-[#E8553A]"
+      end
+    end
+  end
+end
+
+design follow-menu in="main#content" name="Video · Follow status"
+box class="flex-1"
+  use toolbar title="Journey through the nebulae" back.tap="close"
+  box class="flex-1 gap-7 overflow-hidden px-7 py-6"
+    box class="flex-row gap-7"
+      box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg"
+        image "Space nebula" src="assets/thumbs/nebula.jpg" class="size-full"
+      end
+      box class="flex-1 gap-3 py-1"
+        text "Journey through the nebulae" class="line-clamp-2 text-[22px] leading-tight font-bold text-zinc-900"
+        box class="flex-row items-center gap-3"
+          text "Updated to EP 12 · New episodes on Fridays" class="text-[13px] text-zinc-500"
+        end
+        box class="flex-row items-center gap-2 pt-1"
+          use button variant=large label="Watch EP 6"
+          use button variant="secondary large" icon=check label="Watching" button.class="bg-zinc-100"
+        end
+      end
+    end
+  end
+  box class="absolute top-[200px] left-[580px] w-[220px] gap-0.5 rounded-xl border border-zinc-200 bg-white/95 p-1.5 shadow-xl" note="The statuses the plugin offers; choosing one tells its follow. Unfollow asks its unfollow."
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg bg-zinc-100 px-2.5" tap="close"
+      icon eye class="size-4 text-zinc-500"
+      text "Watching" class="flex-1 text-[13px] font-medium text-zinc-900"
+      icon check class="size-4 text-[#E8553A]"
+    end
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg px-2.5" tap="close"
+      icon bookmark class="size-4 text-zinc-500"
+      text "Plan to Watch" class="flex-1 text-[13px] text-zinc-800"
+    end
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg px-2.5" tap="close"
+      icon circle-check class="size-4 text-zinc-500"
+      text "Completed" class="flex-1 text-[13px] text-zinc-800"
+    end
+    box class="mx-2 my-1 h-px bg-zinc-100"
+    end
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg px-2.5" tap="open #follow-failed"
+      icon x class="size-4 text-rose-500"
+      text "Unfollow" class="flex-1 text-[13px] text-rose-600"
+    end
+  end
+end
+
+design follow-failed in="main#content" name="Video · Follow failed"
+box class="flex-1"
+  use toolbar title="Journey through the nebulae" back.tap="close"
+  box class="flex-1 gap-7 overflow-hidden px-7 py-6"
+    box class="flex-row gap-7"
+      box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg"
+        image "Space nebula" src="assets/thumbs/nebula.jpg" class="size-full"
+      end
+      box class="flex-1 gap-3 py-1"
+        text "Journey through the nebulae" class="line-clamp-2 text-[22px] leading-tight font-bold text-zinc-900"
+        box class="flex-row items-center gap-2 pt-1"
+          use button variant=large label="Watch EP 6"
+          use button variant="secondary large" icon=check label="Watching"
+        end
+      end
+    end
+  end
+  box class="absolute right-6 bottom-6 w-[340px] flex-row items-start gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-xl" note="A follow or unfollow that failed: the button goes back to what it was, and a toast says why, with Sign In when the plugin asks for it."
+    icon circle-alert class="mt-0.5 size-4 text-rose-500"
+    box class="flex-1 gap-0.5"
+      text "Could not unfollow" class="text-[13px] font-semibold text-zinc-900"
+      text "Sign in to Demo to change what you follow." class="text-xs text-zinc-500"
+    end
+    text "Sign In" class="text-[13px] font-medium text-[#E8553A]" tap="open sign-in"
+  end
+end
+
+design single in="main#content" name="Video · One part, no extras"
+box class="flex-1"
+  use toolbar title="My sourdough routine, start to finish" back.tap="close"
+  box class="flex-1 gap-7 overflow-hidden px-7 py-6" note="A video of one part without related videos: no Parts or Related, and Play alone."
+    box class="flex-row gap-7"
+      box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg" tap="open player"
+        image "Sourdough being sliced" src="assets/thumbs/bread.jpg" class="size-full"
+        box class="absolute inset-0 items-center justify-center bg-black/10"
+          box class="size-16 items-center justify-center rounded-full bg-white/85 shadow-xl"
+            icon play class="ml-1 size-7 text-zinc-900"
+          end
+        end
+      end
+      box class="flex-1 gap-3 py-1"
+        text "My sourdough routine, start to finish" class="line-clamp-2 text-[22px] leading-tight font-bold text-zinc-900"
+        box class="flex-row items-center gap-3"
+          box class="flex-row items-center gap-2 rounded-full bg-zinc-100 py-1 pr-3 pl-1"
+            image "Uploader's avatar" src="assets/thumbs/avatar1.jpg" class="size-6 rounded-full"
+            text "Small Kitchen" class="text-[13px] font-medium text-zinc-800"
+          end
+          text "24:16" class="text-[13px] text-zinc-500"
+        end
+        box class="flex-row items-center gap-2 pt-1"
+          use button variant=large label="Play" button.tap="open player"
+        end
+      end
+    end
+  end
+end
+
+design loading in="main#content" name="Video · Loading"
+box class="flex-1"
+  use toolbar title="Sunrise over an alpine lake, four hours of calm" back.tap="close" note="The title of the card that opened it shows while video answers."
+  box class="flex-1 gap-7 overflow-hidden px-7 py-6"
+    box class="flex-row gap-7"
+      box class="h-[225px] w-[400px] rounded-2xl bg-zinc-200/70"
+      end
+      box class="flex-1 gap-3 py-1"
+        box class="h-6 w-4/5 rounded-md bg-zinc-200/70"
+        end
+        box class="h-6 w-1/2 rounded-md bg-zinc-200/70"
+        end
+        box class="h-7 w-48 rounded-full bg-zinc-100"
+        end
+        box class="h-10 w-40 rounded-xl bg-zinc-200/70"
+        end
+        box class="h-3 w-full rounded bg-zinc-100"
+        end
+        box class="h-3 w-11/12 rounded bg-zinc-100"
+        end
+      end
+    end
+    box class="flex-row gap-3"
+      box class="h-14 w-[290px] rounded-xl bg-zinc-100"
+      end
+      box class="h-14 w-[290px] rounded-xl bg-zinc-100"
+      end
+      box class="h-14 w-[290px] rounded-xl bg-zinc-100"
+      end
+    end
+  end
+end
+
+design unavailable in="main#content" name="Video · Unavailable"
+box class="flex-1"
+  use toolbar title="Driving through the city in the rain" back.tap="close"
+  use state icon=video-off title="This video was removed" message="Demo says it cannot be played." note="The plugin's unavailable error, with its message: nothing to try again."
+    fill action
+      use button variant="secondary text" label="Back" button.tap="close"
+    end
+  end
+end
+
+design error in="main#content" name="Video · Error"
+box class="flex-1"
+  use toolbar title="Driving through the city in the rain" back.tap="close"
+  use state variant=error title="Demo could not answer" message="The plugin could not answer."
+    fill action
+      use button variant="secondary text" label="Try Again"
+    end
+  end
+end

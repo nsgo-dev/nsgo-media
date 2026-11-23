@@ -1,0 +1,6 @@
+component name="Controls/Switch"
+box name=track class="h-[22px] w-[38px] justify-center rounded-full bg-[#34C759] px-0.5"
+  box name=knob class="size-[18px] self-end rounded-full bg-white shadow-sm"
+  end
+end
+variant off track.class="bg-zinc-300" knob.class="self-start"

@@ -1,0 +1,164 @@
+design en in="main#content" name="Main/Settings"
+box class="flex-1"
+  use toolbar variant=root title="Settings"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-6"
+      box class="gap-2"
+        text "General" class="px-1 text-xs font-semibold text-zinc-500"
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+          use settings-row title="Language"
+            fill control
+              use select value="System"
+            end
+          end
+          use settings-row variant="detailed last" title="Send Usage Statistics" detail="Anonymous counts of pages and play time, never what you watch."
+            fill control
+              use switch
+            end
+          end
+        end
+      end
+      box class="gap-2"
+        box class="flex-row items-center gap-2 px-1"
+          text "Plugins" class="flex-1 text-xs font-semibold text-zinc-500"
+          text "Checked 5 minutes ago" class="text-xs text-zinc-400" note="The app checks the repositories of plugins installed from GitHub when it starts and every few hours, for a newer release, never a pre-release."
+          box class="size-6 items-center justify-center rounded-md hover:bg-zinc-100" tap="open #checking"
+            icon refresh-cw class="size-3.5 text-zinc-500"
+          end
+          use button variant=secondary icon=plus label="Add Plugin" button.class="h-7 px-2.5" button.tap="open #add"
+        end
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white" note="Every plugin loaded, enabled or not, built-in first. Pressing a row opens its page; the switch enables or disables it, adding or removing its sidebar section."
+          use plugin-row tile.class="from-[#3BD6B8] to-[#16A88E]" initial="L" title="Local Files" version="Built-in" source-icon=hard-drive source="Videos on this Mac" row.tap="open plugin#builtin"
+          use plugin-row variant=update row.tap="open plugin" update.tap="open update-plugin"
+          use plugin-row variant=off tile.class="from-[#FFD25C] to-[#F0A800]" initial="S" title="Sample Feeds" version="0.4.0" source-icon=folder source="~/code/sample-feeds" row.tap="open plugin"
+          use plugin-row variant="refused last" tile.class="from-zinc-300 to-zinc-400" initial="N" title="Night Shows" version="2.0.0" source="example-org/night-shows" problem-label="Needs NSGo Player 0.3" row.tap="open plugin#refused"
+        end
+      end
+    end
+  end
+end
+
+design add in="main#content" name="Settings · Add plugin"
+box class="flex-1"
+  use toolbar variant=root title="Settings"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-6"
+      box class="gap-2"
+        text "General" class="px-1 text-xs font-semibold text-zinc-500"
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+          use settings-row title="Language"
+            fill control
+              use select value="System"
+            end
+          end
+          use settings-row variant="detailed last" title="Send Usage Statistics" detail="Anonymous counts of pages and play time, never what you watch."
+            fill control
+              use switch
+            end
+          end
+        end
+      end
+      box class="gap-2"
+        box class="flex-row items-center gap-2 px-1"
+          text "Plugins" class="flex-1 text-xs font-semibold text-zinc-500"
+          use button variant=secondary icon=plus label="Add Plugin" button.class="h-7 bg-zinc-100 px-2.5"
+        end
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+          use plugin-row tile.class="from-[#3BD6B8] to-[#16A88E]" initial="L" title="Local Files" version="Built-in" source-icon=hard-drive source="Videos on this Mac"
+          use plugin-row variant="update last"
+        end
+      end
+    end
+  end
+  box class="absolute top-[176px] right-[144px] w-[260px] gap-0.5 rounded-xl border border-zinc-200 bg-white/95 p-1.5 shadow-xl" note="The ways to add a plugin. GitHub comes first, as plugins are published there."
+    box class="flex-row items-center gap-2.5 rounded-lg bg-[#E8553A] px-2.5 py-2" tap="open install-github"
+      icon git-fork class="size-4 text-white"
+      box class="flex-1"
+        text "From GitHub…" class="text-[13px] font-medium text-white"
+        text "Its latest release, kept up to date" class="text-[11px] text-white/80"
+      end
+    end
+    box class="h-px bg-zinc-100 mx-2 my-1"
+    end
+    box class="flex-row items-center gap-2.5 rounded-lg px-2.5 py-1.5" tap="open approve-plugin"
+      icon folder class="size-4 text-zinc-500"
+      text "From Folder…" class="text-[13px] text-zinc-800"
+    end
+    box class="flex-row items-center gap-2.5 rounded-lg px-2.5 py-1.5" tap="open approve-plugin"
+      icon file-archive class="size-4 text-zinc-500"
+      text "From Zip…" class="text-[13px] text-zinc-800"
+    end
+    box class="flex-row items-center gap-2.5 rounded-lg px-2.5 py-1.5" note="For writing a plugin: the app reads its folder where it is at every start."
+      icon folder-code class="size-4 text-zinc-500"
+      text "Use from Path…" class="text-[13px] text-zinc-800"
+    end
+  end
+end
+
+design checking in="main#content" name="Settings · Checking for updates"
+box class="flex-1"
+  use toolbar variant=root title="Settings"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-2"
+      box class="flex-row items-center gap-2 px-1"
+        text "Plugins" class="flex-1 text-xs font-semibold text-zinc-500"
+        icon loader-circle class="size-3.5 text-zinc-400"
+        text "Checking for updates…" class="text-xs text-zinc-500"
+        use button variant=secondary icon=plus label="Add Plugin" button.class="h-7 px-2.5"
+      end
+      box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+        use plugin-row tile.class="from-[#3BD6B8] to-[#16A88E]" initial="L" title="Local Files" version="Built-in" source-icon=hard-drive source="Videos on this Mac"
+        use plugin-row
+        use plugin-row variant="off last" tile.class="from-[#FFD25C] to-[#F0A800]" initial="S" title="Sample Feeds" version="0.4.0" source-icon=folder source="~/code/sample-feeds"
+      end
+    end
+  end
+end
+
+design check-failed in="main#content" name="Settings · Update check failed"
+box class="flex-1"
+  use toolbar variant=root title="Settings"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-2"
+      box class="flex-row items-center gap-2 px-1"
+        text "Plugins" class="flex-1 text-xs font-semibold text-zinc-500"
+        use button variant=secondary icon=plus label="Add Plugin" button.class="h-7 px-2.5"
+      end
+      box class="flex-row items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5" note="Checking failed, as when offline or GitHub limits requests; the plugins work as they are."
+        icon cloud-off class="size-4 text-amber-600"
+        text "Could not check for updates: GitHub could not be reached." class="flex-1 text-[13px] text-amber-900"
+        use button variant="ghost text" label="Try Again" button.class="h-7" label.class="text-amber-900"
+      end
+      box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+        use plugin-row tile.class="from-[#3BD6B8] to-[#16A88E]" initial="L" title="Local Files" version="Built-in" source-icon=hard-drive source="Videos on this Mac"
+        use plugin-row variant=last
+      end
+    end
+  end
+end
+
+design empty in="main#content" name="Settings · No plugins added"
+box class="flex-1"
+  use toolbar variant=root title="Settings"
+  box class="flex-1 items-center overflow-hidden px-7 py-6"
+    box class="w-[680px] gap-2"
+      box class="flex-row items-center gap-2 px-1"
+        text "Plugins" class="flex-1 text-xs font-semibold text-zinc-500"
+        use button variant=secondary icon=plus label="Add Plugin" button.class="h-7 px-2.5"
+      end
+      box class="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+        use plugin-row tile.class="from-[#3BD6B8] to-[#16A88E]" initial="L" title="Local Files" version="Built-in" source-icon=hard-drive source="Videos on this Mac"
+        box class="items-center gap-3 px-6 py-8" note="Shown while only the built-in plugins are there."
+          box class="size-12 items-center justify-center rounded-2xl bg-zinc-100"
+            icon puzzle class="size-6 text-zinc-400"
+          end
+          box class="items-center gap-1"
+            text "Add a plugin to browse more videos" class="text-[13px] font-semibold text-zinc-900"
+            text "Plugins are published on GitHub. Type a repository to install its latest release." class="max-w-[400px] text-center text-xs leading-relaxed text-zinc-500"
+          end
+          use button icon=git-fork label="Install from GitHub…" button.tap="open install-github"
+        end
+      end
+    end
+  end
+end

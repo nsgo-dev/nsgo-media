@@ -1,0 +1,12 @@
+component name="Controls/Search field" width=fill preview=560
+box name=field class="h-10 flex-row items-center gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 focus:border-[#E8553A]/60 focus:bg-white focus:ring-4 focus:ring-[#FF6B4A]/15"
+  icon search class="size-4 text-zinc-400"
+  text "Search Demo, or paste a link" name=text class="flex-1 truncate text-sm text-zinc-400"
+  icon loader-circle name=busy class="hidden size-4 text-zinc-400"
+  box name=clear class="hidden size-5 items-center justify-center rounded-full bg-zinc-300"
+    icon x class="size-3 text-white"
+  end
+end
+variant filled text.class="text-zinc-900" clear.class="flex"
+variant focused state=focus
+variant resolving busy.class="flex" text.class="text-zinc-900"

@@ -1,0 +1,113 @@
+design en in="main#content" name="Main/Search"
+box class="flex-1"
+  use toolbar variant=root title="Search"
+  box class="gap-4 border-b border-zinc-100 px-7 pt-5 pb-4"
+    use search-field variant=filled text="rain" class="max-w-[560px]" note="Submitting resolves the text first, when the plugin has resolve: a pasted link or id opens its video or page; anything else is searched."
+    use kind-tabs class="self-start" all.state=selected
+  end
+  box class="flex-1 gap-7 overflow-hidden px-7 py-5"
+    box class="gap-3"
+      use section-header title="Videos" more-label="More"
+      box class="flex-row gap-5"
+        use video-card image.src="assets/thumbs/forest.jpg" title="A misty forest walk with only the sound of rain" subtitle="Morning Trails · 6 days ago" duration="31:44" card.tap="open video"
+        use video-card image.src="assets/thumbs/city.jpg" title="Driving through the city in the rain" subtitle="Night Loops · 1 month ago" duration="1:12:05" card.tap="open video"
+        use video-card image.src="assets/thumbs/piano.jpg" title="Rain and piano for a slow evening" subtitle="Felt Keys · 2 months ago" duration="1:03:40" card.tap="open video"
+        use video-card image.src="assets/thumbs/ocean.jpg" title="A storm rolls in over the coast" subtitle="Blue Hours · 3 months ago" duration="11:12" card.tap="open video"
+      end
+    end
+    box class="gap-3"
+      use section-header title="Uploaders" variant=no-more
+      box class="flex-row gap-6"
+        use uploader-card image.src="assets/thumbs/city.jpg" title="Rainy Days" subtitle="12 videos"
+        use uploader-card title="Rain Sounds Club" subtitle="310 videos"
+      end
+    end
+  end
+end
+
+design suggest in="main#content" name="Search · Suggestions"
+box class="flex-1"
+  use toolbar variant=root title="Search"
+  box class="gap-4 px-7 pt-5 pb-4"
+    use search-field variant="filled focused" text="rain w" class="max-w-[560px]"
+  end
+  box class="absolute top-[118px] left-7 w-[560px] gap-0.5 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-xl" note="The plugin's suggest, called once typing pauses; Return or a click searches the row, arrow keys move between them."
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg bg-zinc-100 px-2.5"
+      icon search class="size-3.5 text-zinc-400"
+      text "rain walk" class="text-[13px] text-zinc-900"
+    end
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg px-2.5"
+      icon search class="size-3.5 text-zinc-400"
+      text "rain window sounds" class="text-[13px] text-zinc-700"
+    end
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg px-2.5"
+      icon search class="size-3.5 text-zinc-400"
+      text "rain walk in tokyo at night" class="text-[13px] text-zinc-700"
+    end
+    box class="h-8 flex-row items-center gap-2.5 rounded-lg px-2.5"
+      icon search class="size-3.5 text-zinc-400"
+      text "rain on a tent" class="text-[13px] text-zinc-700"
+    end
+  end
+end
+
+design idle in="main#content" name="Search · Before searching"
+box class="flex-1"
+  use toolbar variant=root title="Search"
+  box class="gap-4 px-7 pt-5 pb-4"
+    use search-field variant=focused class="max-w-[560px]"
+  end
+  use state icon=search title="Search Demo" message="Type what you are looking for, or paste a link to open it." note="The page before a search."
+end
+
+design resolving in="main#content" name="Search · Opening a link"
+box class="flex-1"
+  use toolbar variant=root title="Search"
+  box class="gap-4 px-7 pt-5 pb-4"
+    use search-field variant=resolving text="https://videos.example.com/watch/48213" class="max-w-[560px]" note="The plugin's resolve is asked what the pasted text names; while it answers, the field spins."
+  end
+  box class="flex-1"
+  end
+end
+
+design loading in="main#content" name="Search · Loading"
+box class="flex-1"
+  use toolbar variant=root title="Search"
+  box class="gap-4 border-b border-zinc-100 px-7 pt-5 pb-4"
+    use search-field variant=filled text="rain" class="max-w-[560px]"
+    use kind-tabs class="self-start" all.state=selected
+  end
+  box class="flex-1 gap-3 overflow-hidden px-7 py-5"
+    box class="h-5 w-28 rounded-md bg-zinc-200/70"
+    end
+    box class="flex-row gap-5"
+      use skeleton-card
+      use skeleton-card
+      use skeleton-card
+      use skeleton-card
+    end
+  end
+end
+
+design empty in="main#content" name="Search · No results"
+box class="flex-1"
+  use toolbar variant=root title="Search"
+  box class="gap-4 border-b border-zinc-100 px-7 pt-5 pb-4"
+    use search-field variant=filled text="purple rain on mars" class="max-w-[560px]"
+    use kind-tabs class="self-start" videos.state=selected
+  end
+  use state icon=search-x title="No results" message="Nothing matches “purple rain on mars”. Try other words or another kind."
+end
+
+design error in="main#content" name="Search · Error"
+box class="flex-1"
+  use toolbar variant=root title="Search"
+  box class="gap-4 border-b border-zinc-100 px-7 pt-5 pb-4"
+    use search-field variant=filled text="rain" class="max-w-[560px]"
+  end
+  use state variant=error title="Demo could not answer" message="Too many requests. Wait a minute and try again." note="The plugin's own message."
+    fill action
+      use button variant="secondary text" label="Try Again"
+    end
+  end
+end
