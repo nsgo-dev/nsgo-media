@@ -1,0 +1,65 @@
+appName: NSGo Player
+openFile: 打开文件…
+url: URL
+urlPlaceholder: 粘贴 URL
+open: 打开
+back: 返回
+cannotPlay: 无法播放此文件或 URL。
+play: 播放
+pause: 暂停
+position: 进度
+mute: 静音
+unmute: 取消静音
+volume: 音量
+speed: 速度
+audio: 音频
+noSound: 无声音
+subtitles: 字幕
+noSubtitles: 无字幕
+track: 轨道 {n, number}
+fullScreen: 全屏
+exitFullScreen: 退出全屏
+resumeAt: 从 {time} 继续
+dismiss: 关闭
+quality: 画质
+openPage: 打开
+home: 首页
+search: 搜索
+searchPlaceholder: 搜索，或粘贴链接
+more: 更多
+loadMore: 加载更多
+nothingHere: 这里什么都没有。
+retry: 重试
+signIn: 登录
+signOut: 退出登录
+signInTo: 登录 {name}
+cancel: 取消
+pluginFailed: 插件无法回答。
+pluginInvalid: 插件的回答应用无法显示。
+pluginStopped: 插件耗时太久或占用内存太多。
+partTitle: "{video} – {part}"
+partLabel: "P{n, number} {title}"
+parts: 分P
+related: 相关视频
+settings: 设置
+language: 语言
+systemLanguage: 跟随系统
+plugins: 插件
+installFromFolder: 从文件夹安装…
+installFromZip: 从 zip 安装…
+useFromPath: 从路径使用
+pluginPath: 插件文件夹的路径
+use: 使用
+usePlugin: 从文件夹使用 {name} {version}？
+installPlugin: 安装 {name} {version}？
+reachesHosts: "它可以连接：\n{hosts}"
+reachesNoHosts: 它不能连接网络。
+install: 安装
+cannotInstall: 无法安装插件
+needsNewerApp: 它需要 NSGo Player {version} 或更新版本，请先更新应用。
+remove: 删除
+removePlugin: 删除 {name}？
+removesData: 它的设置和数据会一起删除。
+folderStays: 它的设置和数据会删除，文件夹保留。
+cannotRemove: 无法删除插件
+openSettings: 打开设置

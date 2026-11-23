@@ -7,6 +7,7 @@ A video player core for NSGo apps: FFmpeg decoding and the picture drawn in a vi
 - Treat [NSGo](https://github.com/nsgo-dev/nsgo) as the platform: follow its `AGENTS.md` principles for Go code, purego and documents. Never fork it; propose what the core needs from it as an NSGo issue.
 - Treat [shuax/media](https://github.com/shuax/media) and [shuax/player](https://github.com/shuax/player) as design references only. They have no license, so never copy their code.
 - Never add a control, string or theme to the core. An app draws those; the demo app shows how.
+- Keep NSGo Player's pages, strings and rules free of any one source; a source's logic lives in its plugin, and no plugin or mention of a particular site belongs in this repository. Change [Plugins](docs/plugins.md) before widening what a plugin reaches, and confirm a new host function with the user first.
 - Mark unbuilt designs as goals or open questions; never document them as existing behavior.
 
 ## Licenses

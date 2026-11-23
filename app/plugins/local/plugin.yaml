@@ -1,0 +1,9 @@
+id: local
+name: Local Files
+version: 0.1.0
+minAppVersion: 0.1.0
+media: video
+settings:
+  - key: folders
+    label: Video folders
+    type: text

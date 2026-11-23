@@ -14,6 +14,7 @@ NSGo Media is a Go module that NSGo apps import. A player reads a source with FF
 | `cmd/nsgo-media` | `bundle`, which puts the libraries into the packages `nsgo build` wrote and signs a macOS or iOS app again |
 | `tools/ffmpeg` | The command that builds FFmpeg's LGPL shared libraries for each desktop target, and frameworks for iOS, at the pinned version |
 | `examples/demo` | A player app with its own controls, showing how an app drives the core |
+| `app` | NSGo Player, the first-party desktop app on plugins, a Go module of its own ([NSGo Player](docs/app.md)) |
 | `website` | The official site, Astro with Starlight, whose docs it reads from `docs/public/<language>/` and GitHub Pages serves |
 
 ## Boundaries
@@ -67,4 +68,6 @@ Pipeline and player tests decode the clips in `testdata/` headless, through a si
 | [Requirements](docs/requirements.md) | What the first version includes or leaves out |
 | [Roadmap](https://github.com/oneo-me/nsgo-media/issues/2) (issues) | The order of milestones or what comes after the first version |
 | [Performance](docs/performance.md) | The presenter, the frame conversion or anything on the per-frame path |
+| [NSGo Player](docs/app.md) | The first-party app in `app/` |
+| [Plugins](docs/plugins.md) | NSGo Player's plugin manifest, exports, host object or sandbox |
 | [FFmpeg libraries](docs/ffmpeg.md) | The pinned FFmpeg, its configure flags, the binding's majors or where libraries load from |

@@ -1,0 +1,107 @@
+appName:
+  message: NSGo Player
+  description: The app's name, which its packages list it under in each language.
+openFile: Open File…
+url:
+  message: URL
+  description: The label of the field a video's URL is pasted into.
+urlPlaceholder: Paste a URL
+open:
+  message: Open
+  description: Opens the URL typed in the field.
+back: Back
+cannotPlay: This file or URL cannot be played.
+play: Play
+pause: Pause
+position: Position
+mute: Mute
+unmute: Unmute
+volume: Volume
+speed: Speed
+audio: Audio
+noSound: No sound
+subtitles: Subtitles
+noSubtitles: No subtitles
+track:
+  message: Track {n, number}
+  description: An audio or subtitle track without a title, by its number among its kind.
+fullScreen: Full Screen
+exitFullScreen: Exit Full Screen
+resumeAt:
+  message: Resume at {time}
+  description: Jumps to where the video was left, written as 1:23 or 1:02:03.
+dismiss: Dismiss
+quality: Quality
+openPage:
+  message: Open
+  description: The sidebar entry that opens a file or a URL.
+home: Home
+search: Search
+searchPlaceholder: Search, or paste a link
+more:
+  message: More
+  description: Opens the rest of a section's items.
+loadMore: Load More
+nothingHere: Nothing here.
+retry: Try Again
+signIn: Sign In
+signOut: Sign Out
+signInTo:
+  message: Sign in to {name}
+  description: The title of a plugin's sign-in prompt, by the plugin's name.
+cancel: Cancel
+pluginFailed: The plugin could not answer.
+pluginInvalid: The plugin answered something the app cannot show.
+pluginStopped: The plugin took too long or used too much memory.
+partTitle:
+  message: "{video} – {part}"
+  description: The player's title for a part of a video with several.
+partLabel:
+  message: "P{n, number} {title}"
+  description: A part of a video, by its number and title.
+parts: Parts
+related:
+  message: Related
+  description: The videos a video's page suggests next.
+settings: Settings
+language: Language
+systemLanguage:
+  message: System
+  description: The language choice that follows the system's language.
+plugins: Plugins
+installFromFolder: Install from Folder…
+installFromZip: Install from Zip…
+useFromPath:
+  message: Use from Path
+  description: Uses the plugin in a folder whose path the viewer types, where it is, without installing it.
+pluginPath:
+  message: Path of the plugin's folder
+  description: The placeholder of the field a plugin's folder path is typed into.
+use:
+  message: Use
+  description: Uses a plugin where its folder is.
+usePlugin:
+  message: Use {name} {version} from its folder?
+  description: The title asking to approve a plugin's permissions before using it where its folder is.
+installPlugin:
+  message: Install {name} {version}?
+  description: The title asking to approve a plugin's permissions before installing it.
+reachesHosts:
+  message: "It can connect to:\n{hosts}"
+  description: Lists the network hosts a plugin being installed may reach, one per line.
+reachesNoHosts: It cannot connect to the network.
+install: Install
+cannotInstall: The plugin cannot be installed
+needsNewerApp:
+  message: It needs NSGo Player {version} or later. Update the app to install it.
+  description: Why a plugin cannot be installed, by the oldest app version it works with.
+remove: Remove
+removePlugin:
+  message: Remove {name}?
+  description: The title asking to confirm removing a plugin, by its name.
+removesData: Its settings and data are removed with it.
+folderStays: Its settings and data are removed; its folder stays.
+cannotRemove: The plugin cannot be removed
+openSettings:
+  message: Open Settings
+  description: Opens the settings, where a plugin that asked for setup is set up.
