@@ -105,3 +105,13 @@ export async function stream({ video, part, quality }) {
 ## 试用
 
 编写插件时，在 NSGo Player 里选 **设置 → 插件 → 添加插件 → 从路径使用…**，选中插件文件夹。应用每次启动都从原处读取，所以改完重启应用就能加载。要分享插件，把文件夹打成 zip，别人就能从 zip 安装。
+
+## 在 GitHub 上发布
+
+想让别人输入你的仓库就能安装插件，就为它发布一个 GitHub Release：
+
+1. 提高 `plugin.yaml` 里的 `version`；需要更新版本的应用时，也提高 `minAppVersion`。
+2. 把插件文件夹打成 zip，`plugin.yaml` 放在 zip 的根目录或它唯一的文件夹里，作为附件上传到一个非预发布的 Release。附带其他文件也可以，应用会取第一个装有插件、不超过 64 MB 的 `.zip`；GitHub 自动生成的源码压缩包不算。
+3. 在 Release 的说明里写清改了什么，应用提示更新时会显示它。
+
+当一个 Release 是仓库的最新 Release，`id` 相同且 `version` 比已安装的新时，应用会提示更新。预发布版和草稿永远不会被安装。新增主机的更新会先请用户确认。

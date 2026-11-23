@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,6 +51,57 @@ func TestSettingsOutliveReopening(t *testing.T) {
 	}
 	if again.Language() != "zh-Hans" || again.Enabled("demo") || !again.Enabled("other") || again.Stats() {
 		t.Fatalf("reopened settings = %+v", again.v)
+	}
+
+	// The releases plugins came from, until forgotten.
+	if err := again.SetRelease("demo", &Release{Repo: "o/demo", Tag: "v1"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := again.SetRelease("other", &Release{Repo: "o/other", Tag: "v2"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := again.SetRelease("other", nil); err != nil {
+		t.Fatal(err)
+	}
+	third, _ := OpenSettings(path)
+	if r, ok := third.Release("demo"); !ok || r.Repo != "o/demo" || r.Tag != "v1" {
+		t.Fatalf("release = %+v, %v", r, ok)
+	}
+	if _, ok := third.Release("other"); ok {
+		t.Fatal("a forgotten release is kept")
+	}
+}
+
+func TestReplacePlugin(t *testing.T) {
+	dir := t.TempDir()
+	if err := InstallPlugin(dir, "demo", fstest.MapFS{"plugin.yaml": {Data: []byte("v1")}, "old.js": {Data: []byte("x")}}); err != nil {
+		t.Fatal(err)
+	}
+	read := func(name string) string {
+		raw, _ := os.ReadFile(filepath.Join(dir, "demo", name))
+		return string(raw)
+	}
+	// A failed load puts the old folder back.
+	failed := errors.New("failed")
+	if err := ReplacePlugin(dir, "demo", fstest.MapFS{"plugin.yaml": {Data: []byte("v2")}}, func(string) error { return failed }); !errors.Is(err, failed) {
+		t.Fatalf("a failed load = %v", err)
+	}
+	if read("plugin.yaml") != "v1" || read("old.js") != "x" {
+		t.Fatal("a failed replacement lost the old folder")
+	}
+	if err := ReplacePlugin(dir, "demo", fstest.MapFS{"plugin.yaml": {Data: []byte("v2")}}, func(path string) error {
+		if raw, _ := os.ReadFile(filepath.Join(path, "plugin.yaml")); string(raw) != "v2" {
+			t.Errorf("loading %s, which holds %s", path, raw)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if read("plugin.yaml") != "v2" || read("old.js") != "" {
+		t.Fatal("the folder was not replaced")
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 1 {
+		t.Fatalf("the plugins folder holds %v", entries)
 	}
 }
 

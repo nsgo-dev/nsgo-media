@@ -64,12 +64,24 @@ func startDemo(t *testing.T, dataDir string) (*nsgotest.App, *player) {
 // start runs the app on the data in dataDir, without built-in plugins.
 func start(t *testing.T, dataDir string) (*nsgotest.App, *player) {
 	t.Helper()
+	return startWith(t, dataDir, "")
+}
+
+// startWith runs the app as start does, asking the server at gitHub for
+// plugins' releases.
+func startWith(t *testing.T, dataDir, gitHub string) (*nsgotest.App, *player) {
+	t.Helper()
+	if gitHub == "" {
+		// Nothing reaches GitHub itself.
+		gitHub = "http://127.0.0.1:1"
+	}
 	var pl *player
 	a := App{
 		Builtin: []Builtin{},
 		DataDir: dataDir,
 		Client:  &http.Client{Transport: offline{}},
 		started: func(p *player) { pl = p },
+		gitHub:  gitHub,
 	}
 	app := nsgotest.Start(t, a.Render, nsgotest.Size(1100, 700), nsgotest.Environment(core.Environment{Locale: "en-US"}))
 	return app, pl

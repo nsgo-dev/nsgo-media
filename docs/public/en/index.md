@@ -42,10 +42,13 @@ Its folders are a setting: open **Settings**, press **Local Files** in the list 
 
 Each enabled plugin gets its own section in the sidebar, with its home, its pages and its search, and signing in to its account when it has one. **Settings → Plugins** lists every plugin with its switch, and **Add Plugin** adds one:
 
+- **From GitHub…** installs the plugin zip of a repository's latest release: type the repository as `owner/repo` or paste its URL. If the repository does not exist, has no release, or its latest release has no plugin zip, the dialog says which;
 - **From Folder…** or **From Zip…** copies a plugin into the app;
 - **Use from Path…** uses the folder you pick where it is: the app reads it there at every start, which suits a plugin you are writing.
 
 Pressing a plugin in the list opens its page: its switch, its account, its settings, the hosts it may connect to, and **Remove Plugin…**, which removes it with its data. Removing a plugin used from a path keeps its folder. A plugin the app cannot load, as one needing a newer app, stays in the list with why until you remove it.
+
+The app checks the repositories of plugins installed from GitHub for a newer release, never a pre-release, when it starts and every six hours; the refresh button beside **Plugins** checks now. A newer one shows as **Update to …** on the plugin's row, on its page and as a count on **Settings**. Updating shows the release's notes, asks you to approve any host it adds, and keeps the plugin's settings, data and sign-in; a release that needs a newer app is refused.
 
 Before a plugin is added, the app shows the hosts it may connect to and asks you to approve them. A plugin reaches only those hosts, never your files. See [Writing plugins](plugins/) to make one.
 

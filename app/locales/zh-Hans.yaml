@@ -111,3 +111,44 @@ removePluginAction: 删除插件…
 installing: 正在安装 {name} {version}…
 installingShort: 正在安装…
 waitingToScan: 等待扫码…
+fromGitHub: 从 GitHub…
+installFromGitHub: 从 GitHub 安装
+installFromGitHubHint: 输入 owner/repo 形式的仓库，或粘贴它的网址。NSGo Player 会安装它最新 Release 里的插件 zip，并提示之后的更新。
+repository: 仓库
+repositoryPlaceholder: owner/repo
+continue: 继续
+findingRelease: 正在查找最新 Release…
+notARepository: 请输入 owner/repo 形式的仓库，或它在 GitHub 上的网址。
+noRepository: GitHub 上没有仓库 {repo}。
+noRelease: 它还没有 Release。
+noPluginZip: 它最新的 Release 里没有插件 zip。
+gitHubLimited: GitHub 暂时限制了请求，请稍后再试。
+gitHubUnreachable: 无法连接 GitHub。
+repoReason: "{repo}：{reason}"
+repoReleased: "{repo} · 发布于 {date, date, medium}"
+updateTo: 更新到 {version}
+updatePlugin: 将 {name} 更新到 {version}？
+youHaveReleased: 当前为 {version} · 发布于 {date, date, medium}
+youHave: 当前为 {version}
+whatsNew: 新内容
+sameHosts: 它连接的主机和之前一样。
+alsoConnects: 它现在还能连接：
+update: 更新
+approveAndUpdate: 允许并更新
+updatingPlugin: 正在将 {name} 更新到 {version}…
+updatingShort: 正在更新…
+cannotUpdate: 无法更新 {name}
+staysInstalled: 仍保留 {version}
+close: 关闭
+versionAvailable: 版本 {version} 可用
+released: 发布于 {date, date, medium}
+updateAction: 更新…
+checkForUpdates: 检查更新
+checkingUpdates: 正在检查更新…
+checkedJustNow: 刚刚检查过
+checkedMinutesAgo: "{n, number} 分钟前检查过"
+checkedHoursAgo: "{n, number} 小时前检查过"
+couldNotCheck: 无法检查更新：{reason}
+noPluginsAdded: 添加插件，浏览更多视频
+pluginsOnGitHub: 插件发布在 GitHub 上。输入一个仓库，即可安装它最新的 Release。
+installFromGitHubAction: 从 GitHub 安装…

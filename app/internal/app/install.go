@@ -114,12 +114,16 @@ func (sh *shell) approve(cx *core.Scope, c *candidate, install, cancel func()) c
 			}},
 		}}
 	}
+	icon := lucide.Folder
+	if c.release != nil {
+		icon = lucide.GitFork
+	}
 	where := func(text string) core.Node {
 		if text == "" {
 			return core.View{}
 		}
 		return core.View{Class: "flex-row items-center gap-1", Children: []core.Node{
-			core.Icon{SVG: lucide.Folder(), Class: "size-3 text-faint-ink"},
+			core.Icon{SVG: icon(), Class: "size-3 text-faint-ink"},
 			core.Text{Content: text, MaxLines: 1, Class: "text-xs text-muted-foreground", Style: core.Style{FlexShrink: 1}},
 		}}
 	}
@@ -153,7 +157,11 @@ func (sh *shell) approve(cx *core.Scope, c *candidate, install, cancel func()) c
 				}},
 			}
 		default:
-			body = []core.Node{head(approveTitle(cx, c), where(from)), hostsBox(cx, m.Permissions.Network)}
+			sub := from
+			if c.release != nil {
+				sub = locales.RepoReleased(cx, from, c.release.Published)
+			}
+			body = []core.Node{head(approveTitle(cx, c), where(sub)), hostsBox(cx, m.Permissions.Network)}
 		}
 		return core.View{Children: []core.Node{
 			core.View{Class: "gap-4 px-6 pt-6 pb-5", Children: body},

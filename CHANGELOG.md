@@ -5,7 +5,7 @@
 ### Added
 
 - The website, the demo and NSGo Player count their use in Umami, tagged `website`, `demo` and `app`; `nsgo dev` builds and tests send nothing, and NSGo Player's settings turn it off.
-- NSGo Player, the first-party desktop app, plays the viewer's video folders through its built-in local files plugin, and other sources through JavaScript or TypeScript plugins with YAML manifests and locales, installed or used where their folder is picked in the settings; its pages, player and dialogs follow the designs in `design/`.
+- NSGo Player, the first-party desktop app, plays the viewer's video folders through its built-in local files plugin, and other sources through JavaScript or TypeScript plugins with YAML manifests and locales, installed from the latest release of a GitHub repository and updated as newer ones are published, or installed or used where their folder is picked in the settings; its pages, player and dialogs follow the designs in `design/`.
 - `player.Player` plays local files and HTTP(S) URLs with sound, on macOS, Windows and Linux, and `player.View` draws its picture with contain, cover or fill, following the stream's rotation.
 - `Open` takes `player.Headers` for the HTTP requests of a source and `player.ExternalAudio` for a separate audio source, as DASH sites serve them, kept in sync with the picture.
 - Play, pause, stop, fast and exact seeking, stepping one frame forward or backward, rates from 0.25× to 4× keeping the pitch, looping, volume, mute and choosing the audio track.

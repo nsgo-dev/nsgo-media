@@ -7,12 +7,14 @@ import (
 	"os"
 	"slices"
 	"sync"
+	"time"
 )
 
 // Settings are the app's own settings in one JSON file: the language it
 // shows, the plugins the viewer disabled, the folders of the plugins
-// used where they are and whether it sends usage statistics. Its methods may be called
-// from any goroutine; the setters write the file before returning.
+// used where they are, the GitHub releases plugins were installed from and
+// whether it sends usage statistics. Its methods may be called from any
+// goroutine; the setters write the file before returning.
 type Settings struct {
 	path string
 	mu   sync.Mutex
@@ -26,8 +28,20 @@ type settings struct {
 	// Linked are the folders of plugins loaded where they are, not
 	// installed into the plugins folder.
 	Linked []string `json:"linked,omitempty"`
+	// Releases are the GitHub releases of the plugins installed from
+	// GitHub, by the plugins' ids.
+	Releases map[string]Release `json:"releases,omitempty"`
 	// NoStats turns the usage statistics off.
 	NoStats bool `json:"noStats,omitempty"`
+}
+
+// Release is the GitHub release a plugin was installed from, whose
+// repository the app checks for a newer one.
+type Release struct {
+	// Repo is the repository as owner/repo.
+	Repo      string    `json:"repo"`
+	Tag       string    `json:"tag"`
+	Published time.Time `json:"published"`
 }
 
 // OpenSettings reads the settings kept at path. A missing file holds the
@@ -95,6 +109,34 @@ func (s *Settings) SetLinked(dir string, on bool) error {
 	s.v.Linked = slices.DeleteFunc(s.v.Linked, func(d string) bool { return d == dir })
 	if on {
 		s.v.Linked = append(s.v.Linked, dir)
+	}
+	return s.write()
+}
+
+// Release is the GitHub release the plugin id was installed from, if it
+// was.
+func (s *Settings) Release(id string) (Release, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r, ok := s.v.Releases[id]
+	return r, ok
+}
+
+// SetRelease keeps the GitHub release the plugin id was installed from;
+// nil forgets it, as for a plugin removed or installed otherwise.
+func (s *Settings) SetRelease(id string, r *Release) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.v.Releases[id]; !ok && r == nil {
+		return nil
+	}
+	if r == nil {
+		delete(s.v.Releases, id)
+	} else {
+		if s.v.Releases == nil {
+			s.v.Releases = map[string]Release{}
+		}
+		s.v.Releases[id] = *r
 	}
 	return s.write()
 }

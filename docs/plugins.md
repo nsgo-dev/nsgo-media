@@ -49,7 +49,11 @@ Built-in plugins are embedded in the binary and can be disabled, not removed. A 
 - Modules get no file system, no processes and no `eval`. A need beyond the host object becomes a new host function, reviewed like any API.
 - An installed plugin is copied into the app's plugins folder. One used from a path is read where it is, as when it is being written, at every start; removing it removes only its link and its data, never its folder.
 - Plugin data stays in the plugin's own data folder; removing a plugin removes it. Signed-in cookies are stored there in plain text and only sent to the plugin's hosts.
-- An installed plugin with a newer `minAppVersion` is refused with a message to update the app.
+- An installed plugin with a newer `minAppVersion` is refused with a message to update the app, and so is an update needing one.
+
+## Publishing on GitHub
+
+NSGo Player installs a plugin from a repository's latest release, found through GitHub's REST API, which never answers a draft or a pre-release. The plugin is the first `.zip` asset of that release holding `plugin.yaml` at its root or in its only folder, within the size limit of any installed plugin; other assets are ignored, and the repository's source archives are not assets. The app keeps the repository and the release's tag for the plugin's id. It checks the repository at start and every six hours, and offers the latest release when its tag changed and its manifest has the same `id` and a newer `version`, read before any of its code runs. Updating replaces only the plugin's folder: its data folder stays, and a release adding hosts asks the viewer to approve them. A release's description is shown as its notes. Unauthenticated requests share GitHub's limit per address, so a check that is limited or offline says so and leaves the plugins as they are.
 
 ## Audio mode
 

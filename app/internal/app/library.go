@@ -3,9 +3,11 @@ package app
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,6 +127,13 @@ func (l *library) removeRefused(r *refusal, keepData bool) error {
 	if r.id != "" && l.opts.DataDir != "" && !keepData && filepath.Base(r.id) == r.id {
 		data = filepath.Join(l.opts.DataDir, r.id)
 	}
+	if data != "" {
+		// The release goes with the data, which a plugin loaded of its
+		// id keeps.
+		if err := l.settings.SetRelease(r.id, nil); err != nil {
+			return err
+		}
+	}
 	if r.dir != "" {
 		err := l.settings.SetLinked(r.dir, false)
 		if data != "" {
@@ -180,8 +189,26 @@ type candidate struct {
 	// dir, when set, is the folder the plugin is used in, linked rather
 	// than installed.
 	dir string
-	// from is where the viewer picked it, a folder or a zip, if known.
+	// from is where the viewer picked it, a folder, a zip or a
+	// repository, if known.
 	from string
+	// release is the GitHub release it comes from, if it does.
+	release *release
+}
+
+// inspectRelease downloads the plugin zip of r and reads it as inspect
+// does.
+func (l *library) inspectRelease(ctx context.Context, g *gitHub, r *release, taken func(id string) bool) (*candidate, error) {
+	src, err := g.download(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	c, err := l.inspect(src, taken)
+	if err != nil {
+		return nil, err
+	}
+	c.from, c.release = r.Repo, r
+	return c, nil
 }
 
 // readZip reads the zip file at path whole, as a plugin is small.
@@ -279,7 +306,8 @@ func (l *library) install(c *candidate) (*plugin.Plugin, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := l.settings.SetLinked(c.dir, true); err != nil {
+		err = errors.Join(l.settings.SetLinked(c.dir, true), l.settings.SetRelease(p.Manifest.ID, nil))
+		if err != nil {
 			p.Close()
 			return nil, err
 		}
@@ -294,12 +322,84 @@ func (l *library) install(c *candidate) (*plugin.Plugin, error) {
 		return nil, fmt.Errorf("plugin %s: %w", id, err)
 	}
 	p, err := plugin.Load(os.DirFS(filepath.Join(l.dir, id)), false, l.opts)
+	if err == nil {
+		err = l.settings.SetRelease(id, c.releaseKept())
+	}
 	if err != nil {
+		if p != nil {
+			p.Close()
+		}
 		os.RemoveAll(filepath.Join(l.dir, id))
 		return nil, err
 	}
 	l.remember(p, id)
 	return p, nil
+}
+
+// releaseKept is the release the settings keep for c, nil for one not
+// from GitHub.
+func (c *candidate) releaseKept() *store.Release {
+	if c.release == nil {
+		return nil
+	}
+	return &c.release.Release
+}
+
+// releaseOf is the GitHub release an installed plugin came from, if it
+// did; a linked one never did.
+func (l *library) releaseOf(p *plugin.Plugin) (store.Release, bool) {
+	l.mu.Lock()
+	_, ok := l.folders[p]
+	l.mu.Unlock()
+	if !ok {
+		return store.Release{}, false
+	}
+	return l.settings.Release(p.Manifest.ID)
+}
+
+// update replaces the installed plugin old with c, a newer release of it,
+// keeping its data. It answers the plugin loaded in old's place, which a
+// failed update loads again from the old version.
+func (l *library) update(old *plugin.Plugin, c *candidate) (*plugin.Plugin, error) {
+	l.mu.Lock()
+	folder, ok := l.folders[old]
+	l.mu.Unlock()
+	if !ok {
+		return nil, fmt.Errorf("plugin %s is not installed", old.Manifest.ID)
+	}
+	if c.manifest.ID != old.Manifest.ID {
+		return nil, fmt.Errorf("the release holds plugin %s, not %s", c.manifest.ID, old.Manifest.ID)
+	}
+	// Its runtime stops before the new one reads the data it wrote.
+	old.Close()
+	var p *plugin.Plugin
+	err := store.ReplacePlugin(l.dir, folder, c.fsys, func(path string) error {
+		var err error
+		p, err = plugin.Load(os.DirFS(path), false, l.opts)
+		return err
+	})
+	if err == nil {
+		if serr := l.settings.SetRelease(old.Manifest.ID, c.releaseKept()); serr != nil {
+			log.Printf("settings: %v", serr)
+		}
+	} else {
+		p = nil
+		back, lerr := plugin.Load(os.DirFS(filepath.Join(l.dir, folder)), false, l.opts)
+		if lerr != nil {
+			l.forget(old)
+			return nil, errors.Join(err, lerr)
+		}
+		p = back
+	}
+	l.forget(old)
+	l.remember(p, folder)
+	return p, err
+}
+
+func (l *library) forget(p *plugin.Plugin) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.folders, p)
 }
 
 // remove closes an installed plugin and removes its folder and its data;
@@ -323,5 +423,5 @@ func (l *library) remove(p *plugin.Plugin) error {
 		return fmt.Errorf("plugin %s is not installed", p.Manifest.ID)
 	}
 	p.Close()
-	return store.RemovePlugin(l.dir, folder, p.DataDir())
+	return errors.Join(store.RemovePlugin(l.dir, folder, p.DataDir()), l.settings.SetRelease(p.Manifest.ID, nil))
 }

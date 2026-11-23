@@ -201,3 +201,90 @@ installing:
   description: The title while a plugin is being installed.
 installingShort: Installing…
 waitingToScan: Waiting for you to scan…
+fromGitHub:
+  message: From GitHub…
+  description: Installs a plugin from the latest release of a GitHub repository.
+installFromGitHub: Install from GitHub
+installFromGitHubHint: Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates.
+repository: Repository
+repositoryPlaceholder:
+  message: owner/repo
+  description: The placeholder of the field a GitHub repository is typed in; owner and repo stand for its owner's and its own name.
+continue: Continue
+findingRelease: Finding the latest release…
+notARepository:
+  message: Type a repository as owner/repo, or its URL on GitHub.
+  description: Says the text typed is not a GitHub repository.
+noRepository:
+  message: There is no repository {repo} on GitHub.
+  description: A GitHub repository that does not exist, by its owner/repo.
+noRelease: It has no release yet.
+noPluginZip: Its latest release has no plugin zip.
+gitHubLimited: GitHub limits requests now. Try again later.
+gitHubUnreachable: GitHub could not be reached.
+repoReason:
+  message: "{repo}: {reason}"
+  description: Why a GitHub repository could not be checked, by its owner/repo.
+repoReleased:
+  message: "{repo} · Released {date, date, medium}"
+  description: The GitHub repository a plugin is installed from, with its release's date.
+updateTo:
+  message: Update to {version}
+  description: Says a plugin has a newer version, which pressing asks to install.
+updatePlugin:
+  message: Update {name} to {version}?
+  description: The title asking to install a plugin's newer version, by its name.
+youHaveReleased:
+  message: You have {version} · Released {date, date, medium}
+  description: The version of a plugin installed, and when its newer version was released.
+youHave:
+  message: You have {version}
+  description: The version of a plugin installed.
+whatsNew:
+  message: What's new
+  description: Heads the notes of a plugin's newer version.
+sameHosts: It connects to the same hosts as before.
+alsoConnects:
+  message: "It can now also connect to:"
+  description: Heads the hosts a plugin's newer version may reach, with the new ones marked.
+update: Update
+approveAndUpdate: Approve and Update
+updatingPlugin:
+  message: Updating {name} to {version}…
+  description: The title while a plugin's newer version is being installed.
+updatingShort: Updating…
+cannotUpdate:
+  message: "{name} could not be updated"
+  description: The title saying a plugin's newer version could not be installed, by its name.
+staysInstalled:
+  message: "{version} stays installed"
+  description: Says the version of a plugin installed stays after its update failed.
+close: Close
+versionAvailable:
+  message: Version {version} is available
+  description: Says a plugin has a newer version.
+released:
+  message: Released {date, date, medium}
+  description: When a plugin's newer version was released.
+updateAction:
+  message: Update…
+  description: Asks to install a plugin's newer version.
+checkForUpdates: Check for Updates
+checkingUpdates: Checking for updates…
+checkedJustNow:
+  message: Checked just now
+  description: When the plugins from GitHub were last checked for updates.
+checkedMinutesAgo:
+  message: "Checked {n, plural, one {# minute} other {# minutes}} ago"
+  description: When the plugins from GitHub were last checked for updates.
+checkedHoursAgo:
+  message: "Checked {n, plural, one {# hour} other {# hours}} ago"
+  description: When the plugins from GitHub were last checked for updates.
+couldNotCheck:
+  message: "Could not check for updates: {reason}"
+  description: Says checking the plugins from GitHub for updates failed, and why.
+noPluginsAdded: Add a plugin to browse more videos
+pluginsOnGitHub: Plugins are published on GitHub. Type a repository to install its latest release.
+installFromGitHubAction:
+  message: Install from GitHub…
+  description: Installs a plugin from the latest release of a GitHub repository.
