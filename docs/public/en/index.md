@@ -22,7 +22,7 @@ Playback needs the FFmpeg libraries; [FFmpeg libraries](core/ffmpeg/#where-they-
 
 ## Playing a video
 
-The sidebar's **Open** page opens any single file or URL. The player page has its own controls: play and pause, a progress bar with the buffered range, volume and mute, speed, the audio and subtitle tracks, a video's quality and parts where its plugin gives them, and fullscreen. A video you left resumes where you stopped, and the next part follows at the end.
+The sidebar's **Open** page opens a file you pick or a URL you paste, and a file dropped anywhere on the window plays. The player covers the window, its bars over the picture hiding after three seconds of stillness while it plays: play and pause, a progress bar with the buffered range, volume and mute, speed, one menu of the subtitle and audio tracks, a video's parts, next part and quality where its plugin gives them, and fullscreen. A video's page offers to resume the part you left where you stopped, or to play it from the start; the next part follows at the end.
 
 | Key | Action |
 | --- | --- |
@@ -30,21 +30,22 @@ The sidebar's **Open** page opens any single file or URL. The player page has it
 | ← and → | Seek 5 seconds back or forward |
 | ↑ and ↓ | Volume up or down |
 | F | Enter or leave fullscreen |
-| Esc | Leave fullscreen |
+| Esc | Close a menu, leave fullscreen, then the player |
 
 ## Local files
 
 The built-in **Local Files** plugin lists your video folders on its home page, opens their subfolders, searches their names and plays a path you paste. Subtitle files named after a video, such as `Movie.srt` or `Movie.zh-CN.ass`, play with it.
 
-Its folders are a setting: open **Settings**, and under **Local Files** type them in **Video folders**, separated by `;`. Without one, it lists the system's Movies or Videos folder.
+Its folders are a setting: open **Settings**, press **Local Files** in the list of plugins, and type them in **Video folders**, separated by `;`. Without one, it lists the system's Movies or Videos folder.
 
 ## Plugins
 
-Each enabled plugin gets its own section in the sidebar, with its home, its pages and its search. In **Settings → Plugins** you can:
+Each enabled plugin gets its own section in the sidebar, with its home, its pages and its search, and signing in to its account when it has one. **Settings → Plugins** lists every plugin with its switch, and **Add Plugin** adds one:
 
-- install a plugin from a folder or a zip, which copies it into the app;
-- use a plugin from a path, typing its folder's path in **Use from Path**: the app reads it where it is at every start, which suits a plugin you are writing;
-- turn each plugin on or off, edit its settings, and remove it with its data. Removing a plugin used from a path keeps its folder.
+- **From Folder…** or **From Zip…** copies a plugin into the app;
+- **Use from Path…** uses the folder you pick where it is: the app reads it there at every start, which suits a plugin you are writing.
+
+Pressing a plugin in the list opens its page: its switch, its account, its settings, the hosts it may connect to, and **Remove Plugin…**, which removes it with its data. Removing a plugin used from a path keeps its folder. A plugin the app cannot load, as one needing a newer app, stays in the list with why until you remove it.
 
 Before a plugin is added, the app shows the hosts it may connect to and asks you to approve them. A plugin reaches only those hosts, never your files. See [Writing plugins](plugins/) to make one.
 

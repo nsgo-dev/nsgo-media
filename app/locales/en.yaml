@@ -19,9 +19,7 @@ unmute: Unmute
 volume: Volume
 speed: Speed
 audio: Audio
-noSound: No sound
 subtitles: Subtitles
-noSubtitles: No subtitles
 track:
   message: Track {n, number}
   description: An audio or subtitle track without a title, by its number among its kind.
@@ -37,12 +35,10 @@ openPage:
   description: The sidebar entry that opens a file or a URL.
 home: Home
 search: Search
-searchPlaceholder: Search, or paste a link
 more:
   message: More
   description: Opens the rest of a section's items.
 loadMore: Load More
-nothingHere: Nothing here.
 retry: Try Again
 signIn: Sign In
 signOut: Sign Out
@@ -74,12 +70,6 @@ sendStats:
 plugins: Plugins
 installFromFolder: Install from Folder…
 installFromZip: Install from Zip…
-useFromPath:
-  message: Use from Path
-  description: Uses the plugin in a folder whose path the viewer types, where it is, without installing it.
-pluginPath:
-  message: Path of the plugin's folder
-  description: The placeholder of the field a plugin's folder path is typed into.
 use:
   message: Use
   description: Uses a plugin where its folder is.
@@ -89,9 +79,6 @@ usePlugin:
 installPlugin:
   message: Install {name} {version}?
   description: The title asking to approve a plugin's permissions before installing it.
-reachesHosts:
-  message: "It can connect to:\n{hosts}"
-  description: Lists the network hosts a plugin being installed may reach, one per line.
 reachesNoHosts: It cannot connect to the network.
 install: Install
 cannotInstall: The plugin cannot be installed
@@ -108,3 +95,109 @@ cannotRemove: The plugin cannot be removed
 openSettings:
   message: Open Settings
   description: Opens the settings, where a plugin that asked for setup is set up.
+nothingHere: Nothing here
+searchPlaceholder:
+  message: Search {name}, or paste a link
+  description: The search field's placeholder, by the plugin's name.
+reachesHosts:
+  message: "It can connect to:"
+  description: Heads the hosts a plugin being added may reach.
+useFromPath:
+  message: Use from Path…
+  description: Picks a plugin's folder to use where it is, without installing it, as for a plugin being written.
+dropHere: Drop a video here
+dropFormats: "Any file FFmpeg reads: MP4, MKV, WebM, MOV and more."
+dropToPlay: Drop to play
+orPlayURL:
+  message: Or play a URL
+  description: Heads the field a video's URL is pasted into, under the drop area.
+homeEmpty:
+  message: "{name} has nothing to show on its home yet."
+  description: A plugin's home without items, by the plugin's name.
+pageEmpty: This page has no videos yet.
+couldNotAnswer:
+  message: "{name} could not answer"
+  description: The title of a page whose plugin failed, by the plugin's name.
+couldNotAnswerShort:
+  message: "{name} could not answer."
+  description: Says loading a page's next items failed, by the plugin's name.
+needsSetup:
+  message: "{name} needs setting up"
+  description: The title of a page whose plugin asks for its settings, by the plugin's name.
+clearSearch: Clear Search
+searchTitle:
+  message: Search {name}
+  description: The search page's title before a search, by the plugin's name.
+searchHint: Type what you are looking for, or paste a link to open it.
+kind:
+  message: Kind
+  description: Names the choice of the kind of search results.
+kindAll:
+  message: All
+  description: Search results of every kind.
+kindVideos: Videos
+kindUploaders: Uploaders
+kindCollections: Collections
+noResults: No results
+nothingMatches:
+  message: Nothing matches “{query}”. Try other words or another kind.
+  description: A search without results, by what was searched.
+cannotBePlayed:
+  message: "{name} says it cannot be played."
+  description: Under a plugin's message that a video is unavailable, by the plugin's name.
+partsCount:
+  message: "{n, plural, one {# part} other {# parts}}"
+  description: How many parts a video has.
+partNumber:
+  message: "P{n, number}"
+  description: A part of a video by its number.
+partsN:
+  message: "Parts · {n, number}"
+  description: The title of the player's list of a video's parts, with how many.
+resumePartAt:
+  message: Resume P{n, number} at {time}
+  description: Plays a video's part from where it was left, by its number and the time, written as 1:23 or 1:02:03.
+playFromStart: Play from Start
+nextPart: Next Part
+subtitlesAndAudio: Subtitles and Audio
+subtitlesOff:
+  message: "Off"
+  description: Shows no subtitles.
+general:
+  message: General
+  description: Heads the app's own settings.
+sendStatsDetail: Anonymous counts of pages and play time, never what you watch.
+addPlugin: Add Plugin
+builtIn:
+  message: Built-in
+  description: Stands for the version of a plugin built into the app.
+builtIntoApp: Built into NSGo Player
+noNetwork:
+  message: No network
+  description: Says a plugin reaches no network host, where its list says where it comes from.
+needsApp:
+  message: Needs NSGo Player {version}
+  description: Why a plugin was refused, by the oldest app version it works with.
+cannotLoad:
+  message: Cannot be loaded
+  description: Why a plugin was refused, when its manifest or code is wrong.
+cannotBeLoaded: This plugin cannot be loaded
+needsNewerAppToUse:
+  message: It needs NSGo Player {version} or later. Update the app to use it.
+  description: Why a plugin installed cannot load, by the oldest app version it works with.
+versionN:
+  message: Version {version}
+  description: A plugin's version.
+account: Account
+signedIn: Signed in
+notSignedIn: Not signed in
+network: Network
+reachesOnly: "It can connect to these hosts, and no others:"
+reachesNoOtherHost: It cannot reach any other host, your files or other plugins.
+reachesNothingElse: It cannot reach your files or other plugins either.
+removePluginAction: Remove Plugin…
+installing:
+  message: Installing {name} {version}…
+  description: The title while a plugin is being installed.
+installingShort: Installing…
+waitingToScan: Waiting for you to scan…

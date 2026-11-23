@@ -36,6 +36,18 @@ type Source struct {
 	// the one it is at; the page's quality menu shows them.
 	Qualities []Quality
 	Quality   string
+	// FromStart starts at 0 without offering the resume position.
+	FromStart bool
+	// Parts are the parts of the video the source is one of, and Part
+	// its index among them; the page's parts menu shows them.
+	Parts []Part
+	Part  int
+}
+
+// Part is a part of a video under its number's label and its title.
+type Part struct {
+	Label, Title string
+	Duration     time.Duration
 }
 
 // Subtitle is a subtitle track under its label: a file, a URL, or Text

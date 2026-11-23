@@ -72,3 +72,16 @@ func TestPositionsForgetTheLeastRecentlyPlayed(t *testing.T) {
 		t.Fatal("the newest position is forgotten")
 	}
 }
+
+func TestPositionsLatest(t *testing.T) {
+	p, _ := OpenPositions(filepath.Join(t.TempDir(), "positions.json"))
+	p.entries["demo:v1:1"] = position{Position: time.Minute, Played: time.Unix(1, 0)}
+	p.entries["demo:v1:2"] = position{Position: 2 * time.Minute, Played: time.Unix(2, 0)}
+	p.entries["demo:v2:1"] = position{Position: 3 * time.Minute, Played: time.Unix(3, 0)}
+	if key, pos, ok := p.Latest("demo:v1:"); !ok || key != "demo:v1:2" || pos != 2*time.Minute {
+		t.Fatalf("Latest = %q, %v, %v", key, pos, ok)
+	}
+	if _, _, ok := p.Latest("demo:v3:"); ok {
+		t.Fatal("Latest found a video never played")
+	}
+}

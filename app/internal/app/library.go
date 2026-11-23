@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/oneo-me/nsgo-media/app/internal/plugin"
 	"github.com/oneo-me/nsgo-media/app/internal/store"
 )
@@ -33,11 +35,35 @@ type library struct {
 	linked  map[*plugin.Plugin]string
 }
 
+// refusal is an installed or linked plugin the app refused to load, as
+// far as its manifest reads, which stays until the viewer removes it.
+type refusal struct {
+	id, name, version string
+	// folder is an installed one's folder in the plugins folder, and dir
+	// a linked one's folder.
+	folder, dir string
+	err         error
+}
+
+// readHead reads what it can of the manifest in fsys: its id, name and
+// version.
+func readHead(fsys fs.FS) (id, name, version string) {
+	data, err := fs.ReadFile(fsys, plugin.ManifestFile)
+	if err != nil {
+		return "", "", ""
+	}
+	var head struct{ ID, Name, Version string }
+	yaml.Unmarshal(data, &head)
+	return head.ID, head.Name, head.Version
+}
+
 // load loads every plugin, refusing one whose id another plugin has. It
-// returns the plugins that loaded and why the others did not.
-func (l *library) load() ([]*plugin.Plugin, error) {
+// returns the plugins that loaded, those installed or linked that did
+// not, and why.
+func (l *library) load() ([]*plugin.Plugin, []*refusal, error) {
 	var errs []error
 	var plugins []*plugin.Plugin
+	var refused []*refusal
 	ids := map[string]bool{}
 	add := func(p *plugin.Plugin, err error, name string) bool {
 		switch {
@@ -66,19 +92,50 @@ func (l *library) load() ([]*plugin.Plugin, error) {
 			if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
 				continue
 			}
-			p, err := plugin.Load(os.DirFS(filepath.Join(l.dir, e.Name())), false, l.opts)
+			fsys := os.DirFS(filepath.Join(l.dir, e.Name()))
+			p, err := plugin.Load(fsys, false, l.opts)
 			if add(p, err, e.Name()) {
 				l.remember(p, e.Name())
+			} else if err != nil {
+				r := &refusal{folder: e.Name(), err: err}
+				r.id, r.name, r.version = readHead(fsys)
+				refused = append(refused, r)
 			}
 		}
 	}
 	for _, dir := range l.settings.Linked() {
-		p, err := plugin.Load(os.DirFS(dir), false, l.opts)
+		fsys := os.DirFS(dir)
+		p, err := plugin.Load(fsys, false, l.opts)
 		if add(p, err, dir) {
 			l.link(p, dir)
+		} else if err != nil {
+			r := &refusal{dir: dir, err: err}
+			r.id, r.name, r.version = readHead(fsys)
+			refused = append(refused, r)
 		}
 	}
-	return plugins, errors.Join(errs...)
+	return plugins, refused, errors.Join(errs...)
+}
+
+// removeRefused removes a refused plugin: an installed one's folder, a
+// linked one's link, and its data unless keepData, as when a plugin
+// loaded has its id.
+func (l *library) removeRefused(r *refusal, keepData bool) error {
+	var data string
+	if r.id != "" && l.opts.DataDir != "" && !keepData && filepath.Base(r.id) == r.id {
+		data = filepath.Join(l.opts.DataDir, r.id)
+	}
+	if r.dir != "" {
+		err := l.settings.SetLinked(r.dir, false)
+		if data != "" {
+			err = errors.Join(err, os.RemoveAll(data))
+		}
+		return err
+	}
+	if l.dir == "" {
+		return errors.New("the app has no plugins folder")
+	}
+	return store.RemovePlugin(l.dir, r.folder, data)
 }
 
 func (l *library) remember(p *plugin.Plugin, folder string) {
@@ -123,6 +180,8 @@ type candidate struct {
 	// dir, when set, is the folder the plugin is used in, linked rather
 	// than installed.
 	dir string
+	// from is where the viewer picked it, a folder or a zip, if known.
+	from string
 }
 
 // readZip reads the zip file at path whole, as a plugin is small.

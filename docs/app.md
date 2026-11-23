@@ -9,18 +9,18 @@ It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Lin
 | Area | Built |
 | --- | --- |
 | Local playback | Opening a local file or a URL, and every format the core decodes |
-| Player | Play, pause, a progress bar with the buffered range, seeking, volume, mute, rate, subtitle and audio track choice, fullscreen, keyboard shortcuts, and resuming where a video was left |
+| Player | Play, pause, a progress bar with the buffered range, seeking, volume, mute, rate, subtitle and audio track choice, a video's parts, fullscreen, keyboard shortcuts, bars that hide while it plays, and resuming where a video was left |
 | Local files | The built-in plugin: the viewer's video folders, their subfolders, searching their names, a pasted path, and subtitle files beside a video |
 | Plugins | A folder with a YAML manifest, YAML locales and one JavaScript or TypeScript file, run by moejs with only the network hosts its manifest lists |
 | Plugin pages | A sidebar entry per plugin with its home, its own pages and search; video pages with their parts; playing what the plugin's `stream` answers, at a quality the viewer picks |
-| Plugin management | Listing, enabling and disabling plugins, installing one from a folder or zip, or using one where its folder is from a path typed in the settings, each after approving its hosts; removing it with its data, and editing its settings |
+| Plugin management | Listing, enabling and disabling plugins, installing one from a folder or zip, or using one where its folder is picked, each after approving its hosts; each plugin's page with its account, settings and hosts, and removing it with its data; listing those refused until removed |
+| Look | Every page and state of the designs in `design/` but the following page and following a show, which wait for a plugin export of their own, and installing and updating from GitHub |
 | Languages | Simplified Chinese and English, for the app and for plugins' own text |
 
 ### First version on macOS
 
 Goals, in the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
 
-- A designed look: every page drawn from designs made before it is built.
 - Installing from GitHub: typing a repository as `owner/repo` or its URL installs the plugin zip of its latest release, after the viewer approves its hosts. The app checks the repositories of plugins installed this way for a newer release, never a pre-release, and updates one when the viewer agrees.
 - A release: one universal disk image, signed with a Developer ID, notarized and published on this repository's GitHub releases by a local command. A plugin from its own repository, installed from GitHub, plays in it.
 

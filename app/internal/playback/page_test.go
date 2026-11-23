@@ -93,8 +93,10 @@ func TestPageRefusesAnInvalidSource(t *testing.T) {
 func TestPagePlaysSeparateAudio(t *testing.T) {
 	app := start(t, Source{URL: clip(t, "dash-video.mp4"), Audio: &Stream{URL: clip(t, "dash-audio.m4a")}}, nil)
 	play(t, app, 5*time.Second, func() bool { return app.Find("id:position").Text != "0:00" })
-	app.Press("id:audio")
-	app.Find("id:audio-1 >> text:(eng)")
+	// One audio track and no subtitles leave nothing to choose.
+	if app.Exists("id:tracks") {
+		t.Fatal("the page offers a choice of one track")
+	}
 }
 
 // TestPageFullScreenShortcuts needs a window to put in full screen.
@@ -105,7 +107,6 @@ func TestPageFullScreenShortcuts(t *testing.T) {
 	app := start(t, Source{URL: clip(t, "av.mkv")}, nil)
 	app.Key("f")
 	app.WaitFor("label:Exit Full Screen", 5*time.Second)
-	app.WaitForGone("id:back", time.Second)
 	// macOS ignores a toggle while the window animates into full screen.
 	until := time.Now().Add(2 * time.Second)
 	play(t, app, 3*time.Second, func() bool { return time.Now().After(until) })
@@ -175,8 +176,11 @@ func TestPageDownloadsSubtitles(t *testing.T) {
 // openSubtitles opens the subtitle menu, reporting whether it lists a
 // downloaded track.
 func openSubtitles(app *nsgotest.App) bool {
-	if !app.Exists("id:subtitle-0") {
-		app.Press("id:subtitle")
+	if !app.Exists("id:tracks") {
+		return false
 	}
-	return app.Exists("text:English")
+	if !app.Exists("id:subtitle-off") {
+		app.Press("id:tracks")
+	}
+	return app.Exists("id:menu >> text:English")
 }

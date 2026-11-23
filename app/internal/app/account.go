@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/nsgo-dev/nsgo/base"
 	"github.com/nsgo-dev/nsgo/core"
@@ -76,8 +77,8 @@ func (sh *shell) signOut(p *plugin.Plugin) {
 	})
 }
 
-// accountMenu ends p's sidebar title: signing in, or the account and
-// signing out.
+// accountMenu ends p's sidebar title: the account's avatar, whose menu
+// signs out, or signing in.
 func (sh *shell) accountMenu(cx *core.Scope, p *plugin.Plugin) core.Node {
 	if !p.Has(plugin.ExportSignIn) && !p.Has(plugin.ExportAccount) {
 		return nil
@@ -91,7 +92,7 @@ func (sh *shell) accountMenu(cx *core.Scope, p *plugin.Plugin) core.Node {
 				return nil
 			}
 			return ui.IconButton{
-				TestID: "sign-in-" + id, Icon: lucide.LogIn, Label: locales.SignIn(cx), Variant: ui.IconButtonGhost, Size: 24, IconSize: 14,
+				TestID: "sign-in-" + id, Icon: lucide.LogIn, Label: locales.SignIn(cx), Variant: ui.IconButtonGhost, Size: 20, IconSize: 12,
 				Disabled: a.busy.Get, OnPress: func() { sh.signIn(p) },
 			}
 		}
@@ -102,9 +103,59 @@ func (sh *shell) accountMenu(cx *core.Scope, p *plugin.Plugin) core.Node {
 		return ui.Menu{
 			TestID:   "account-" + id,
 			Label:    acc.Name,
-			Trigger:  ui.Button{Icon: lucide.CircleUser, Label: acc.Name, Variant: ui.ButtonGhost, Size: ui.SizeSmall},
+			Trigger:  ui.Button{Label: acc.Name, Variant: ui.ButtonGhost, Size: ui.SizeSmall},
+			Face:     sh.avatar(cx, acc, "size-5"),
 			Children: items,
 		}
+	})
+}
+
+// avatar is the account's picture in a circle of size, its initial
+// while there is none.
+func (sh *shell) avatar(cx *core.Scope, acc *plugin.Account, size string) core.Node {
+	initial := ""
+	if r := []rune(acc.Name); len(r) > 0 {
+		initial = strings.ToUpper(string(r[0]))
+	}
+	children := []core.Node{core.Text{Content: initial, Class: "text-[10px] font-semibold text-muted-foreground"}}
+	if acc.Avatar != nil {
+		children = append(children, sh.cover(cx, acc.Avatar, "absolute inset-0 rounded-full"))
+	}
+	return core.View{Class: "items-center justify-center overflow-hidden rounded-full bg-well " + size, Children: children}
+}
+
+// accountRow is who is signed in to p, with Sign Out, or else Sign In.
+func (sh *shell) accountRow(cx *core.Scope, p *plugin.Plugin) core.Node {
+	a := sh.account(p)
+	id := p.Manifest.ID
+	return core.Dynamic(func(cx *core.Scope) core.Node {
+		acc := a.who.Get()
+		var lead core.Node
+		var name, status string
+		var action core.Node
+		if acc != nil {
+			lead, name, status = sh.avatar(cx, acc, "size-8"), acc.Name, locales.SignedIn(cx)
+			if p.Has(plugin.ExportSignOut) {
+				action = ui.Button{TestID: "page-sign-out-" + id, Text: locales.SignOut(cx), Variant: ui.ButtonOutline, OnPress: func() { sh.signOut(p) }}
+			}
+		} else {
+			lead = core.View{Class: "size-8 items-center justify-center rounded-full bg-chip", Children: []core.Node{
+				core.Icon{SVG: lucide.User(), Class: "size-4 text-faint-ink"},
+			}}
+			name, status = locales.NotSignedIn(cx), ""
+			if p.Has(plugin.ExportSignIn) {
+				action = ui.Button{TestID: "page-sign-in-" + id, Text: locales.SignIn(cx), Busy: a.busy.Get, OnPress: func() { sh.signIn(p) }}
+			}
+		}
+		text := []core.Node{core.Text{Content: name, Class: "text-[13px] font-medium text-foreground"}}
+		if status != "" {
+			text = append(text, core.Text{Content: status, Class: "text-xs text-muted-foreground"})
+		}
+		children := []core.Node{lead, core.View{Class: "flex-1", Style: core.Style{FlexShrink: 1}, Children: text}}
+		if action != nil {
+			children = append(children, action)
+		}
+		return core.View{TestID: "account-row", Class: "min-h-[52px] flex-row items-center gap-3 px-4 py-2.5", Children: children}
 	})
 }
 
@@ -149,39 +200,53 @@ func (ps *prompts) dismiss() {
 }
 
 // signInDialog shows the sign-in prompt of a plugin: its QR code to scan
-// and what to do.
+// and what to do, or only what to do, as when it opened its page in the
+// browser.
 func (sh *shell) signInDialog(cx *core.Scope) core.Node {
 	ps := sh.prompts
 	return ui.Dialog{
 		TestID: "sign-in",
+		Bare:   true,
 		Open:   func() bool { return ps.shown.Get() != nil },
 		OnOpenChange: func(open bool, _ base.Reason) {
 			if !open {
 				ps.dismiss()
 			}
 		},
-		TitleFunc: func() string {
+		LabelFunc: func() string {
 			if cur := ps.shown.Get(); cur != nil {
 				return locales.SignInTo(cx, cur.p.Name())
 			}
 			return ""
 		},
+		Style: core.Style{Width: core.Pt(400), CornerRadius: 16},
 		Children: []core.Node{core.Dynamic(func(cx *core.Scope) core.Node {
 			cur := ps.shown.Get()
 			if cur == nil {
 				return nil
 			}
+			title := core.Text{Content: locales.SignInTo(cx, cur.p.Name()), Class: "text-center text-[17px] font-bold text-foreground"}
 			var nodes []core.Node
 			if cur.QRCode != "" {
-				nodes = append(nodes, qrCode(cx, cur.QRCode))
+				nodes = append(nodes, title, core.View{Class: "rounded-2xl border border-border bg-white p-3 shadow-sm", Children: []core.Node{qrCode(cx, cur.QRCode)}})
+			} else {
+				nodes = append(nodes, core.View{Class: "size-12 items-center justify-center rounded-2xl bg-accent/10", Children: []core.Node{
+					core.Icon{SVG: lucide.Globe(), Class: "size-6 text-accent"},
+				}}, title)
 			}
 			if cur.Message != "" {
-				nodes = append(nodes, core.Text{TestID: "sign-in-message", Content: cur.Message, Style: core.Style{TextAlign: core.TextAlignCenter}})
+				nodes = append(nodes, core.Text{TestID: "sign-in-message", Content: cur.Message, Class: "max-w-[300px] text-center text-[13px] leading-relaxed text-muted-foreground"})
 			}
-			return core.View{Style: core.Style{AlignItems: core.AlignCenter, Gap: 12}, Children: nodes}
+			if cur.QRCode != "" {
+				nodes = append(nodes, core.View{Class: "flex-row items-center gap-1.5", Children: []core.Node{
+					ui.Spinner{Size: 12},
+					core.Text{Content: locales.WaitingToScan(cx), Class: "text-xs text-faint-ink"},
+				}})
+			}
+			return core.View{Children: []core.Node{
+				core.View{Class: "items-center gap-4 px-6 pt-7 pb-5", Children: nodes},
+				dialogActions(nil, ui.Button{TestID: "cancel-sign-in", Text: locales.Cancel(cx), Variant: ui.ButtonOutline, OnPress: ps.dismiss}),
+			}}
 		})},
-		Footer: []core.Node{
-			ui.Button{TestID: "cancel-sign-in", Text: locales.Cancel(cx), Variant: ui.ButtonSecondary, OnPress: ps.dismiss},
-		},
 	}
 }

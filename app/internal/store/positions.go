@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -95,4 +96,18 @@ func (p *Positions) write() error {
 		return err
 	}
 	return writeFile(p.path, data)
+}
+
+// Latest returns the most recently played video whose key starts with
+// prefix, as the parts of one video share theirs, and where it was left.
+func (p *Positions) Latest(prefix string) (key string, pos time.Duration, ok bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var played time.Time
+	for k, e := range p.entries {
+		if strings.HasPrefix(k, prefix) && (!ok || e.Played.After(played)) {
+			key, pos, played, ok = k, e.Position, e.Played, true
+		}
+	}
+	return key, pos, ok
 }

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -48,13 +49,31 @@ func TestLibraryLoadsBuiltInAndInstalled(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	plugins, err := l.load()
+	plugins, refused, err := l.load()
 	if len(plugins) != 2 || plugins[0].Manifest.ID != "a" || !plugins[0].Builtin || plugins[1].Manifest.ID != "b" || plugins[1].Builtin {
 		t.Fatalf("loaded %v", plugins)
 	}
 	var tooNew *plugin.TooNewError
 	if !errors.As(err, &tooNew) || !strings.Contains(err.Error(), "split: plugin split: main.ts imports ./x.js") || !strings.Contains(err.Error(), "again: plugin a is already loaded") {
 		t.Fatalf("errors = %v", err)
+	}
+	// The plugins refused for themselves stay listed until removed; the
+	// one of a taken id is only logged.
+	var names []string
+	for _, r := range refused {
+		names = append(names, r.folder+"="+r.id)
+	}
+	slices.Sort(names)
+	if strings.Join(names, " ") != "new=new split=split" {
+		t.Fatalf("refused %v", names)
+	}
+	for _, r := range refused {
+		if err := l.removeRefused(r, false); err != nil {
+			t.Fatal(err)
+		}
+		if exists(filepath.Join(l.dir, r.folder)) {
+			t.Fatalf("removing refused %s kept its folder", r.folder)
+		}
 	}
 	for _, p := range plugins {
 		p.Close()
@@ -105,7 +124,7 @@ func TestLibraryInstallsAndRemoves(t *testing.T) {
 	if _, err := p.Home(t.Context(), plugin.PageParams{}); err != nil {
 		t.Fatal(err)
 	}
-	plugins, err := l.load()
+	plugins, _, err := l.load()
 	if err != nil || len(plugins) != 1 || plugins[0].Manifest.ID != "demo" {
 		t.Fatalf("after installing, loaded %v, %v", plugins, err)
 	}
@@ -163,7 +182,7 @@ func TestLibraryLinksAFolder(t *testing.T) {
 	}
 
 	// It loads again from its folder, and unlinked, the folder stays.
-	plugins, err := l.load()
+	plugins, _, err := l.load()
 	if err != nil || len(plugins) != 1 || plugins[0].Manifest.ID != "linked" {
 		t.Fatalf("loaded %v, %v", plugins, err)
 	}
