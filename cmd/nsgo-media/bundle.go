@@ -14,16 +14,13 @@ import (
 	"strings"
 )
 
-var targets = map[string]bool{
-	"macos_arm64": true, "macos_x64": true, "macos_universal": true,
-	"windows_x64": true, "linux_x64": true,
-	"ios": true, "ios_simulator": true,
-}
+// targets are the iOS targets bundle serves; nsgo build itself puts the
+// libraries nsgo-natives.yaml declares into a desktop app's packages.
+var targets = map[string]bool{"ios": true, "ios_simulator": true}
 
-// libSet is one target's archive: its libraries by file name, or for iOS
-// its frameworks' files by path, and its notices by file name: the
-// licenses, the diff of FFmpeg's source and the note of how they were
-// built.
+// libSet is one target's archive: its frameworks' files by path, and its
+// notices by file name: the licenses, the diff of FFmpeg's source and the
+// note of how they were built.
 type libSet struct {
 	libs    map[string][]byte
 	notices map[string][]byte
@@ -63,7 +60,7 @@ func defaultLibs() string {
 	return local
 }
 
-var libraryName = regexp.MustCompile(`^(lib[a-z]+\.\d+\.dylib|[a-z]+-\d+\.dll|lib[a-z]+\.so\.\d+|lib[a-z]+\.framework/(lib[a-z]+|Info\.plist))$`)
+var libraryName = regexp.MustCompile(`^lib[a-z]+\.framework/(lib[a-z]+|Info\.plist)$`)
 
 func archiveName(target string) string {
 	return "ffmpeg-" + ffmpegVersion + "-" + target + ".zip"
@@ -150,151 +147,32 @@ func bundle(pkg, target, sign string, src *source) error {
 		target = packageTarget(pkg)
 	}
 	if target == "" {
-		if app == "" {
-			fmt.Printf("skipping %s: not a package of a target with FFmpeg libraries\n", pkg)
-			return nil
-		}
-		target = "macos_universal"
+		fmt.Printf("skipping %s: not an iOS package; nsgo build puts the FFmpeg libraries into desktop packages\n", pkg)
+		return nil
 	}
 	if !targets[target] {
-		return fmt.Errorf("unknown target %s", target)
+		return fmt.Errorf("unknown target %s; bundle serves ios and ios_simulator", target)
 	}
-	if strings.HasPrefix(target, "ios") {
-		if app == "" {
-			apps, _ := filepath.Glob(filepath.Join(pkg, "*.app"))
-			if len(apps) != 1 {
-				return errors.New("no .app in the package")
-			}
-			app = apps[0]
+	if app == "" {
+		apps, _ := filepath.Glob(filepath.Join(pkg, "*.app"))
+		if len(apps) != 1 {
+			return errors.New("no .app in the package")
 		}
-		return bundleIOS(app, target, sign, src)
+		app = apps[0]
 	}
-	if strings.HasPrefix(target, "macos") {
-		if app == "" {
-			apps, _ := filepath.Glob(filepath.Join(pkg, "*.app"))
-			if len(apps) != 1 {
-				return errors.New("no .app in the package")
-			}
-			app = apps[0]
-		}
-		return bundleMac(app, target, sign, src)
-	}
-	set, err := src.load(target)
-	if err != nil {
-		return err
-	}
-	for name, data := range set.libs {
-		if err := os.WriteFile(filepath.Join(pkg, name), data, 0o755); err != nil {
-			return err
-		}
-	}
-	if err := writeNotices(filepath.Join(pkg, "FFmpeg"), set); err != nil {
-		return err
-	}
-	fmt.Printf("bundled FFmpeg into %s\n", pkg)
-	return nil
+	return bundleIOS(app, target, sign, src)
 }
 
-// writeNotices writes every notice of the sets into dir: the first set's,
-// with the build notes of all, as a universal app's libraries join two.
-func writeNotices(dir string, sets ...*libSet) error {
+// writeNotices writes every notice of set into dir.
+func writeNotices(dir string, set *libSet) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	for name, data := range sets[0].notices {
-		if name == "BUILD.txt" {
-			var notes [][]byte
-			for _, set := range sets {
-				notes = append(notes, set.notices[name])
-			}
-			data = bytes.Join(notes, []byte("\n"))
-		}
+	for name, data := range set.notices {
 		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
 			return err
 		}
 	}
-	return nil
-}
-
-// bundleMac puts the libraries into the app's Frameworks, joining both
-// architectures' for a universal app, and signs them and the app again,
-// keeping the app's identifier, entitlements and options.
-func bundleMac(app, target, sign string, src *source) error {
-	frameworks := filepath.Join(app, "Contents", "Frameworks")
-	if err := os.MkdirAll(frameworks, 0o755); err != nil {
-		return err
-	}
-	var libs []string
-	if target == "macos_universal" {
-		arm, err := src.load("macos_arm64")
-		if err != nil {
-			return err
-		}
-		x64, err := src.load("macos_x64")
-		if err != nil {
-			return err
-		}
-		tmp, err := os.MkdirTemp("", "nsgo-media-lipo")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(tmp)
-		for name, a := range arm.libs {
-			b, ok := x64.libs[name]
-			if !ok {
-				return fmt.Errorf("macos_x64 has no %s", name)
-			}
-			pa, pb := filepath.Join(tmp, "arm64-"+name), filepath.Join(tmp, "x64-"+name)
-			os.WriteFile(pa, a, 0o755)
-			os.WriteFile(pb, b, 0o755)
-			out := filepath.Join(frameworks, name)
-			if err := run("lipo", "-create", pa, pb, "-output", out); err != nil {
-				return err
-			}
-			libs = append(libs, out)
-		}
-		if err := writeNotices(filepath.Join(app, "Contents", "Resources", "FFmpeg"), arm, x64); err != nil {
-			return err
-		}
-	} else {
-		set, err := src.load(target)
-		if err != nil {
-			return err
-		}
-		for name, data := range set.libs {
-			out := filepath.Join(frameworks, name)
-			if err := os.WriteFile(out, data, 0o755); err != nil {
-				return err
-			}
-			libs = append(libs, out)
-		}
-		if err := writeNotices(filepath.Join(app, "Contents", "Resources", "FFmpeg"), set); err != nil {
-			return err
-		}
-	}
-	if sign == "" {
-		sign = signingIdentity(app)
-	}
-	args := []string{"--force", "--sign", sign}
-	if sign != "-" {
-		args = append(args, "--timestamp", "--options", "runtime")
-	}
-	for _, lib := range libs {
-		if err := run("codesign", append(args, lib)...); err != nil {
-			return err
-		}
-	}
-	appArgs := []string{"--force", "--sign", sign, "--preserve-metadata=identifier,entitlements,requirements,flags,runtime"}
-	if sign != "-" {
-		appArgs = append(appArgs, "--timestamp")
-	}
-	if err := run("codesign", append(appArgs, app)...); err != nil {
-		return err
-	}
-	if err := run("codesign", "--verify", "--deep", "--strict", app); err != nil {
-		return err
-	}
-	fmt.Printf("bundled FFmpeg into %s, signed with %q\n", app, sign)
 	return nil
 }
 
@@ -410,12 +288,6 @@ func writeIPA(app, dst string) error {
 		return err
 	}
 	return os.Rename(tmp, dst)
-}
-
-// signingIdentity is the identity the app is signed with, "-" for ad hoc.
-func signingIdentity(app string) string {
-	identity, _ := signature(app)
-	return identity
 }
 
 // signature is the identity the app is signed with, "-" for ad hoc, and

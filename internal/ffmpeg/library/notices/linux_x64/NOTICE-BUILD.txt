@@ -1,0 +1,49 @@
+FFmpeg 9.0.2, built for linux_x64 by NSGo Media's tools/ffmpeg (https://github.com/oneo-me/nsgo-media/tree/main/tools/ffmpeg) under the LGPL 2.1 or later.
+
+Source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz
+SHA-256: 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
+
+Changed, as the diff in ffmpeg.patch holds:
+  libavformat/dashdec.c on 2026-11-22: an interrupted dash_read_packet returns AVERROR_EXIT instead of 0 with no packet, which av_read_frame calls again without end
+
+Configured with:
+  --arch=x86_64
+  --enable-shared
+  --disable-static
+  --disable-gpl
+  --disable-nonfree
+  --disable-version3
+  --disable-autodetect
+  --disable-programs
+  --disable-doc
+  --disable-debug
+  --disable-avdevice
+  --disable-network
+  --disable-iconv
+  --enable-libxml2
+  --disable-encoders
+  --disable-muxers
+  --enable-muxer=spdif
+  --disable-devices
+  --disable-protocols
+  --enable-protocol=file
+  --disable-filters
+  --enable-filter=abuffer,abuffersink,atempo,aformat,aresample,anull
+  --target-os=linux
+  --enable-pthreads
+  --enable-vaapi
+  --enable-zlib
+  --pkg-config=$WORK/host/bin/nsgo-media-ffmpeg -as pkg-config
+  --x86asmexe=$WORK/host/bin/nasm
+  --nm=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm
+  --enable-cross-compile
+  --cc=$WORK/host/bin/nsgo-media-ffmpeg -as cc
+  --ar=$WORK/host/bin/nsgo-media-ffmpeg -as ar
+  --ranlib=$WORK/host/bin/nsgo-media-ffmpeg -as ranlib
+  --strip=true
+  --extra-cflags=-I$WORK/deps/linux_x64/zlib/include
+  --extra-ldflags=-L$WORK/deps/linux_x64/zlib/lib
+
+libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.
+Source: https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz
+SHA-256: 98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821

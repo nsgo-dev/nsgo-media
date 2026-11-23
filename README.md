@@ -37,7 +37,7 @@ func Root(cx *core.Scope) core.Node {
 
 The player's state, such as `p.State()`, `p.Position()` and `p.Cues()`, is NSGo signals the app's views read. [`examples/demo`](examples/demo) is a small player with its own controls, and [NSGo Player](docs/app.md), in `app/`, the first-party desktop app: local folders through its built-in plugin, and other sources through plugins with YAML manifests.
 
-The core loads FFmpeg's shared libraries at run time: the ones `tools/ffmpeg` builds, from the directory `NSGO_MEDIA_FFMPEG` names, beside the executable or as frameworks in an iOS app, or else the system's FFmpeg 9 (`brew install ffmpeg` on macOS). An app's packages get them with `go tool nsgo-media bundle` after `nsgo build`. See [FFmpeg libraries](docs/ffmpeg.md).
+The core loads FFmpeg's shared libraries at run time: the ones `tools/ffmpeg` builds, from the directory `NSGO_MEDIA_FFMPEG` names, beside the executable or as frameworks in an iOS app, or else the system's FFmpeg 9 (`brew install ffmpeg` on macOS). `nsgo build` downloads the desktop ones, published as a release of this repository, into an app's packages and installers; an iOS app gets them with `go tool nsgo-media bundle` after it. See [FFmpeg libraries](docs/ffmpeg.md).
 
 ## Development
 

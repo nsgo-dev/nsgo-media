@@ -238,7 +238,7 @@ func libraryFile(t target, lib string) *regexp.Regexp {
 // go with them. nsgo-media bundle copies every file but the libraries into
 // an app.
 func (b *builder) pack(t target, dir string, args []string) (string, error) {
-	name := filepath.Join(b.out, "ffmpeg-"+FFmpegVersion+"-"+t.name+".zip")
+	name := filepath.Join(b.out, archiveFile(t.name))
 	f, err := os.Create(name)
 	if err != nil {
 		return "", err
