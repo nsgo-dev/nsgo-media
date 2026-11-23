@@ -1,8 +1,10 @@
 // Command ffmpeg builds the FFmpeg shared libraries NSGo Media loads, with
 // LGPL components only, at the pinned version, for each desktop target and
-// as frameworks for iOS, into archives that nsgo-media bundle puts into an
-// app's packages, and FFmpeg's source with its diff into source/, which an
-// app offers beside them.
+// as frameworks for iOS, into archives, and FFmpeg's source with its diff
+// into source/, which an app offers beside them. The desktop libraries are
+// published as a release of this repository, which the core's
+// nsgo-natives.yaml declares for nsgo build; nsgo-media bundle puts the
+// iOS frameworks into an app.
 //
 // It runs on macOS with Xcode and Go: Xcode's clang builds the macOS and
 // iOS targets, and a pinned Zig, which it downloads, cross-compiles Windows and
@@ -11,6 +13,7 @@
 //	go run ./tools/ffmpeg                        # every target into dist/ffmpeg
 //	go run ./tools/ffmpeg -target macos_arm64    # one target
 //	go run ./tools/ffmpeg -layout internal/ffmpeg/layout.go  # regenerate the binding's struct layouts
+//	go run ./tools/ffmpeg -natives internal/ffmpeg/library   # the release's files and the manifest declaring them
 package main
 
 import (
@@ -33,7 +36,15 @@ func main() {
 	out := flag.String("out", filepath.Join("dist", "ffmpeg"), "directory for the archives")
 	jobs := flag.Int("jobs", runtime.NumCPU(), "parallel compile jobs")
 	layout := flag.String("layout", "", "instead of building, write the binding's struct layouts from FFmpeg's headers to this Go file")
+	natives := flag.String("natives", "", "instead of building, write the release's files from the archives built into -out, and the manifest declaring them with their notices into this package directory")
 	flag.Parse()
+
+	if *natives != "" {
+		if err := writeNatives(*out, *natives); err != nil {
+			fail(err)
+		}
+		return
+	}
 
 	if runtime.GOOS != "darwin" {
 		fail(fmt.Errorf("the tool runs on macOS with Xcode; this is %s", runtime.GOOS))

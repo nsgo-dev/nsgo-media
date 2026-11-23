@@ -21,7 +21,9 @@ replace github.com/oneo-me/nsgo-media => ../nsgo-media
 
 ## Get FFmpeg's libraries
 
-The core loads FFmpeg 9's shared libraries at run time. Either build them from the checkout, which runs on macOS with Xcode and Go alone:
+The core loads FFmpeg 9's shared libraries at run time. On macOS, Windows and Linux, `nsgo dev` and `nsgo build` download the ones the repository publishes and put them into your app; you need nothing else.
+
+To change them, or for iOS, build them from the checkout, which runs on macOS with Xcode and Go alone:
 
 ```sh
 cd nsgo-media
@@ -29,7 +31,7 @@ go run ./tools/ffmpeg                     # every target into dist/ffmpeg
 go run ./tools/ffmpeg -target macos_arm64 # or one target
 ```
 
-or, while developing on macOS, use the system's FFmpeg:
+With `go run` or `go test`, which put no libraries in, you can also use the system's FFmpeg on macOS:
 
 ```sh
 brew install ffmpeg

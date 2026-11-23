@@ -1,6 +1,6 @@
 # FFmpeg libraries
 
-`tools/ffmpeg` builds the FFmpeg shared libraries the core loads, and the binding's struct layouts. Read this before changing the pinned version, a configure flag or the binding's majors.
+`tools/ffmpeg` builds the FFmpeg shared libraries the core loads, and the binding's struct layouts, and prepares the release `nsgo build` downloads desktop libraries from. Read this before changing the pinned version, a configure flag, the binding's majors or how the libraries are packaged.
 
 ## Building
 
@@ -8,6 +8,7 @@
 go run ./tools/ffmpeg                                    # every target into dist/ffmpeg
 go run ./tools/ffmpeg -target linux_x64                  # one target
 go run ./tools/ffmpeg -layout internal/ffmpeg/layout.go  # regenerate the struct layouts
+go run ./tools/ffmpeg -natives internal/ffmpeg/library   # the release's files and the manifest
 ```
 
 It runs on macOS with Xcode and Go alone. Every download is pinned with its SHA-256 in `tools/ffmpeg/pinned.go` and kept in the work directory (`-work`, by default the user cache's `nsgo-media/ffmpeg`).
@@ -31,27 +32,43 @@ It runs on macOS with Xcode and Go alone. Every download is pinned with its SHA-
 
 The HLS and DASH demuxers open playlists, segments and keys themselves, and only by URLs of a protocol FFmpeg has. So the core gives FFmpeg every HTTP(S) URL as a path under `/nsgo-media/` (`https://cdn.example/a.m3u8` becomes `/nsgo-media/https/cdn.example/a.m3u8`), which it takes for a file and resolves relative references against, and its `io_open` and `io_close2` hand each one back to Go. Go rewrites every manifest it serves so that absolute and root-relative references are such paths, downloads segments with their byte ranges, decrypts AES-128, and measures the bandwidth. Libraries without libxml2, such as Homebrew's, play HLS but not DASH.
 
+## Publishing
+
+The desktop libraries are published as a release of this repository, whose tag is `releaseTag` in `tools/ffmpeg/natives.go` (`ffmpeg-9.0.2-1`), and declared in `internal/ffmpeg/library/nsgo-natives.yaml` for NSGo's tool ([native libraries](https://github.com/nsgo-dev/nsgo/blob/main/docs/public/en/native-libraries.md)). After building every target, `-natives` writes from the archives in `dist/ffmpeg`:
+
+- `dist/ffmpeg/release`, the release's assets: each desktop target's six libraries as `<target>-<file>`, as NSGo's tool downloads libraries rather than archives, every archive, iOS' included, and FFmpeg's release tarball with `ffmpeg.patch`, the libraries' complete source.
+- The manifest, giving each library of `macos_arm64`, `macos_x64`, `windows_x64` and `linux_x64` its URL in the release, its SHA-256 and its notices, which it copies from the archives into `internal/ffmpeg/library/notices`: `COPYING.LGPLv2.1` and the target's `NOTICE-BUILD.txt` for every library, and `COPYING.libxml2` and `NOTICE-ffmpeg.patch` for libavformat, which links libxml2 and holds the change. NSGo's tool takes a file named `COPYING` for a license it must recognize and one named `NOTICE` for a notice beside it. `windows_arm64` and `linux_arm64` declare none.
+
+```sh
+gh release create ffmpeg-9.0.2-1 dist/ffmpeg/release/* --latest=false --title "FFmpeg 9.0.2 libraries (1)"
+```
+
+A release's assets never change: libraries built again, for a new version, flag or patch, go out under the next tag, and the manifest is written again and committed with it. A test checks that the manifest declares the libraries of `releaseTag`.
+
 ## Packaging an app
 
-`go tool nsgo-media bundle` puts the libraries into the packages `nsgo build` wrote: a macOS app's `Contents/Frameworks`, where the loader looks first, an iOS app's `Frameworks`, and the directory of a Windows or Linux executable, with every notice of the archive in `FFmpeg/` (a macOS app's `Contents/Resources/FFmpeg`). It refuses an archive without `COPYING.LGPLv2.1` or `BUILD.txt`. It takes each package's target from the end of its name and joins both architectures' libraries with `lipo` for `macos_universal`.
+On desktops, `nsgo build` of an app importing the core downloads the target's libraries the manifest declares, checks their SHA-256 and keeps them in the user cache's `nsgo/natives`. It puts them into a macOS app's `Contents/Frameworks`, joining both architectures with `lipo` for `macos_universal`, or beside a Windows or Linux executable, and signs them before the app, so its disk image, installers and notarization hold them. The notices go into the app's `THIRD_PARTY_NOTICES.txt` and `core.ThirdPartyNotices()`. NSGo's license policy warns of their LGPL as copyleft; an app with `licenses.copyleft: error` adds `github.com/oneo-me/nsgo-media` to `licenses.allow`.
+
+- `nsgo dev`, and `nsgo test` with a desktop `-target`, put them in too; `nsgo test` without one, as `go run` and `go test`, puts none in. `NSGO_MEDIA_FFMPEG` still comes first, so a checkout runs with libraries it built by naming their directory, such as an unpacked archive of `dist/ffmpeg`.
+- A target NSGo's manifest does not cover packages nothing from it: iOS, Android and the web.
+
+On iOS, `go tool nsgo-media bundle` puts the frameworks into the app `nsgo build` wrote, its `Frameworks`, with every notice of the archive in `FFmpeg/`. It refuses an archive without `COPYING.LGPLv2.1` or `BUILD.txt`, takes each package's target from the end of its name, and skips desktop packages.
 
 ```sh
 go get -tool github.com/oneo-me/nsgo-media/cmd/nsgo-media
-go tool nsgo build -installers=false
+go tool nsgo build -target ios
 go tool nsgo-media bundle dist/*      # -libs DIR to take the archives from elsewhere
 ```
 
-- The libraries are the archives `go run ./tools/ffmpeg` built; nothing is downloaded. `bundle` looks in `dist/ffmpeg` of the current directory, as in this repository, or else in `dist/ffmpeg` of the directory `go list -m` gives for this module, which for another app is the local checkout its `replace` directive names. Where neither has them, it stops and says to build them with `go run ./tools/ffmpeg` or pass `-libs`.
-- A macOS app is signed again with the identity it has (`-sign` names another): the libraries first, with the hardened runtime and a timestamp unless ad hoc, then the app keeping its identifier, entitlements and options. An app `nsgo build` notarized needs notarizing again.
-- An iOS app is signed again when it is signed: a simulator's always, ad hoc, and a device's when `sign.profile` signed it, the frameworks first with its identity, then the app keeping its identifier and entitlements. An unsigned device app keeps unsigned frameworks for the signing that installs it, and the IPA beside it is written again from it. `nsgo build -run` and `nsgo dev` install the app before `bundle` can run, so for a device build with `sign.profile`, bundle, then install with `xcrun devicectl device install app`.
-- The installers `nsgo build` makes (the disk image, the Windows installer, the Linux packages and AppImage) are made from the packages before `bundle` runs, so they lack the libraries; build with `-installers=false` and make installers afterwards. NSGo's tool carrying a third-party package's native libraries, as it carries its own terminal library, would remove this step.
+- The frameworks are the archives `go run ./tools/ffmpeg` built; nothing is downloaded. `bundle` looks in `dist/ffmpeg` of the current directory, as in this repository, or else in `dist/ffmpeg` of the directory `go list -m` gives for this module, which for another app is the local checkout its `replace` directive names. Where neither has them, it stops and says to build them with `go run ./tools/ffmpeg` or pass `-libs`.
+- An iOS app is signed again when it is signed: a simulator's always, ad hoc, and a device's when `sign.profile` signed it, the frameworks first with its identity (`-sign` names another), then the app keeping its identifier and entitlements. An unsigned device app keeps unsigned frameworks for the signing that installs it, and the IPA beside it is written again from it. `nsgo build -run` and `nsgo dev` install the app before `bundle` can run, so for a device build with `sign.profile`, bundle, then install with `xcrun devicectl device install app`.
 
 ### What an app that ships them owes
 
-The libraries are LGPL 2.1, so an app, closed or not, ships them only as replaceable shared libraries, as `bundle` puts them, and besides:
+The libraries are LGPL 2.1, so an app, closed or not, ships them only as replaceable shared libraries, as `nsgo build` and `bundle` put them, with their notices, which `THIRD_PARTY_NOTICES.txt` holds on desktops and `FFmpeg/` on iOS, and besides:
 
-- Offers their source: the files of `dist/ffmpeg/source`, beside the app's downloads on a server it controls, for as long as it distributes that build, or shipped with the app.
-- Says in its about box or documentation that it uses libraries of the FFmpeg project under the LGPL 2.1, and where their source is.
+- Offers their source: the files of `dist/ffmpeg/source`, which the release holds too (`ffmpeg-9.0.2.tar.xz` and `ffmpeg.patch`), beside the app's downloads on a server it controls, for as long as it distributes that build, or shipped with the app. The LGPL 2.1 asks for the source from the place the app is downloaded from, so a link to this repository's release does not settle it.
+- Says in its about box or documentation that it uses libraries of the FFmpeg project under the LGPL 2.1, and where their source is; an about box can show `core.ThirdPartyNotices()`.
 - Allows, in any license terms it has, changing the libraries and the reverse engineering needed to debug them, and claims no FFmpeg trademark.
 - Settles codec patents itself; the LGPL grants none.
 - On iOS, ships them as the separate dynamic frameworks `bundle` puts in, never linked into the executable. Whether an App Store app's signing and terms let users replace them is the app's own question; the LGPL does not answer it.

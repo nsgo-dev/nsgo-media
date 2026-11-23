@@ -1,0 +1,17 @@
+Changed by NSGo Media on 2026-11-22: an interrupted dash_read_packet returns AVERROR_EXIT instead of 0 with no packet, which av_read_frame calls again without end
+--- a/libavformat/dashdec.c
++++ b/libavformat/dashdec.c
+@@ -2408,11 +2408,13 @@
+                 cur->assoc_stream[i]->discard = AVDISCARD_ALL;
+             return FFERROR_REDO;
+         }
+     }
++    if (!ret)
++        ret = AVERROR_EXIT;
+     return ret;
+ }
+ 
+ static int dash_close(AVFormatContext *s)
+ {
+     DASHContext *c = s->priv_data;
+     free_audio_list(c);

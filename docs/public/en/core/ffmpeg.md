@@ -1,6 +1,6 @@
 ---
 title: FFmpeg libraries
-description: Build FFmpeg's LGPL libraries, see where the core loads them from, put them into your app and learn what shipping them owes.
+description: Build FFmpeg's LGPL libraries, see where the core loads them from, how they get into your app and what shipping them owes.
 ---
 
 The core reaches FFmpeg through purego, without cgo, and loads its shared libraries at run time. It names the majors of FFmpeg 9 and refuses other versions instead of guessing their layouts.
@@ -38,26 +38,28 @@ On iOS they load only from frameworks: in `NSGO_MEDIA_FFMPEG`, which simulator t
 
 ## Packaging an app
 
-`go tool nsgo-media bundle` puts the libraries into the packages `nsgo build` wrote: a macOS app's `Contents/Frameworks`, an iOS app's `Frameworks`, and the directory of a Windows or Linux executable, with every notice of the archive in `FFmpeg/`.
+The desktop libraries are published as a release of the repository, [`ffmpeg-9.0.2-1`](https://github.com/nsgo-dev/nsgo-media/releases/tag/ffmpeg-9.0.2-1), and the core declares them for NSGo's tool. On macOS, Windows and Linux, `nsgo build` downloads them, checks their SHA-256 and puts them into a macOS app's `Contents/Frameworks`, joining both architectures for `macos_universal`, or beside a Windows or Linux executable. It signs them with the app, so its disk image, installers and notarization hold them, and puts their notices into the app's `THIRD_PARTY_NOTICES.txt`, which `core.ThirdPartyNotices()` returns. There is no step after it.
+
+- `nsgo dev`, and `nsgo test` with a desktop `-target`, put them in too. To run with libraries you built, name their directory, such as an unpacked archive of `dist/ffmpeg`, with `NSGO_MEDIA_FFMPEG`, which comes first.
+- NSGo's license policy warns of their LGPL as copyleft. If your app sets `licenses.copyleft: error`, add `github.com/oneo-me/nsgo-media` to `licenses.allow`.
+
+On iOS, `go tool nsgo-media bundle` puts the frameworks `tools/ffmpeg` built into the app `nsgo build` wrote, its `Frameworks`, with every notice of the archive in `FFmpeg/`:
 
 ```sh
 go get -tool github.com/oneo-me/nsgo-media/cmd/nsgo-media
-go tool nsgo build -installers=false
+go tool nsgo build -target ios
 go tool nsgo-media bundle dist/*   # -libs DIR to take the archives from elsewhere
 ```
 
 - It takes the archives `tools/ffmpeg` built and downloads nothing. It looks in `dist/ffmpeg` of the current directory, then in `dist/ffmpeg` of the module's directory, which for your app is the local checkout its `replace` directive names.
-- It takes each package's target from the end of its name, and joins both architectures' libraries with `lipo` for `macos_universal`.
-- A macOS app is signed again with the identity it has (`-sign` names another). An app `nsgo build` notarized needs notarizing again.
-- An iOS app is signed again when it is signed, and the IPA beside it is written again. `nsgo build -run` and `nsgo dev` install the app before `bundle` can run, so for a device build with `sign.profile`, bundle, then install it with `xcrun devicectl device install app`.
-- The installers `nsgo build` makes are made before `bundle` runs and lack the libraries, so build with `-installers=false` and make installers afterwards.
+- A signed app is signed again, and the IPA beside it is written again. `nsgo build -run` and `nsgo dev` install the app before `bundle` can run, so for a device build with `sign.profile`, bundle, then install it with `xcrun devicectl device install app`.
 
 ## What an app that ships them owes
 
-The libraries are LGPL 2.1, so an app, closed or not, ships them only as replaceable shared libraries, as `bundle` puts them, and besides:
+The libraries are LGPL 2.1, so an app, closed or not, ships them only as replaceable shared libraries with their notices, as `nsgo build` and `bundle` put them, and besides:
 
-- Offers their source: the files of `dist/ffmpeg/source`, beside the app's downloads on a server it controls, for as long as it distributes that build, or shipped with the app.
-- Says in its about box or documentation that it uses libraries of the FFmpeg project under the LGPL 2.1, and where their source is.
+- Offers their source: the files of `dist/ffmpeg/source`, which the release holds too (`ffmpeg-9.0.2.tar.xz` and `ffmpeg.patch`), beside the app's downloads on a server it controls, for as long as it distributes that build, or shipped with the app. A link to this repository's release does not settle it.
+- Says in its about box or documentation that it uses libraries of the FFmpeg project under the LGPL 2.1, and where their source is; an about box can show `core.ThirdPartyNotices()`.
 - Allows, in any license terms it has, changing the libraries and the reverse engineering needed to debug them, and claims no FFmpeg trademark.
 - Settles codec patents itself; the LGPL grants none.
 - On iOS, ships them as the separate dynamic frameworks `bundle` puts in, never linked into the executable. Whether an App Store app's signing and terms let users replace them is the app's own question; the LGPL does not answer it.

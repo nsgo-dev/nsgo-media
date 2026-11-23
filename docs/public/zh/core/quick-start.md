@@ -21,7 +21,9 @@ replace github.com/oneo-me/nsgo-media => ../nsgo-media
 
 ## 准备 FFmpeg 库
 
-内核在运行时加载 FFmpeg 9 的共享库。可以在检出目录里构建它们，只需要 macOS 上的 Xcode 和 Go：
+内核在运行时加载 FFmpeg 9 的共享库。在 macOS、Windows 和 Linux 上，`nsgo dev` 和 `nsgo build` 会下载存储库发布的库，放进应用，不需要别的准备。
+
+要修改这些库，或者用于 iOS，就在检出目录里构建它们，只需要 macOS 上的 Xcode 和 Go：
 
 ```sh
 cd nsgo-media
@@ -29,7 +31,7 @@ go run ./tools/ffmpeg                     # 构建所有目标到 dist/ffmpeg
 go run ./tools/ffmpeg -target macos_arm64 # 或只构建一个目标
 ```
 
-也可以在 macOS 上开发时使用系统的 FFmpeg：
+用 `go run` 或 `go test` 时不会放入库，在 macOS 上也可以使用系统的 FFmpeg：
 
 ```sh
 brew install ffmpeg

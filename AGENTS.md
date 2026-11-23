@@ -15,7 +15,7 @@ A video player core for NSGo apps: FFmpeg decoding and the picture drawn in a vi
 When adding, changing or patching anything the FFmpeg libraries are built from or linked with, or changing how they are packaged, keep every license obligation in the same change, as [FFmpeg libraries](docs/ffmpeg.md) lists:
 
 - Configure no GPL, nonfree or version 3 component, and link FFmpeg only as replaceable shared libraries.
-- Put each linked library's license file into the archive, so `bundle` ships it with the app.
+- Put each linked library's license file into the archive and the libraries' entries of `nsgo-natives.yaml`, so `nsgo build` and `bundle` ship it with the app.
 - Add every change to FFmpeg's source to `ffmpegPatches`, with its date and reason, so `ffmpeg.patch`, `BUILD.txt` and `dist/ffmpeg/source` hold it.
 - Update [what an app that ships them owes](docs/ffmpeg.md#what-an-app-that-ships-them-owes) when that changes.
 
