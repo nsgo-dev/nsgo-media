@@ -285,7 +285,7 @@ func TestStreamErrorsShowInAToast(t *testing.T) {
 
 	// Setup opens the settings.
 	app.Press("text:Open Settings")
-	app.WaitUntil(wait, func() bool { return pl.sh.top().kind == routeSettings })
+	app.WaitUntil(wait, func() bool { return pl.sh.top().kind == routePlugin })
 }
 
 // choose picks the option at index, labelled label, of the select id.
@@ -312,17 +312,21 @@ func TestManagePlugins(t *testing.T) {
 	// Installing from a folder asks to approve the hosts first.
 	app, pl := start(t, data)
 	app.Press("id:nav-settings")
-	app.WaitFor("id:install-folder", wait)
+	app.WaitFor("id:add-plugin", wait)
 	// The pickers' answers, which nsgotest gives only headless.
-	pick := func(open func() (fs.FS, error)) { app.Post(func() { pl.sh.inspect(pl.sh.cx, open) }) }
+	pick := func(open func() (fs.FS, error)) { app.Post(func() { pl.sh.inspect(pl.sh.cx, open, "") }) }
 	pick(func() (fs.FS, error) { return demo(), nil })
 	app.WaitFor("id:install >> text:Install Demo 1.0.0?", wait)
 	app.Find("id:install >> text:demo.example.com")
 	app.Press("id:confirm-install")
-	app.WaitFor("id:plugin-row-demo >> text:1.0.0 · demo.example.com", wait)
-	app.Find("id:nav-demo-home")
+	// Installed, its home opens.
+	app.WaitFor("id:item-video-v1", wait)
+	app.Press("id:nav-settings")
+	waitText(app, "plugin-source-demo", "demo.example.com")
 
-	// Its settings reach the plugin's data.
+	// Its settings, on its page, reach the plugin's data.
+	app.Press("id:plugin-row-demo")
+	app.WaitFor("id:network-demo >> text:demo.example.com", wait)
 	choose(app, "setting-demo-quality", 2, "480p")
 	app.WaitUntil(wait, func() bool {
 		raw, _ := os.ReadFile(settings)
@@ -340,7 +344,7 @@ func TestManagePlugins(t *testing.T) {
 	app.WaitFor("text:The plugin cannot be installed", wait)
 
 	// Disabled, it leaves the sidebar, after a restart too.
-	app.Press("id:enable-demo")
+	app.Press("id:page-enable-demo")
 	app.WaitForGone("id:nav-demo-home", wait)
 	app, _ = start(t, data)
 	if app.Exists("id:nav-demo-home") {
@@ -351,12 +355,14 @@ func TestManagePlugins(t *testing.T) {
 	app.Press("id:nav-settings")
 	app.Press("id:enable-demo")
 	app.WaitFor("id:nav-demo-home", wait)
+	app.Press("id:plugin-row-demo")
 	app.WaitFor("id:settings-demo >> text:480p", wait)
 	app, _ = start(t, data)
 	app.Find("id:nav-demo-home")
 
 	// Removed, it goes with its data.
 	app.Press("id:nav-settings")
+	app.Press("id:plugin-row-demo")
 	app.Press("id:remove-demo")
 	app.WaitFor("id:remove >> text:Remove Demo?", wait)
 	app.Press("id:confirm-remove")
@@ -365,7 +371,7 @@ func TestManagePlugins(t *testing.T) {
 	app.WaitUntil(wait, func() bool { return !exists(filepath.Join(data, "plugins", "demo")) && !exists(filepath.Dir(settings)) })
 	app, pl = start(t, data)
 	app.Press("id:nav-settings")
-	app.WaitFor("id:install-zip", wait)
+	app.WaitFor("id:add-plugin", wait)
 	if app.Exists("id:plugin-row-demo") {
 		t.Fatal("a removed plugin is listed after a restart")
 	}
@@ -375,6 +381,9 @@ func TestManagePlugins(t *testing.T) {
 	pick(func() (fs.FS, error) { return readZip(path) })
 	app.WaitFor("id:install", wait)
 	app.Press("id:confirm-install")
+	app.WaitFor("id:item-video-v1", wait)
+	app.Press("id:nav-settings")
+	app.Press("id:plugin-row-demo")
 	app.WaitFor("id:settings-demo >> text:720p", wait)
 }
 
@@ -451,14 +460,14 @@ func TestLocalFilesPlay(t *testing.T) {
 	app.WaitUntil(wait, func() bool { s := pl.playing.GetUntracked(); return s != nil && s.URL == video })
 }
 
-// TestUsePluginFromPath uses the demo plugin where it is, from the path
-// typed in the settings.
+// TestUsePluginFromPath uses the demo plugin where it is, from the folder
+// picked in the settings.
 func TestUsePluginFromPath(t *testing.T) {
 	data := t.TempDir()
 	app, pl := start(t, data)
 	app.Press("id:nav-settings")
-	app.Type("id:link-path", demoDir())
-	app.Press("id:link")
+	// The picker's answer, which nsgotest gives only headless.
+	app.Post(func() { pl.sh.link(pl.sh.cx, demoDir()) })
 	app.WaitFor("id:install >> text:Use Demo 1.0.0 from its folder?", wait)
 	app.Press("id:confirm-install")
 	app.WaitFor("id:nav-demo-home", wait)
@@ -474,7 +483,8 @@ func TestUsePluginFromPath(t *testing.T) {
 	// It stays after a restart, and removed, only its link and data go.
 	app, _ = start(t, data)
 	app.Press("id:nav-settings")
-	app.WaitFor("id:remove-demo", wait)
+	waitText(app, "plugin-source-demo", filepath.Base(demoDir()))
+	app.Press("id:plugin-row-demo")
 	app.Press("id:remove-demo")
 	app.WaitFor("id:remove >> text:Its settings and data are removed; its folder stays.", wait)
 	app.Press("id:confirm-remove")
@@ -484,8 +494,52 @@ func TestUsePluginFromPath(t *testing.T) {
 	}
 	app, _ = start(t, data)
 	app.Press("id:nav-settings")
-	app.WaitFor("id:link-path", wait)
+	app.WaitFor("id:add-plugin", wait)
 	if app.Exists("id:plugin-row-demo") {
 		t.Fatal("a removed plugin is listed after a restart")
 	}
+}
+
+// TestRefusedPluginsStayListed lists a plugin the app refused, with why,
+// until the viewer removes it.
+func TestRefusedPluginsStayListed(t *testing.T) {
+	data := t.TempDir()
+	newer := fstest.MapFS{
+		"plugin.yaml": {Data: []byte("id: later\nname: Later\nversion: 2.0.0\nminAppVersion: 9.0.0\nmain: index.ts\nmedia: video\n")},
+		"index.ts":    {Data: []byte("export function home() { return { sections: [] } }")},
+	}
+	if err := store.InstallPlugin(filepath.Join(data, "plugins"), "later", newer); err != nil {
+		t.Fatal(err)
+	}
+	app, _ := start(t, data)
+	app.Press("id:nav-settings")
+	app.WaitFor("id:refused-row-later >> text:Needs NSGo Player 9.0.0", wait)
+	app.Press("id:refused-row-later")
+	app.WaitFor("id:refused >> text:It needs NSGo Player 9.0.0 or later. Update the app to use it.", wait)
+	app.Press("id:remove-refused")
+	app.WaitFor("id:remove >> text:Remove Later?", wait)
+	app.Press("id:confirm-remove")
+	app.WaitForGone("id:refused-row-later", wait)
+	app.WaitUntil(wait, func() bool { return !exists(filepath.Join(data, "plugins", "later")) })
+}
+
+// TestSearchKindsAndNoResults searches one kind of results, and says when
+// nothing matches.
+func TestSearchKindsAndNoResults(t *testing.T) {
+	app, _ := startDemo(t, "")
+	app.Press("id:nav-demo-search")
+	waitText(app, "state-title", "Search Demo")
+	app.Type("id:query", "hill")
+	app.Submit("id:query")
+	app.WaitFor("id:item-uploader-u1", wait)
+	app.Press("id:kind-video")
+	app.WaitForGone("id:item-uploader-u1", wait)
+	app.WaitFor("id:item-video-v1", wait)
+
+	app.Clear("id:query")
+	app.Type("id:query", "nothing like it")
+	app.Submit("id:query")
+	waitText(app, "state-title", "No results")
+	app.Press("id:clear-query")
+	waitText(app, "state-title", "Search Demo")
 }

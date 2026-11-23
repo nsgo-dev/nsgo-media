@@ -13,9 +13,7 @@ unmute: 取消静音
 volume: 音量
 speed: 速度
 audio: 音频
-noSound: 无声音
 subtitles: 字幕
-noSubtitles: 无字幕
 track: 轨道 {n, number}
 fullScreen: 全屏
 exitFullScreen: 退出全屏
@@ -25,10 +23,8 @@ quality: 画质
 openPage: 打开
 home: 首页
 search: 搜索
-searchPlaceholder: 搜索，或粘贴链接
 more: 更多
 loadMore: 加载更多
-nothingHere: 这里什么都没有。
 retry: 重试
 signIn: 登录
 signOut: 退出登录
@@ -48,12 +44,9 @@ sendStats: 发送使用统计
 plugins: 插件
 installFromFolder: 从文件夹安装…
 installFromZip: 从 zip 安装…
-useFromPath: 从路径使用
-pluginPath: 插件文件夹的路径
 use: 使用
 usePlugin: 从文件夹使用 {name} {version}？
 installPlugin: 安装 {name} {version}？
-reachesHosts: "它可以连接：\n{hosts}"
 reachesNoHosts: 它不能连接网络。
 install: 安装
 cannotInstall: 无法安装插件
@@ -64,3 +57,57 @@ removesData: 它的设置和数据会一起删除。
 folderStays: 它的设置和数据会删除，文件夹保留。
 cannotRemove: 无法删除插件
 openSettings: 打开设置
+nothingHere: 这里什么都没有
+searchPlaceholder: 搜索{name}，或粘贴链接
+reachesHosts: 它可以连接：
+useFromPath: 从路径使用…
+dropHere: 把视频拖到这里
+dropFormats: FFmpeg 能读的文件都行：MP4、MKV、WebM、MOV 等。
+dropToPlay: 松开即可播放
+orPlayURL: 或播放一个 URL
+homeEmpty: "{name}的首页还没有内容。"
+pageEmpty: 这个页面还没有视频。
+couldNotAnswer: "{name}没有回应"
+couldNotAnswerShort: "{name}没有回应。"
+needsSetup: "{name}需要设置"
+clearSearch: 清除搜索
+searchTitle: 搜索{name}
+searchHint: 输入想找的内容，或粘贴链接直接打开。
+kind: 类别
+kindAll: 全部
+kindVideos: 视频
+kindUploaders: UP 主
+kindCollections: 合集
+noResults: 没有结果
+nothingMatches: 没有与“{query}”匹配的内容。换个词或别的类别试试。
+cannotBePlayed: "{name}表示它无法播放。"
+partsCount: "{n, number} 个分P"
+partNumber: "P{n, number}"
+partsN: "分P · {n, number}"
+resumePartAt: 从 P{n, number} 的 {time} 继续
+playFromStart: 从头播放
+nextPart: 下一P
+subtitlesAndAudio: 字幕和音轨
+subtitlesOff: 关闭
+general: 通用
+sendStatsDetail: 匿名统计页面和播放时长，绝不包含你看了什么。
+addPlugin: 添加插件
+builtIn: 内置
+builtIntoApp: NSGo Player 内置
+noNetwork: 不联网
+needsApp: 需要 NSGo Player {version}
+cannotLoad: 无法加载
+cannotBeLoaded: 这个插件无法加载
+needsNewerAppToUse: 它需要 NSGo Player {version} 或更新版本，请先更新应用。
+versionN: 版本 {version}
+account: 账号
+signedIn: 已登录
+notSignedIn: 未登录
+network: 网络
+reachesOnly: 它只能连接这些主机：
+reachesNoOtherHost: 它访问不了其他主机、你的文件或别的插件。
+reachesNothingElse: 它也访问不了你的文件或别的插件。
+removePluginAction: 删除插件…
+installing: 正在安装 {name} {version}…
+installingShort: 正在安装…
+waitingToScan: 等待扫码…

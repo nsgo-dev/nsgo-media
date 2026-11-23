@@ -5,6 +5,7 @@ package locales
 import (
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/i18n"
+	"strings"
 )
 
 // Source is the language the messages are written in.
@@ -43,16 +44,31 @@ func For(cx *core.Scope) Messages {
 // its method, for the TSX declarations of the messages
 // (tsx.RegisterMessages).
 var Parameters = map[string][]string{
-	"Track":         {"n"},
-	"ResumeAt":      {"time_"},
-	"SignInTo":      {"name"},
-	"PartTitle":     {"video", "part"},
-	"PartLabel":     {"n", "title"},
-	"UsePlugin":     {"name", "version"},
-	"InstallPlugin": {"name", "version"},
-	"ReachesHosts":  {"hosts"},
-	"NeedsNewerApp": {"version"},
-	"RemovePlugin":  {"name"},
+	"Track":               {"n"},
+	"ResumeAt":            {"time_"},
+	"SignInTo":            {"name"},
+	"PartTitle":           {"video", "part"},
+	"PartLabel":           {"n", "title"},
+	"UsePlugin":           {"name", "version"},
+	"InstallPlugin":       {"name", "version"},
+	"NeedsNewerApp":       {"version"},
+	"RemovePlugin":        {"name"},
+	"SearchPlaceholder":   {"name"},
+	"HomeEmpty":           {"name"},
+	"CouldNotAnswer":      {"name"},
+	"CouldNotAnswerShort": {"name"},
+	"NeedsSetup":          {"name"},
+	"SearchTitle":         {"name"},
+	"NothingMatches":      {"query"},
+	"CannotBePlayed":      {"name"},
+	"PartsCount":          {"n"},
+	"PartNumber":          {"n"},
+	"PartsN":              {"n"},
+	"ResumePartAt":        {"n", "time_"},
+	"NeedsApp":            {"version"},
+	"NeedsNewerAppToUse":  {"version"},
+	"VersionN":            {"version"},
+	"Installing":          {"name", "version"},
 }
 
 // Translation is a language's messages another package supplies:
@@ -60,17 +76,32 @@ var Parameters = map[string][]string{
 // of the others; a key or a field left out leaves the message to the
 // catalog.
 type Translation struct {
-	Texts         map[string]string
-	Track         func(n int) string
-	ResumeAt      func(time_ string) string
-	SignInTo      func(name string) string
-	PartTitle     func(video string, part string) string
-	PartLabel     func(n int, title string) string
-	UsePlugin     func(name string, version string) string
-	InstallPlugin func(name string, version string) string
-	ReachesHosts  func(hosts string) string
-	NeedsNewerApp func(version string) string
-	RemovePlugin  func(name string) string
+	Texts               map[string]string
+	Track               func(n int) string
+	ResumeAt            func(time_ string) string
+	SignInTo            func(name string) string
+	PartTitle           func(video string, part string) string
+	PartLabel           func(n int, title string) string
+	UsePlugin           func(name string, version string) string
+	InstallPlugin       func(name string, version string) string
+	NeedsNewerApp       func(version string) string
+	RemovePlugin        func(name string) string
+	SearchPlaceholder   func(name string) string
+	HomeEmpty           func(name string) string
+	CouldNotAnswer      func(name string) string
+	CouldNotAnswerShort func(name string) string
+	NeedsSetup          func(name string) string
+	SearchTitle         func(name string) string
+	NothingMatches      func(query string) string
+	CannotBePlayed      func(name string) string
+	PartsCount          func(n int) string
+	PartNumber          func(n int) string
+	PartsN              func(n int) string
+	ResumePartAt        func(n int, time_ string) string
+	NeedsApp            func(version string) string
+	NeedsNewerAppToUse  func(version string) string
+	VersionN            func(version string) string
+	Installing          func(name string, version string) string
 }
 
 var supplied = map[string]Translation{}
@@ -92,9 +123,7 @@ const (
 	textVolume
 	textSpeed
 	textAudio
-	textNoSound
 	textSubtitles
-	textNoSubtitles
 	textFullScreen
 	textExitFullScreen
 	textDismiss
@@ -102,10 +131,8 @@ const (
 	textOpenPage
 	textHome
 	textSearch
-	textSearchPlaceholder
 	textMore
 	textLoadMore
-	textNothingHere
 	textRetry
 	textSignIn
 	textSignOut
@@ -122,8 +149,6 @@ const (
 	textPlugins
 	textInstallFromFolder
 	textInstallFromZip
-	textUseFromPath
-	textPluginPath
 	textUse
 	textReachesNoHosts
 	textInstall
@@ -133,6 +158,44 @@ const (
 	textFolderStays
 	textCannotRemove
 	textOpenSettings
+	textNothingHere
+	textReachesHosts
+	textUseFromPath
+	textDropHere
+	textDropFormats
+	textDropToPlay
+	textOrPlayURL
+	textPageEmpty
+	textClearSearch
+	textSearchHint
+	textKind
+	textKindAll
+	textKindVideos
+	textKindUploaders
+	textKindCollections
+	textNoResults
+	textPlayFromStart
+	textNextPart
+	textSubtitlesAndAudio
+	textSubtitlesOff
+	textGeneral
+	textSendStatsDetail
+	textAddPlugin
+	textBuiltIn
+	textBuiltIntoApp
+	textNoNetwork
+	textCannotLoad
+	textCannotBeLoaded
+	textAccount
+	textSignedIn
+	textNotSignedIn
+	textNetwork
+	textReachesOnly
+	textReachesNoOtherHost
+	textReachesNothingElse
+	textRemovePluginAction
+	textInstallingShort
+	textWaitingToScan
 	numTexts
 )
 
@@ -154,9 +217,7 @@ var keyOfText = [numTexts]string{
 	"volume",
 	"speed",
 	"audio",
-	"noSound",
 	"subtitles",
-	"noSubtitles",
 	"fullScreen",
 	"exitFullScreen",
 	"dismiss",
@@ -164,10 +225,8 @@ var keyOfText = [numTexts]string{
 	"openPage",
 	"home",
 	"search",
-	"searchPlaceholder",
 	"more",
 	"loadMore",
-	"nothingHere",
 	"retry",
 	"signIn",
 	"signOut",
@@ -184,8 +243,6 @@ var keyOfText = [numTexts]string{
 	"plugins",
 	"installFromFolder",
 	"installFromZip",
-	"useFromPath",
-	"pluginPath",
 	"use",
 	"reachesNoHosts",
 	"install",
@@ -195,6 +252,44 @@ var keyOfText = [numTexts]string{
 	"folderStays",
 	"cannotRemove",
 	"openSettings",
+	"nothingHere",
+	"reachesHosts",
+	"useFromPath",
+	"dropHere",
+	"dropFormats",
+	"dropToPlay",
+	"orPlayURL",
+	"pageEmpty",
+	"clearSearch",
+	"searchHint",
+	"kind",
+	"kindAll",
+	"kindVideos",
+	"kindUploaders",
+	"kindCollections",
+	"noResults",
+	"playFromStart",
+	"nextPart",
+	"subtitlesAndAudio",
+	"subtitlesOff",
+	"general",
+	"sendStatsDetail",
+	"addPlugin",
+	"builtIn",
+	"builtIntoApp",
+	"noNetwork",
+	"cannotLoad",
+	"cannotBeLoaded",
+	"account",
+	"signedIn",
+	"notSignedIn",
+	"network",
+	"reachesOnly",
+	"reachesNoOtherHost",
+	"reachesNothingElse",
+	"removePluginAction",
+	"installingShort",
+	"waitingToScan",
 }
 
 // textsEn are the messages without arguments in en.
@@ -214,9 +309,7 @@ var textsEn = i18n.NewTexts(""+
 	"Volume"+
 	"Speed"+
 	"Audio"+
-	"No sound"+
 	"Subtitles"+
-	"No subtitles"+
 	"Full Screen"+
 	"Exit Full Screen"+
 	"Dismiss"+
@@ -224,10 +317,8 @@ var textsEn = i18n.NewTexts(""+
 	"Open"+
 	"Home"+
 	"Search"+
-	"Search, or paste a link"+
 	"More"+
 	"Load More"+
-	"Nothing here."+
 	"Try Again"+
 	"Sign In"+
 	"Sign Out"+
@@ -244,8 +335,6 @@ var textsEn = i18n.NewTexts(""+
 	"Plugins"+
 	"Install from Folder…"+
 	"Install from Zip…"+
-	"Use from Path"+
-	"Path of the plugin's folder"+
 	"Use"+
 	"It cannot connect to the network."+
 	"Install"+
@@ -254,7 +343,45 @@ var textsEn = i18n.NewTexts(""+
 	"Its settings and data are removed with it."+
 	"Its settings and data are removed; its folder stays."+
 	"The plugin cannot be removed"+
-	"Open Settings",
+	"Open Settings"+
+	"Nothing here"+
+	"It can connect to:"+
+	"Use from Path…"+
+	"Drop a video here"+
+	"Any file FFmpeg reads: MP4, MKV, WebM, MOV and more."+
+	"Drop to play"+
+	"Or play a URL"+
+	"This page has no videos yet."+
+	"Clear Search"+
+	"Type what you are looking for, or paste a link to open it."+
+	"Kind"+
+	"All"+
+	"Videos"+
+	"Uploaders"+
+	"Collections"+
+	"No results"+
+	"Play from Start"+
+	"Next Part"+
+	"Subtitles and Audio"+
+	"Off"+
+	"General"+
+	"Anonymous counts of pages and play time, never what you watch."+
+	"Add Plugin"+
+	"Built-in"+
+	"Built into NSGo Player"+
+	"No network"+
+	"Cannot be loaded"+
+	"This plugin cannot be loaded"+
+	"Account"+
+	"Signed in"+
+	"Not signed in"+
+	"Network"+
+	"It can connect to these hosts, and no others:"+
+	"It cannot reach any other host, your files or other plugins."+
+	"It cannot reach your files or other plugins either."+
+	"Remove Plugin…"+
+	"Installing…"+
+	"Waiting for you to scan…",
 	[]uint16{
 		11,
 		12,
@@ -271,9 +398,7 @@ var textsEn = i18n.NewTexts(""+
 		6,
 		5,
 		5,
-		8,
 		9,
-		12,
 		11,
 		16,
 		7,
@@ -281,10 +406,8 @@ var textsEn = i18n.NewTexts(""+
 		4,
 		4,
 		6,
-		23,
 		4,
 		9,
-		13,
 		9,
 		7,
 		8,
@@ -301,8 +424,6 @@ var textsEn = i18n.NewTexts(""+
 		7,
 		22,
 		19,
-		13,
-		27,
 		3,
 		33,
 		7,
@@ -312,6 +433,44 @@ var textsEn = i18n.NewTexts(""+
 		52,
 		28,
 		13,
+		12,
+		18,
+		16,
+		17,
+		52,
+		12,
+		13,
+		28,
+		12,
+		58,
+		4,
+		3,
+		6,
+		9,
+		11,
+		10,
+		15,
+		9,
+		19,
+		3,
+		7,
+		62,
+		10,
+		8,
+		22,
+		10,
+		16,
+		28,
+		7,
+		9,
+		13,
+		7,
+		45,
+		60,
+		51,
+		16,
+		13,
+		26,
 	})
 
 // textsZhHans are the messages without arguments in zh-Hans.
@@ -331,9 +490,7 @@ var textsZhHans = i18n.NewTexts(""+
 	"音量"+
 	"速度"+
 	"音频"+
-	"无声音"+
 	"字幕"+
-	"无字幕"+
 	"全屏"+
 	"退出全屏"+
 	"关闭"+
@@ -341,10 +498,8 @@ var textsZhHans = i18n.NewTexts(""+
 	"打开"+
 	"首页"+
 	"搜索"+
-	"搜索，或粘贴链接"+
 	"更多"+
 	"加载更多"+
-	"这里什么都没有。"+
 	"重试"+
 	"登录"+
 	"退出登录"+
@@ -361,8 +516,6 @@ var textsZhHans = i18n.NewTexts(""+
 	"插件"+
 	"从文件夹安装…"+
 	"从 zip 安装…"+
-	"从路径使用"+
-	"插件文件夹的路径"+
 	"使用"+
 	"它不能连接网络。"+
 	"安装"+
@@ -371,7 +524,45 @@ var textsZhHans = i18n.NewTexts(""+
 	"它的设置和数据会一起删除。"+
 	"它的设置和数据会删除，文件夹保留。"+
 	"无法删除插件"+
-	"打开设置",
+	"打开设置"+
+	"这里什么都没有"+
+	"它可以连接："+
+	"从路径使用…"+
+	"把视频拖到这里"+
+	"FFmpeg 能读的文件都行：MP4、MKV、WebM、MOV 等。"+
+	"松开即可播放"+
+	"或播放一个 URL"+
+	"这个页面还没有视频。"+
+	"清除搜索"+
+	"输入想找的内容，或粘贴链接直接打开。"+
+	"类别"+
+	"全部"+
+	"视频"+
+	"UP 主"+
+	"合集"+
+	"没有结果"+
+	"从头播放"+
+	"下一P"+
+	"字幕和音轨"+
+	"关闭"+
+	"通用"+
+	"匿名统计页面和播放时长，绝不包含你看了什么。"+
+	"添加插件"+
+	"内置"+
+	"NSGo Player 内置"+
+	"不联网"+
+	"无法加载"+
+	"这个插件无法加载"+
+	"账号"+
+	"已登录"+
+	"未登录"+
+	"网络"+
+	"它只能连接这些主机："+
+	"它访问不了其他主机、你的文件或别的插件。"+
+	"它也访问不了你的文件或别的插件。"+
+	"删除插件…"+
+	"正在安装…"+
+	"等待扫码…",
 	[]uint16{
 		11,
 		15,
@@ -388,9 +579,7 @@ var textsZhHans = i18n.NewTexts(""+
 		6,
 		6,
 		6,
-		9,
 		6,
-		9,
 		6,
 		12,
 		6,
@@ -398,10 +587,8 @@ var textsZhHans = i18n.NewTexts(""+
 		6,
 		6,
 		6,
-		24,
 		6,
 		12,
-		24,
 		6,
 		6,
 		12,
@@ -418,8 +605,6 @@ var textsZhHans = i18n.NewTexts(""+
 		6,
 		21,
 		17,
-		15,
-		24,
 		6,
 		24,
 		6,
@@ -429,6 +614,44 @@ var textsZhHans = i18n.NewTexts(""+
 		51,
 		18,
 		12,
+		21,
+		18,
+		18,
+		21,
+		60,
+		18,
+		19,
+		30,
+		12,
+		54,
+		6,
+		6,
+		6,
+		6,
+		6,
+		12,
+		12,
+		7,
+		15,
+		6,
+		6,
+		66,
+		12,
+		6,
+		18,
+		9,
+		12,
+		24,
+		6,
+		9,
+		9,
+		6,
+		30,
+		60,
+		48,
+		15,
+		15,
+		15,
 	})
 
 // texts returns the messages without arguments in lang, nil for a
@@ -506,14 +729,59 @@ func Supply(lang string, t Translation) {
 	if t.InstallPlugin != nil {
 		s.InstallPlugin = t.InstallPlugin
 	}
-	if t.ReachesHosts != nil {
-		s.ReachesHosts = t.ReachesHosts
-	}
 	if t.NeedsNewerApp != nil {
 		s.NeedsNewerApp = t.NeedsNewerApp
 	}
 	if t.RemovePlugin != nil {
 		s.RemovePlugin = t.RemovePlugin
+	}
+	if t.SearchPlaceholder != nil {
+		s.SearchPlaceholder = t.SearchPlaceholder
+	}
+	if t.HomeEmpty != nil {
+		s.HomeEmpty = t.HomeEmpty
+	}
+	if t.CouldNotAnswer != nil {
+		s.CouldNotAnswer = t.CouldNotAnswer
+	}
+	if t.CouldNotAnswerShort != nil {
+		s.CouldNotAnswerShort = t.CouldNotAnswerShort
+	}
+	if t.NeedsSetup != nil {
+		s.NeedsSetup = t.NeedsSetup
+	}
+	if t.SearchTitle != nil {
+		s.SearchTitle = t.SearchTitle
+	}
+	if t.NothingMatches != nil {
+		s.NothingMatches = t.NothingMatches
+	}
+	if t.CannotBePlayed != nil {
+		s.CannotBePlayed = t.CannotBePlayed
+	}
+	if t.PartsCount != nil {
+		s.PartsCount = t.PartsCount
+	}
+	if t.PartNumber != nil {
+		s.PartNumber = t.PartNumber
+	}
+	if t.PartsN != nil {
+		s.PartsN = t.PartsN
+	}
+	if t.ResumePartAt != nil {
+		s.ResumePartAt = t.ResumePartAt
+	}
+	if t.NeedsApp != nil {
+		s.NeedsApp = t.NeedsApp
+	}
+	if t.NeedsNewerAppToUse != nil {
+		s.NeedsNewerAppToUse = t.NeedsNewerAppToUse
+	}
+	if t.VersionN != nil {
+		s.VersionN = t.VersionN
+	}
+	if t.Installing != nil {
+		s.Installing = t.Installing
 	}
 	supplied[lang] = s
 	Catalog.Add(lang)
@@ -639,26 +907,12 @@ func Audio(cx *core.Scope) string { return For(cx).Audio() }
 // Audio is the package's Audio in the language of msgs.
 func (msgs Messages) Audio() string { return msgs.text(textAudio) }
 
-// NoSound says "No sound"
-// in the language the app shows under cx.
-func NoSound(cx *core.Scope) string { return For(cx).NoSound() }
-
-// NoSound is the package's NoSound in the language of msgs.
-func (msgs Messages) NoSound() string { return msgs.text(textNoSound) }
-
 // Subtitles says "Subtitles"
 // in the language the app shows under cx.
 func Subtitles(cx *core.Scope) string { return For(cx).Subtitles() }
 
 // Subtitles is the package's Subtitles in the language of msgs.
 func (msgs Messages) Subtitles() string { return msgs.text(textSubtitles) }
-
-// NoSubtitles says "No subtitles"
-// in the language the app shows under cx.
-func NoSubtitles(cx *core.Scope) string { return For(cx).NoSubtitles() }
-
-// NoSubtitles is the package's NoSubtitles in the language of msgs.
-func (msgs Messages) NoSubtitles() string { return msgs.text(textNoSubtitles) }
 
 // Track says "Track {n, number}"
 // in the language the app shows under cx.
@@ -759,13 +1013,6 @@ func Search(cx *core.Scope) string { return For(cx).Search() }
 // Search is the package's Search in the language of msgs.
 func (msgs Messages) Search() string { return msgs.text(textSearch) }
 
-// SearchPlaceholder says "Search, or paste a link"
-// in the language the app shows under cx.
-func SearchPlaceholder(cx *core.Scope) string { return For(cx).SearchPlaceholder() }
-
-// SearchPlaceholder is the package's SearchPlaceholder in the language of msgs.
-func (msgs Messages) SearchPlaceholder() string { return msgs.text(textSearchPlaceholder) }
-
 // More says "More"
 // in the language the app shows under cx.
 //
@@ -781,13 +1028,6 @@ func LoadMore(cx *core.Scope) string { return For(cx).LoadMore() }
 
 // LoadMore is the package's LoadMore in the language of msgs.
 func (msgs Messages) LoadMore() string { return msgs.text(textLoadMore) }
-
-// NothingHere says "Nothing here."
-// in the language the app shows under cx.
-func NothingHere(cx *core.Scope) string { return For(cx).NothingHere() }
-
-// NothingHere is the package's NothingHere in the language of msgs.
-func (msgs Messages) NothingHere() string { return msgs.text(textNothingHere) }
 
 // Retry says "Try Again"
 // in the language the app shows under cx.
@@ -981,24 +1221,6 @@ func InstallFromZip(cx *core.Scope) string { return For(cx).InstallFromZip() }
 // InstallFromZip is the package's InstallFromZip in the language of msgs.
 func (msgs Messages) InstallFromZip() string { return msgs.text(textInstallFromZip) }
 
-// UseFromPath says "Use from Path"
-// in the language the app shows under cx.
-//
-// Uses the plugin in a folder whose path the viewer types, where it is, without installing it.
-func UseFromPath(cx *core.Scope) string { return For(cx).UseFromPath() }
-
-// UseFromPath is the package's UseFromPath in the language of msgs.
-func (msgs Messages) UseFromPath() string { return msgs.text(textUseFromPath) }
-
-// PluginPath says "Path of the plugin's folder"
-// in the language the app shows under cx.
-//
-// The placeholder of the field a plugin's folder path is typed into.
-func PluginPath(cx *core.Scope) string { return For(cx).PluginPath() }
-
-// PluginPath is the package's PluginPath in the language of msgs.
-func (msgs Messages) PluginPath() string { return msgs.text(textPluginPath) }
-
 // Use says "Use"
 // in the language the app shows under cx.
 //
@@ -1056,30 +1278,6 @@ func (msgs Messages) InstallPlugin(name string, version string) string {
 			return "Install " + msgs.arg(name) + " " + msgs.arg(version) + "?"
 		case "zh-Hans":
 			return "安装 " + name + " " + version + "？"
-		}
-	}
-}
-
-// ReachesHosts says "It can connect to:\n{hosts}"
-// in the language the app shows under cx.
-//
-// Lists the network hosts a plugin being installed may reach, one per line.
-func ReachesHosts(cx *core.Scope, hosts string) string { return For(cx).ReachesHosts(hosts) }
-
-// ReachesHosts is the package's ReachesHosts in the language of msgs.
-func (msgs Messages) ReachesHosts(hosts string) string {
-	if i18n.IsPseudo(msgs.lang) {
-		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.ReachesHosts(hosts))
-	}
-	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
-		if f := supplied[lang].ReachesHosts; f != nil {
-			return f(hosts)
-		}
-		switch lang {
-		case "", "en":
-			return "It can connect to:\n" + msgs.arg(hosts)
-		case "zh-Hans":
-			return "它可以连接：\n" + hosts
 		}
 	}
 }
@@ -1189,3 +1387,688 @@ func OpenSettings(cx *core.Scope) string { return For(cx).OpenSettings() }
 
 // OpenSettings is the package's OpenSettings in the language of msgs.
 func (msgs Messages) OpenSettings() string { return msgs.text(textOpenSettings) }
+
+// NothingHere says "Nothing here"
+// in the language the app shows under cx.
+func NothingHere(cx *core.Scope) string { return For(cx).NothingHere() }
+
+// NothingHere is the package's NothingHere in the language of msgs.
+func (msgs Messages) NothingHere() string { return msgs.text(textNothingHere) }
+
+// SearchPlaceholder says "Search {name}, or paste a link"
+// in the language the app shows under cx.
+//
+// The search field's placeholder, by the plugin's name.
+func SearchPlaceholder(cx *core.Scope, name string) string { return For(cx).SearchPlaceholder(name) }
+
+// SearchPlaceholder is the package's SearchPlaceholder in the language of msgs.
+func (msgs Messages) SearchPlaceholder(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.SearchPlaceholder(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].SearchPlaceholder; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return "Search " + msgs.arg(name) + ", or paste a link"
+		case "zh-Hans":
+			return "搜索" + name + "，或粘贴链接"
+		}
+	}
+}
+
+// ReachesHosts says "It can connect to:"
+// in the language the app shows under cx.
+//
+// Heads the hosts a plugin being added may reach.
+func ReachesHosts(cx *core.Scope) string { return For(cx).ReachesHosts() }
+
+// ReachesHosts is the package's ReachesHosts in the language of msgs.
+func (msgs Messages) ReachesHosts() string { return msgs.text(textReachesHosts) }
+
+// UseFromPath says "Use from Path…"
+// in the language the app shows under cx.
+//
+// Picks a plugin's folder to use where it is, without installing it, as for a plugin being written.
+func UseFromPath(cx *core.Scope) string { return For(cx).UseFromPath() }
+
+// UseFromPath is the package's UseFromPath in the language of msgs.
+func (msgs Messages) UseFromPath() string { return msgs.text(textUseFromPath) }
+
+// DropHere says "Drop a video here"
+// in the language the app shows under cx.
+func DropHere(cx *core.Scope) string { return For(cx).DropHere() }
+
+// DropHere is the package's DropHere in the language of msgs.
+func (msgs Messages) DropHere() string { return msgs.text(textDropHere) }
+
+// DropFormats says "Any file FFmpeg reads: MP4, MKV, WebM, MOV and more."
+// in the language the app shows under cx.
+func DropFormats(cx *core.Scope) string { return For(cx).DropFormats() }
+
+// DropFormats is the package's DropFormats in the language of msgs.
+func (msgs Messages) DropFormats() string { return msgs.text(textDropFormats) }
+
+// DropToPlay says "Drop to play"
+// in the language the app shows under cx.
+func DropToPlay(cx *core.Scope) string { return For(cx).DropToPlay() }
+
+// DropToPlay is the package's DropToPlay in the language of msgs.
+func (msgs Messages) DropToPlay() string { return msgs.text(textDropToPlay) }
+
+// OrPlayURL says "Or play a URL"
+// in the language the app shows under cx.
+//
+// Heads the field a video's URL is pasted into, under the drop area.
+func OrPlayURL(cx *core.Scope) string { return For(cx).OrPlayURL() }
+
+// OrPlayURL is the package's OrPlayURL in the language of msgs.
+func (msgs Messages) OrPlayURL() string { return msgs.text(textOrPlayURL) }
+
+// HomeEmpty says "{name} has nothing to show on its home yet."
+// in the language the app shows under cx.
+//
+// A plugin's home without items, by the plugin's name.
+func HomeEmpty(cx *core.Scope, name string) string { return For(cx).HomeEmpty(name) }
+
+// HomeEmpty is the package's HomeEmpty in the language of msgs.
+func (msgs Messages) HomeEmpty(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.HomeEmpty(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].HomeEmpty; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(name) + " has nothing to show on its home yet."
+		case "zh-Hans":
+			return name + "的首页还没有内容。"
+		}
+	}
+}
+
+// PageEmpty says "This page has no videos yet."
+// in the language the app shows under cx.
+func PageEmpty(cx *core.Scope) string { return For(cx).PageEmpty() }
+
+// PageEmpty is the package's PageEmpty in the language of msgs.
+func (msgs Messages) PageEmpty() string { return msgs.text(textPageEmpty) }
+
+// CouldNotAnswer says "{name} could not answer"
+// in the language the app shows under cx.
+//
+// The title of a page whose plugin failed, by the plugin's name.
+func CouldNotAnswer(cx *core.Scope, name string) string { return For(cx).CouldNotAnswer(name) }
+
+// CouldNotAnswer is the package's CouldNotAnswer in the language of msgs.
+func (msgs Messages) CouldNotAnswer(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.CouldNotAnswer(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].CouldNotAnswer; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(name) + " could not answer"
+		case "zh-Hans":
+			return name + "没有回应"
+		}
+	}
+}
+
+// CouldNotAnswerShort says "{name} could not answer."
+// in the language the app shows under cx.
+//
+// Says loading a page's next items failed, by the plugin's name.
+func CouldNotAnswerShort(cx *core.Scope, name string) string {
+	return For(cx).CouldNotAnswerShort(name)
+}
+
+// CouldNotAnswerShort is the package's CouldNotAnswerShort in the language of msgs.
+func (msgs Messages) CouldNotAnswerShort(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.CouldNotAnswerShort(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].CouldNotAnswerShort; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(name) + " could not answer."
+		case "zh-Hans":
+			return name + "没有回应。"
+		}
+	}
+}
+
+// NeedsSetup says "{name} needs setting up"
+// in the language the app shows under cx.
+//
+// The title of a page whose plugin asks for its settings, by the plugin's name.
+func NeedsSetup(cx *core.Scope, name string) string { return For(cx).NeedsSetup(name) }
+
+// NeedsSetup is the package's NeedsSetup in the language of msgs.
+func (msgs Messages) NeedsSetup(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.NeedsSetup(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].NeedsSetup; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(name) + " needs setting up"
+		case "zh-Hans":
+			return name + "需要设置"
+		}
+	}
+}
+
+// ClearSearch says "Clear Search"
+// in the language the app shows under cx.
+func ClearSearch(cx *core.Scope) string { return For(cx).ClearSearch() }
+
+// ClearSearch is the package's ClearSearch in the language of msgs.
+func (msgs Messages) ClearSearch() string { return msgs.text(textClearSearch) }
+
+// SearchTitle says "Search {name}"
+// in the language the app shows under cx.
+//
+// The search page's title before a search, by the plugin's name.
+func SearchTitle(cx *core.Scope, name string) string { return For(cx).SearchTitle(name) }
+
+// SearchTitle is the package's SearchTitle in the language of msgs.
+func (msgs Messages) SearchTitle(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.SearchTitle(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].SearchTitle; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return "Search " + msgs.arg(name)
+		case "zh-Hans":
+			return "搜索" + name
+		}
+	}
+}
+
+// SearchHint says "Type what you are looking for, or paste a link to open it."
+// in the language the app shows under cx.
+func SearchHint(cx *core.Scope) string { return For(cx).SearchHint() }
+
+// SearchHint is the package's SearchHint in the language of msgs.
+func (msgs Messages) SearchHint() string { return msgs.text(textSearchHint) }
+
+// Kind says "Kind"
+// in the language the app shows under cx.
+//
+// Names the choice of the kind of search results.
+func Kind(cx *core.Scope) string { return For(cx).Kind() }
+
+// Kind is the package's Kind in the language of msgs.
+func (msgs Messages) Kind() string { return msgs.text(textKind) }
+
+// KindAll says "All"
+// in the language the app shows under cx.
+//
+// Search results of every kind.
+func KindAll(cx *core.Scope) string { return For(cx).KindAll() }
+
+// KindAll is the package's KindAll in the language of msgs.
+func (msgs Messages) KindAll() string { return msgs.text(textKindAll) }
+
+// KindVideos says "Videos"
+// in the language the app shows under cx.
+func KindVideos(cx *core.Scope) string { return For(cx).KindVideos() }
+
+// KindVideos is the package's KindVideos in the language of msgs.
+func (msgs Messages) KindVideos() string { return msgs.text(textKindVideos) }
+
+// KindUploaders says "Uploaders"
+// in the language the app shows under cx.
+func KindUploaders(cx *core.Scope) string { return For(cx).KindUploaders() }
+
+// KindUploaders is the package's KindUploaders in the language of msgs.
+func (msgs Messages) KindUploaders() string { return msgs.text(textKindUploaders) }
+
+// KindCollections says "Collections"
+// in the language the app shows under cx.
+func KindCollections(cx *core.Scope) string { return For(cx).KindCollections() }
+
+// KindCollections is the package's KindCollections in the language of msgs.
+func (msgs Messages) KindCollections() string { return msgs.text(textKindCollections) }
+
+// NoResults says "No results"
+// in the language the app shows under cx.
+func NoResults(cx *core.Scope) string { return For(cx).NoResults() }
+
+// NoResults is the package's NoResults in the language of msgs.
+func (msgs Messages) NoResults() string { return msgs.text(textNoResults) }
+
+// NothingMatches says "Nothing matches “{query}”. Try other words or another kind."
+// in the language the app shows under cx.
+//
+// A search without results, by what was searched.
+func NothingMatches(cx *core.Scope, query string) string { return For(cx).NothingMatches(query) }
+
+// NothingMatches is the package's NothingMatches in the language of msgs.
+func (msgs Messages) NothingMatches(query string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.NothingMatches(query))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].NothingMatches; f != nil {
+			return f(query)
+		}
+		switch lang {
+		case "", "en":
+			return "Nothing matches “" + msgs.arg(query) + "”. Try other words or another kind."
+		case "zh-Hans":
+			return "没有与“" + query + "”匹配的内容。换个词或别的类别试试。"
+		}
+	}
+}
+
+// CannotBePlayed says "{name} says it cannot be played."
+// in the language the app shows under cx.
+//
+// Under a plugin's message that a video is unavailable, by the plugin's name.
+func CannotBePlayed(cx *core.Scope, name string) string { return For(cx).CannotBePlayed(name) }
+
+// CannotBePlayed is the package's CannotBePlayed in the language of msgs.
+func (msgs Messages) CannotBePlayed(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.CannotBePlayed(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].CannotBePlayed; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(name) + " says it cannot be played."
+		case "zh-Hans":
+			return name + "表示它无法播放。"
+		}
+	}
+}
+
+// PartsCount says "{n, plural, one {# part} other {# parts}}"
+// in the language the app shows under cx.
+//
+// How many parts a video has.
+func PartsCount(cx *core.Scope, n int) string { return For(cx).PartsCount(n) }
+
+// PartsCount is the package's PartsCount in the language of msgs.
+func (msgs Messages) PartsCount(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.PartsCount(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].PartsCount; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			var b strings.Builder
+			switch i18n.Cardinal("en", float64(n)) {
+			case i18n.One:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" part")
+			default:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" parts")
+			}
+			return b.String()
+		case "zh-Hans":
+			return i18n.FormatNumber("zh-Hans", float64(n)) + " 个分P"
+		}
+	}
+}
+
+// PartNumber says "P{n, number}"
+// in the language the app shows under cx.
+//
+// A part of a video by its number.
+func PartNumber(cx *core.Scope, n int) string { return For(cx).PartNumber(n) }
+
+// PartNumber is the package's PartNumber in the language of msgs.
+func (msgs Messages) PartNumber(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.PartNumber(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].PartNumber; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			return "P" + msgs.arg(i18n.FormatNumber("en", float64(n)))
+		case "zh-Hans":
+			return "P" + i18n.FormatNumber("zh-Hans", float64(n))
+		}
+	}
+}
+
+// PartsN says "Parts · {n, number}"
+// in the language the app shows under cx.
+//
+// The title of the player's list of a video's parts, with how many.
+func PartsN(cx *core.Scope, n int) string { return For(cx).PartsN(n) }
+
+// PartsN is the package's PartsN in the language of msgs.
+func (msgs Messages) PartsN(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.PartsN(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].PartsN; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			return "Parts · " + msgs.arg(i18n.FormatNumber("en", float64(n)))
+		case "zh-Hans":
+			return "分P · " + i18n.FormatNumber("zh-Hans", float64(n))
+		}
+	}
+}
+
+// ResumePartAt says "Resume P{n, number} at {time}"
+// in the language the app shows under cx.
+//
+// Plays a video's part from where it was left, by its number and the time, written as 1:23 or 1:02:03.
+func ResumePartAt(cx *core.Scope, n int, time_ string) string { return For(cx).ResumePartAt(n, time_) }
+
+// ResumePartAt is the package's ResumePartAt in the language of msgs.
+func (msgs Messages) ResumePartAt(n int, time_ string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.ResumePartAt(n, time_))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].ResumePartAt; f != nil {
+			return f(n, time_)
+		}
+		switch lang {
+		case "", "en":
+			return "Resume P" + msgs.arg(i18n.FormatNumber("en", float64(n))) + " at " + msgs.arg(time_)
+		case "zh-Hans":
+			return "从 P" + i18n.FormatNumber("zh-Hans", float64(n)) + " 的 " + time_ + " 继续"
+		}
+	}
+}
+
+// PlayFromStart says "Play from Start"
+// in the language the app shows under cx.
+func PlayFromStart(cx *core.Scope) string { return For(cx).PlayFromStart() }
+
+// PlayFromStart is the package's PlayFromStart in the language of msgs.
+func (msgs Messages) PlayFromStart() string { return msgs.text(textPlayFromStart) }
+
+// NextPart says "Next Part"
+// in the language the app shows under cx.
+func NextPart(cx *core.Scope) string { return For(cx).NextPart() }
+
+// NextPart is the package's NextPart in the language of msgs.
+func (msgs Messages) NextPart() string { return msgs.text(textNextPart) }
+
+// SubtitlesAndAudio says "Subtitles and Audio"
+// in the language the app shows under cx.
+func SubtitlesAndAudio(cx *core.Scope) string { return For(cx).SubtitlesAndAudio() }
+
+// SubtitlesAndAudio is the package's SubtitlesAndAudio in the language of msgs.
+func (msgs Messages) SubtitlesAndAudio() string { return msgs.text(textSubtitlesAndAudio) }
+
+// SubtitlesOff says "Off"
+// in the language the app shows under cx.
+//
+// Shows no subtitles.
+func SubtitlesOff(cx *core.Scope) string { return For(cx).SubtitlesOff() }
+
+// SubtitlesOff is the package's SubtitlesOff in the language of msgs.
+func (msgs Messages) SubtitlesOff() string { return msgs.text(textSubtitlesOff) }
+
+// General says "General"
+// in the language the app shows under cx.
+//
+// Heads the app's own settings.
+func General(cx *core.Scope) string { return For(cx).General() }
+
+// General is the package's General in the language of msgs.
+func (msgs Messages) General() string { return msgs.text(textGeneral) }
+
+// SendStatsDetail says "Anonymous counts of pages and play time, never what you watch."
+// in the language the app shows under cx.
+func SendStatsDetail(cx *core.Scope) string { return For(cx).SendStatsDetail() }
+
+// SendStatsDetail is the package's SendStatsDetail in the language of msgs.
+func (msgs Messages) SendStatsDetail() string { return msgs.text(textSendStatsDetail) }
+
+// AddPlugin says "Add Plugin"
+// in the language the app shows under cx.
+func AddPlugin(cx *core.Scope) string { return For(cx).AddPlugin() }
+
+// AddPlugin is the package's AddPlugin in the language of msgs.
+func (msgs Messages) AddPlugin() string { return msgs.text(textAddPlugin) }
+
+// BuiltIn says "Built-in"
+// in the language the app shows under cx.
+//
+// Stands for the version of a plugin built into the app.
+func BuiltIn(cx *core.Scope) string { return For(cx).BuiltIn() }
+
+// BuiltIn is the package's BuiltIn in the language of msgs.
+func (msgs Messages) BuiltIn() string { return msgs.text(textBuiltIn) }
+
+// BuiltIntoApp says "Built into NSGo Player"
+// in the language the app shows under cx.
+func BuiltIntoApp(cx *core.Scope) string { return For(cx).BuiltIntoApp() }
+
+// BuiltIntoApp is the package's BuiltIntoApp in the language of msgs.
+func (msgs Messages) BuiltIntoApp() string { return msgs.text(textBuiltIntoApp) }
+
+// NoNetwork says "No network"
+// in the language the app shows under cx.
+//
+// Says a plugin reaches no network host, where its list says where it comes from.
+func NoNetwork(cx *core.Scope) string { return For(cx).NoNetwork() }
+
+// NoNetwork is the package's NoNetwork in the language of msgs.
+func (msgs Messages) NoNetwork() string { return msgs.text(textNoNetwork) }
+
+// NeedsApp says "Needs NSGo Player {version}"
+// in the language the app shows under cx.
+//
+// Why a plugin was refused, by the oldest app version it works with.
+func NeedsApp(cx *core.Scope, version string) string { return For(cx).NeedsApp(version) }
+
+// NeedsApp is the package's NeedsApp in the language of msgs.
+func (msgs Messages) NeedsApp(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.NeedsApp(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].NeedsApp; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return "Needs NSGo Player " + msgs.arg(version)
+		case "zh-Hans":
+			return "需要 NSGo Player " + version
+		}
+	}
+}
+
+// CannotLoad says "Cannot be loaded"
+// in the language the app shows under cx.
+//
+// Why a plugin was refused, when its manifest or code is wrong.
+func CannotLoad(cx *core.Scope) string { return For(cx).CannotLoad() }
+
+// CannotLoad is the package's CannotLoad in the language of msgs.
+func (msgs Messages) CannotLoad() string { return msgs.text(textCannotLoad) }
+
+// CannotBeLoaded says "This plugin cannot be loaded"
+// in the language the app shows under cx.
+func CannotBeLoaded(cx *core.Scope) string { return For(cx).CannotBeLoaded() }
+
+// CannotBeLoaded is the package's CannotBeLoaded in the language of msgs.
+func (msgs Messages) CannotBeLoaded() string { return msgs.text(textCannotBeLoaded) }
+
+// NeedsNewerAppToUse says "It needs NSGo Player {version} or later. Update the app to use it."
+// in the language the app shows under cx.
+//
+// Why a plugin installed cannot load, by the oldest app version it works with.
+func NeedsNewerAppToUse(cx *core.Scope, version string) string {
+	return For(cx).NeedsNewerAppToUse(version)
+}
+
+// NeedsNewerAppToUse is the package's NeedsNewerAppToUse in the language of msgs.
+func (msgs Messages) NeedsNewerAppToUse(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.NeedsNewerAppToUse(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].NeedsNewerAppToUse; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return "It needs NSGo Player " + msgs.arg(version) + " or later. Update the app to use it."
+		case "zh-Hans":
+			return "它需要 NSGo Player " + version + " 或更新版本，请先更新应用。"
+		}
+	}
+}
+
+// VersionN says "Version {version}"
+// in the language the app shows under cx.
+//
+// A plugin's version.
+func VersionN(cx *core.Scope, version string) string { return For(cx).VersionN(version) }
+
+// VersionN is the package's VersionN in the language of msgs.
+func (msgs Messages) VersionN(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.VersionN(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].VersionN; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return "Version " + msgs.arg(version)
+		case "zh-Hans":
+			return "版本 " + version
+		}
+	}
+}
+
+// Account says "Account"
+// in the language the app shows under cx.
+func Account(cx *core.Scope) string { return For(cx).Account() }
+
+// Account is the package's Account in the language of msgs.
+func (msgs Messages) Account() string { return msgs.text(textAccount) }
+
+// SignedIn says "Signed in"
+// in the language the app shows under cx.
+func SignedIn(cx *core.Scope) string { return For(cx).SignedIn() }
+
+// SignedIn is the package's SignedIn in the language of msgs.
+func (msgs Messages) SignedIn() string { return msgs.text(textSignedIn) }
+
+// NotSignedIn says "Not signed in"
+// in the language the app shows under cx.
+func NotSignedIn(cx *core.Scope) string { return For(cx).NotSignedIn() }
+
+// NotSignedIn is the package's NotSignedIn in the language of msgs.
+func (msgs Messages) NotSignedIn() string { return msgs.text(textNotSignedIn) }
+
+// Network says "Network"
+// in the language the app shows under cx.
+func Network(cx *core.Scope) string { return For(cx).Network() }
+
+// Network is the package's Network in the language of msgs.
+func (msgs Messages) Network() string { return msgs.text(textNetwork) }
+
+// ReachesOnly says "It can connect to these hosts, and no others:"
+// in the language the app shows under cx.
+func ReachesOnly(cx *core.Scope) string { return For(cx).ReachesOnly() }
+
+// ReachesOnly is the package's ReachesOnly in the language of msgs.
+func (msgs Messages) ReachesOnly() string { return msgs.text(textReachesOnly) }
+
+// ReachesNoOtherHost says "It cannot reach any other host, your files or other plugins."
+// in the language the app shows under cx.
+func ReachesNoOtherHost(cx *core.Scope) string { return For(cx).ReachesNoOtherHost() }
+
+// ReachesNoOtherHost is the package's ReachesNoOtherHost in the language of msgs.
+func (msgs Messages) ReachesNoOtherHost() string { return msgs.text(textReachesNoOtherHost) }
+
+// ReachesNothingElse says "It cannot reach your files or other plugins either."
+// in the language the app shows under cx.
+func ReachesNothingElse(cx *core.Scope) string { return For(cx).ReachesNothingElse() }
+
+// ReachesNothingElse is the package's ReachesNothingElse in the language of msgs.
+func (msgs Messages) ReachesNothingElse() string { return msgs.text(textReachesNothingElse) }
+
+// RemovePluginAction says "Remove Plugin…"
+// in the language the app shows under cx.
+func RemovePluginAction(cx *core.Scope) string { return For(cx).RemovePluginAction() }
+
+// RemovePluginAction is the package's RemovePluginAction in the language of msgs.
+func (msgs Messages) RemovePluginAction() string { return msgs.text(textRemovePluginAction) }
+
+// Installing says "Installing {name} {version}…"
+// in the language the app shows under cx.
+//
+// The title while a plugin is being installed.
+func Installing(cx *core.Scope, name string, version string) string {
+	return For(cx).Installing(name, version)
+}
+
+// Installing is the package's Installing in the language of msgs.
+func (msgs Messages) Installing(name string, version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.Installing(name, version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].Installing; f != nil {
+			return f(name, version)
+		}
+		switch lang {
+		case "", "en":
+			return "Installing " + msgs.arg(name) + " " + msgs.arg(version) + "…"
+		case "zh-Hans":
+			return "正在安装 " + name + " " + version + "…"
+		}
+	}
+}
+
+// InstallingShort says "Installing…"
+// in the language the app shows under cx.
+func InstallingShort(cx *core.Scope) string { return For(cx).InstallingShort() }
+
+// InstallingShort is the package's InstallingShort in the language of msgs.
+func (msgs Messages) InstallingShort() string { return msgs.text(textInstallingShort) }
+
+// WaitingToScan says "Waiting for you to scan…"
+// in the language the app shows under cx.
+func WaitingToScan(cx *core.Scope) string { return For(cx).WaitingToScan() }
+
+// WaitingToScan is the package's WaitingToScan in the language of msgs.
+func (msgs Messages) WaitingToScan() string { return msgs.text(textWaitingToScan) }

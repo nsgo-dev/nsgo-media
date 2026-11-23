@@ -16,14 +16,23 @@ import (
 // loader loads a page of sections at a cursor, "" for the first.
 type loader func(ctx context.Context, cursor string) (*plugin.Page, error)
 
-const cardWidth = 200
+// pageKind is what a page of sections is, for its loading and empty
+// states.
+type pageKind int
+
+const (
+	pageHome pageKind = iota
+	pageBrowse
+	pageSearch
+)
 
 // sectionsPage shows the sections load answers, with the pages after it
-// on request, again after the viewer signs in or out.
-func (sh *shell) sectionsPage(cx *core.Scope, p *plugin.Plugin, load loader) core.Node {
+// on request or once scrolled to the end, again after the viewer signs in
+// or out.
+func (sh *shell) sectionsPage(cx *core.Scope, p *plugin.Plugin, kind pageKind, load loader) core.Node {
 	pages := core.NewSignalFunc[[]*plugin.Page](cx, nil, nil)
 	loading := core.NewSignal(cx, false)
-	failed := core.NewSignal[error](cx, nil)
+	failed := core.NewSignalFunc[error](cx, nil, nil)
 	ctx := cx.Context()
 	gen := 0
 	fetch := func(cursor string) {
@@ -40,7 +49,7 @@ func (sh *shell) sectionsPage(cx *core.Scope, p *plugin.Plugin, load loader) cor
 				failed.Set(err)
 				return
 			}
-			if len(pages.GetUntracked()) == 0 {
+			if len(pages.GetUntracked()) == 0 && kind != pageSearch {
 				sh.retitle(pg.Title)
 			}
 			pages.Update(func(ps []*plugin.Page) []*plugin.Page { return append(ps[:len(ps):len(ps)], pg) })
@@ -61,6 +70,14 @@ func (sh *shell) sectionsPage(cx *core.Scope, p *plugin.Plugin, load loader) cor
 		}
 		return ps[len(ps)-1].Next
 	}
+	more := func() {
+		if !loading.GetUntracked() && failed.GetUntracked() == nil {
+			if c := core.Untracked(cx, next); c != "" {
+				fetch(c)
+			}
+		}
+	}
+	started := func() bool { return len(pages.Get()) > 0 }
 	empty := func() bool {
 		for _, pg := range pages.Get() {
 			for _, s := range pg.Sections {
@@ -71,48 +88,85 @@ func (sh *shell) sectionsPage(cx *core.Scope, p *plugin.Plugin, load loader) cor
 		}
 		return true
 	}
-	return ui.ScrollView{
-		TestID:       "sections",
-		Style:        core.Style{FlexGrow: 1, FlexShrink: 1},
-		ContentStyle: core.Style{Padding: core.All(16), Gap: 24},
-		Children: []core.Node{
-			core.Dynamic(func(cx *core.Scope) core.Node {
-				var nodes []core.Node
-				for _, pg := range pages.Get() {
-					for _, s := range pg.Sections {
-						if len(s.Items) > 0 {
-							nodes = append(nodes, sh.section(cx, p, s))
+	return core.Dynamic(func(cx *core.Scope) core.Node {
+		switch {
+		case !started() && failed.Get() != nil:
+			return sh.failure(cx, p, failed.Get(), func() { fetch("") })
+		case !started():
+			return pageLoading(kind)
+		case empty():
+			if kind == pageSearch {
+				return nil
+			}
+			msg := locales.PageEmpty(cx)
+			if kind == pageHome {
+				msg = locales.HomeEmpty(cx, p.Name())
+			}
+			return state(stateQuiet, lucide.Inbox, locales.NothingHere(cx), msg)
+		}
+		return ui.ScrollView{
+			TestID:       "sections",
+			Style:        core.Style{FlexGrow: 1, FlexShrink: 1},
+			ContentStyle: core.Style{Padding: core.Symmetric(24, 28), Gap: 32},
+			OnScroll: func(e core.ScrollEvent) {
+				if e.Offset.Y+e.Size.Height >= e.ContentSize.Height-240 {
+					more()
+				}
+			},
+			Children: []core.Node{
+				core.Dynamic(func(cx *core.Scope) core.Node {
+					var nodes []core.Node
+					for _, pg := range pages.Get() {
+						for _, s := range pg.Sections {
+							if len(s.Items) > 0 {
+								nodes = append(nodes, sh.section(cx, p, s))
+							}
 						}
 					}
-				}
-				return core.View{Style: core.Style{Gap: 24}, Children: nodes}
-			}),
-			core.Show{
-				When: func() bool { return failed.Get() != nil },
-				Then: func(cx *core.Scope) core.Node {
-					return sh.errorView(cx, p, failed.GetUntracked(), func() { fetch(next()) })
+					return core.View{Class: "gap-8", Children: nodes}
+				}),
+				core.Show{
+					When: loading.Get,
+					Then: func(*core.Scope) core.Node { return skeletonCards(4) },
+				},
+				core.Show{
+					When: func() bool { return failed.Get() != nil },
+					Then: func(cx *core.Scope) core.Node {
+						return core.View{TestID: "more-failed", Class: "flex-row items-center justify-center gap-3 rounded-xl bg-error-soft px-4 py-3", Children: []core.Node{
+							core.Icon{SVG: lucide.CircleAlert(), Class: "size-4 text-error-icon"},
+							core.Text{Content: locales.CouldNotAnswerShort(cx, p.Name()), Class: "text-[13px] text-error-ink", Style: core.Style{FlexShrink: 1}},
+							retryButton(cx, func() { fetch(core.Untracked(cx, next)) }),
+						}}
+					},
+				},
+				core.Show{
+					When: func() bool { return !loading.Get() && failed.Get() == nil && next() != "" },
+					Then: func(cx *core.Scope) core.Node {
+						return core.View{Class: "items-center pt-2", Children: []core.Node{
+							ui.Button{TestID: "load-more", Text: locales.LoadMore(cx), Variant: ui.ButtonOutline, OnPress: more},
+						}}
+					},
 				},
 			},
-			core.Show{
-				When: loading.Get,
-				Then: func(*core.Scope) core.Node {
-					return core.View{Style: core.Style{AlignItems: core.AlignCenter, Padding: core.All(24)}, Children: []core.Node{ui.Spinner{Size: 24}}}
-				},
-			},
-			core.Show{
-				When: func() bool { return !loading.Get() && failed.Get() == nil && empty() },
-				Then: func(cx *core.Scope) core.Node { return message(cx, locales.NothingHere(cx)) },
-			},
-			core.Show{
-				When: func() bool { return !loading.Get() && failed.Get() == nil && next() != "" },
-				Then: func(cx *core.Scope) core.Node {
-					return core.View{Style: core.Style{AlignItems: core.AlignCenter}, Children: []core.Node{
-						ui.Button{TestID: "load-more", Text: locales.LoadMore(cx), Variant: ui.ButtonSecondary, OnPress: func() { fetch(next()) }},
-					}}
-				},
-			},
-		},
+		}
+	})
+}
+
+// pageLoading stands in for a page of kind while it loads.
+func pageLoading(kind pageKind) core.Node {
+	var children []core.Node
+	switch kind {
+	case pageHome:
+		children = []core.Node{
+			core.View{Class: "gap-3", Children: []core.Node{skeletonLine("w-44"), skeletonCards(4)}},
+			core.View{Class: "gap-3", Children: []core.Node{skeletonLine("w-36"), skeletonCards(4)}},
+		}
+	case pageSearch:
+		children = []core.Node{core.View{Class: "gap-3", Children: []core.Node{skeletonLine("w-28"), skeletonCards(4)}}}
+	default:
+		children = []core.Node{skeletonCards(8)}
 	}
+	return core.View{TestID: "page-loading", Class: "flex-1 gap-8 overflow-hidden px-7 py-6", Children: children}
 }
 
 // retitle titles the page showing title when it has none.
@@ -130,86 +184,23 @@ func (sh *shell) retitle(title string) {
 	})
 }
 
-// section is a titled row of cards, with a link to the rest of them.
+// section is a titled row of cards, with More for the rest of them; a
+// section without a title shows its cards alone.
 func (sh *shell) section(cx *core.Scope, p *plugin.Plugin, s plugin.Section) core.Node {
-	head := []core.Node{core.Text{Content: s.Title, Style: ui.TypeTitle.Merge(core.Style{FlexShrink: 1})}}
-	if s.More != "" {
-		head = append(head, ui.Spacer{}, ui.Button{
-			TestID:  "more-" + s.More,
-			Text:    locales.More(cx),
-			Variant: ui.ButtonGhost,
-			OnPress: func() { sh.open(route{kind: routeBrowse, plugin: p, id: s.More, title: s.Title}) },
-		})
+	var children []core.Node
+	if s.Title != "" || s.More != "" {
+		var more func()
+		if s.More != "" {
+			more = func() { sh.open(route{kind: routeBrowse, plugin: p, id: s.More, title: s.Title}) }
+		}
+		children = append(children, sectionHeader(cx, s.Title, "more-"+s.More, more))
 	}
 	var cards []core.Node
 	for _, it := range s.Items {
 		cards = append(cards, sh.card(cx, p, it))
 	}
-	children := []core.Node{}
-	if s.Title != "" || s.More != "" {
-		children = append(children, core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: head})
-	}
-	children = append(children, core.View{Style: core.Style{Direction: core.Row, Wrap: core.Wrap, Gap: 16}, Children: cards})
-	return core.View{Style: core.Style{Gap: 10}, Children: children}
-}
-
-// card is an item, which opens what it names.
-func (sh *shell) card(cx *core.Scope, p *plugin.Plugin, it plugin.Item) core.Node {
-	colors := ui.ColorsOf(cx)
-	muted := func() core.Style { return core.Style{Color: colors.Muted()} }
-	title := core.Text{Content: it.Title, MaxLines: 2, Style: ui.TypeLabel}
-	subtitle := core.Text{Content: it.Subtitle, MaxLines: 1, Style: core.Style{FontSize: 12}, StyleFunc: muted}
-	press := ui.Press{
-		TestID:  "item-" + string(it.Kind) + "-" + it.ID,
-		Label:   it.Title,
-		OnPress: func() { sh.openItem(p, it) },
-		Style:   core.Style{Width: core.Pt(cardWidth), Gap: 6},
-	}
-	switch it.Kind {
-	case plugin.KindVideo, plugin.KindCollection:
-		cover := []core.Node{sh.picture(cx, it.Image, 16.0/9, core.Style{})}
-		if it.Duration > 0 {
-			cover = append(cover, core.Text{
-				Content: clock(it.Duration),
-				Style: core.Style{
-					Position: core.Absolute, Right: core.Pt(6), Bottom: core.Pt(6), Padding: core.Symmetric(1, 5), CornerRadius: 4,
-					FontSize: 11, FontVariant: core.FontTabularNums, Color: core.RGB(0xffffff), Background: core.RGBA(0x000000, 0.6),
-				},
-			})
-		}
-		press.Children = []core.Node{core.View{Children: cover}, title}
-		if it.Subtitle != "" {
-			press.Children = append(press.Children, subtitle)
-		}
-	case plugin.KindUploader:
-		press.Style.AlignItems = core.AlignCenter
-		press.Children = []core.Node{
-			sh.picture(cx, it.Image, 1, core.Style{Width: core.Pt(96), CornerRadius: 48}),
-			core.Text{Content: it.Title, MaxLines: 1, Style: ui.TypeLabel.Merge(core.Style{TextAlign: core.TextAlignCenter})},
-		}
-		if it.Subtitle != "" {
-			press.Children = append(press.Children, subtitle)
-		}
-	default:
-		press.Style.Direction = core.Row
-		press.Style.AlignItems = core.AlignCenter
-		press.Style.Padding = core.Symmetric(10, 12)
-		press.Style.CornerRadius = ui.RadiusControl
-		press.StyleFunc = ui.Filled(colors.Inset)
-		press.Children = []core.Node{
-			core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Gap: 2}, Children: []core.Node{title}},
-			ui.IconOf(lucide.ChevronRight, 16, colors.Muted),
-		}
-	}
-	return press
-}
-
-// message is a quiet line in the middle of a page.
-func message(cx *core.Scope, text string) core.Node {
-	return core.View{Style: core.Style{AlignItems: core.AlignCenter, Padding: core.All(24)}, Children: []core.Node{
-		core.Text{TestID: "message", Content: text, Style: core.Style{TextAlign: core.TextAlignCenter},
-			StyleFunc: func() core.Style { return core.Style{Color: ui.ColorsOf(cx).Muted()} }},
-	}}
+	children = append(children, core.View{Class: cardRow, Children: cards})
+	return core.View{Class: "gap-3", Children: children}
 }
 
 // errorText is what the viewer reads of a plugin's error: the plugin's
@@ -228,25 +219,22 @@ func errorText(cx *core.Scope, err error) string {
 	return locales.PluginFailed(cx)
 }
 
-// errorView says why a call of p failed, with what the viewer can do:
-// sign in, or try again.
-func (sh *shell) errorView(cx *core.Scope, p *plugin.Plugin, err error, retry func()) core.Node {
-	var action core.Node
+// failure fills a page with why a call of p failed, with what the
+// viewer can do: sign in, set the plugin up, or try again.
+func (sh *shell) failure(cx *core.Scope, p *plugin.Plugin, err error, retry func()) core.Node {
+	msg := errorText(cx, err)
 	switch {
 	case errors.Is(err, plugin.ErrSignIn):
 		a := sh.account(p)
-		action = ui.Button{TestID: "error-sign-in", Text: locales.SignIn(cx), Busy: a.busy.Get, OnPress: func() { sh.signIn(p) }}
+		return state(stateAsk, lucide.LogIn, locales.SignInTo(cx, p.Name()), msg,
+			ui.Button{TestID: "error-sign-in", Text: locales.SignIn(cx), Busy: a.busy.Get, OnPress: func() { sh.signIn(p) }})
 	case errors.Is(err, plugin.ErrSetup):
-		action = ui.Button{TestID: "error-settings", Text: locales.OpenSettings(cx), Variant: ui.ButtonSecondary, OnPress: sh.openSettings}
+		return state(stateAsk, lucide.FolderCog, locales.NeedsSetup(cx, p.Name()), msg,
+			ui.Button{TestID: "error-settings", Text: locales.OpenSettings(cx), OnPress: func() { sh.openPlugin(p) }})
 	case errors.Is(err, plugin.ErrUnavailable):
-	default:
-		action = ui.Button{TestID: "retry", Text: locales.Retry(cx), Variant: ui.ButtonSecondary, OnPress: retry}
+		return state(stateError, lucide.CircleAlert, locales.CouldNotAnswer(cx, p.Name()), msg)
 	}
-	children := []core.Node{message(cx, errorText(cx, err))}
-	if action != nil {
-		children = append(children, action)
-	}
-	return core.View{TestID: "error", Style: core.Style{AlignItems: core.AlignCenter, Gap: 8}, Children: children}
+	return state(stateError, lucide.CircleAlert, locales.CouldNotAnswer(cx, p.Name()), msg, retryButton(cx, retry))
 }
 
 // fail tells the viewer in a toast why a call of p failed.
@@ -256,7 +244,7 @@ func (sh *shell) fail(cx *core.Scope, p *plugin.Plugin, err error) {
 	case errors.Is(err, plugin.ErrSignIn):
 		t.Action, t.OnAction = locales.SignIn(cx), func() { sh.signIn(p) }
 	case errors.Is(err, plugin.ErrSetup):
-		t.Action, t.OnAction = locales.OpenSettings(cx), sh.openSettings
+		t.Action, t.OnAction = locales.OpenSettings(cx), func() { sh.openPlugin(p) }
 	}
 	sh.toaster.Show(t)
 }

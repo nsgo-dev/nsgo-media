@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	_ "embed"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -76,15 +77,19 @@ func (a App) Render(cx *core.Scope) core.Node {
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
+	cx.SetTheme(theme())
 	sh := &shell{
-		cx:       cx,
-		ctx:      cx.Context(),
-		settings: settings,
-		pictures: newPictures(client),
-		prompts:  &prompts{cx: cx, shown: core.NewSignal[*prompt](cx, nil)},
-		stack:    core.NewSignalFunc(cx, []route{{kind: routeOpen}}, nil),
-		toaster:  ui.NewToaster(cx),
-		accounts: map[*plugin.Plugin]*account{},
+		cx:        cx,
+		ctx:       cx.Context(),
+		settings:  settings,
+		positions: positions,
+		played:    core.NewSignal(cx, 0),
+		dragging:  core.NewSignal(cx, false),
+		pictures:  newPictures(client),
+		prompts:   &prompts{cx: cx, shown: core.NewSignal[*prompt](cx, nil)},
+		stack:     core.NewSignalFunc(cx, []route{{kind: routeOpen}}, nil),
+		toaster:   ui.NewToaster(cx),
+		accounts:  map[*plugin.Plugin]*account{},
 	}
 	builtin := a.Builtin
 	if builtin == nil {
@@ -96,14 +101,16 @@ func (a App) Render(cx *core.Scope) core.Node {
 		settings: settings,
 		opts:     plugin.Options{AppVersion: Version, Language: i18n.Language(cx), DataDir: in("plugin-data"), UI: sh.prompts},
 	}
-	plugins, err := sh.library.load()
+	plugins, refused, err := sh.library.load()
 	if err != nil {
 		log.Printf("plugins: %v", err)
 	}
 	sh.plugins = core.NewSignalFunc(cx, plugins, nil)
+	sh.refused = core.NewSignalFunc(cx, refused, nil)
 	sh.toggled = core.NewSignal(cx, 0)
 	sh.installing = core.NewSignal[*candidate](cx, nil)
-	sh.removing = core.NewSignal[*plugin.Plugin](cx, nil)
+	sh.install = core.NewSignal(cx, installState{})
+	sh.removing = core.NewSignal[*removal](cx, nil)
 	cx.Cleanup(func() {
 		for _, p := range sh.plugins.GetUntracked() {
 			go p.Close()
@@ -128,8 +135,11 @@ func (a App) Render(cx *core.Scope) core.Node {
 			Busy: func() bool { return pl.playing.Get() != nil }})
 	}
 	return core.View{
-		Style: core.Style{FlexGrow: 1, FlexShrink: 1},
+		Style:           core.Style{FlexGrow: 1, FlexShrink: 1},
+		OnFileDragEnter: func() { sh.dragging.Set(true) },
+		OnFileDragLeave: func() { sh.dragging.Set(false) },
 		OnFileDrop: func(uris []string) {
+			sh.dragging.Set(false)
 			if len(uris) == 0 {
 				return
 			}
@@ -139,11 +149,13 @@ func (a App) Render(cx *core.Scope) core.Node {
 		},
 		Children: []core.Node{
 			ui.SidebarShell{
-				TestID:  "shell",
-				Fixed:   true,
-				Sidebar: []core.Node{sh.sidebar(cx)},
-				Header:  sh.header(cx),
-				Content: []core.Node{sh.content(cx, pl)},
+				TestID:        "shell",
+				Fixed:         true,
+				DefaultWidth:  232,
+				Sidebar:       []core.Node{sh.sidebar(cx)},
+				SidebarFooter: []core.Node{sh.sidebarFooter(cx)},
+				Header:        sh.header(cx),
+				Content:       []core.Node{sh.content(cx, pl)},
 			},
 			pl.page(cx),
 			sh.signInDialog(cx),
@@ -157,18 +169,28 @@ func (a App) Render(cx *core.Scope) core.Node {
 // shell is what the pages share: the plugins, the navigation, pictures,
 // accounts and toasts.
 type shell struct {
-	cx       *core.Scope
-	ctx      context.Context
-	settings *store.Settings
+	cx        *core.Scope
+	ctx       context.Context
+	settings  *store.Settings
+	positions *store.Positions
+	// played counts the player closing, after which the resume positions
+	// the pages show change.
+	played *core.Signal[int]
+	// dragging is a file dragged over the window.
+	dragging *core.Signal[bool]
 	library  *library
 	// plugins are the plugins loaded, enabled or not; the settings say
-	// which are, and toggled counts their changes.
+	// which are, and toggled counts their changes. refused are those the
+	// app refused to load.
 	plugins *core.Signal[[]*plugin.Plugin]
+	refused *core.Signal[[]*refusal]
 	toggled *core.Signal[int]
 	// installing is the plugin whose permissions the viewer is asked to
-	// approve, and removing the one they are asked to remove.
+	// approve, install how installing it goes, and removing the plugin
+	// they are asked to remove.
 	installing *core.Signal[*candidate]
-	removing   *core.Signal[*plugin.Plugin]
+	install    *core.Signal[installState]
+	removing   *core.Signal[*removal]
 	pictures   *pictures
 	prompts    *prompts
 	accounts   map[*plugin.Plugin]*account
@@ -177,8 +199,9 @@ type shell struct {
 	// showing; opened counts the pages opened.
 	stack  *core.Signal[[]route]
 	opened int
-	// play plays a part of a video at a quality, starting at a position.
-	play func(p *plugin.Plugin, v *plugin.Video, part int)
+	// play plays a part of a video from start, which 0 leaves to the
+	// resume offer unless fromStart.
+	play func(p *plugin.Plugin, v *plugin.Video, part int, start time.Duration, fromStart bool)
 }
 
 type routeKind int
@@ -190,11 +213,12 @@ const (
 	routeSearch
 	routeVideo
 	routeSettings
+	routePlugin
 )
 
 // statsPages name the kinds of page in the app's statistics.
 var statsPages = map[routeKind]string{routeOpen: "open", routeHome: "home", routeBrowse: "browse",
-	routeSearch: "search", routeVideo: "video", routeSettings: "settings"}
+	routeSearch: "search", routeVideo: "video", routeSettings: "settings", routePlugin: "plugin"}
 
 // route is a page: the open page, or one of a plugin's.
 type route struct {
@@ -202,6 +226,8 @@ type route struct {
 	n      int
 	kind   routeKind
 	plugin *plugin.Plugin
+	// refused is the plugin a plugin page shows when the app refused it.
+	refused *refusal
 	// id is browse's or video's, and title what the header shows.
 	id, title string
 }
@@ -268,12 +294,11 @@ func (sh *shell) active() []*plugin.Plugin {
 	return ps
 }
 
-// entries are the sidebar's routes: the open page, settings, and each
-// enabled plugin's home, search and own entries.
+// entries are the sidebar's routes: the open page, and each enabled
+// plugin's home, search and own entries; settings are in its footer.
 func (sh *shell) entries(cx *core.Scope) []ui.SidebarSection {
 	sections := []ui.SidebarSection{{Items: []ui.SidebarItem{
 		{ID: "open", Text: locales.OpenPage(cx), Icon: lucide.FolderOpen, TestID: "nav-open"},
-		{ID: "settings", Text: locales.Settings(cx), Icon: lucide.Settings, TestID: "nav-settings"},
 	}}}
 	for _, p := range sh.active() {
 		var items []ui.SidebarItem
@@ -334,13 +359,30 @@ func (sh *shell) sidebar(cx *core.Scope) core.Node {
 		TestID:       "nav",
 		SectionsFunc: func() []ui.SidebarSection { return sh.entries(cx) },
 		Selected:     func() string { return sh.stack.Get()[0].entry() },
-		OnSelect: func(id string) {
-			if r, ok := sh.routeOf(cx, id); ok {
-				sh.opened++
-				r.n = sh.opened
-				sh.stack.Set([]route{r})
-			}
+		OnSelect:     func(id string) { sh.choose(cx, id) },
+	}
+}
+
+// sidebarFooter holds the settings, at the sidebar's foot.
+func (sh *shell) sidebarFooter(cx *core.Scope) core.Node {
+	return core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{ui.Sidebar{
+		TestID: "nav-footer",
+		SectionsFunc: func() []ui.SidebarSection {
+			return []ui.SidebarSection{{Items: []ui.SidebarItem{
+				{ID: "settings", Text: locales.Settings(cx), Icon: lucide.Settings, TestID: "nav-settings"},
+			}}}
 		},
+		Selected: func() string { return sh.stack.Get()[0].entry() },
+		OnSelect: func(id string) { sh.choose(cx, id) },
+	}}}
+}
+
+// choose starts over at the sidebar's entry id.
+func (sh *shell) choose(cx *core.Scope, id string) {
+	if r, ok := sh.routeOf(cx, id); ok {
+		sh.opened++
+		r.n = sh.opened
+		sh.stack.Set([]route{r})
 	}
 }
 
@@ -351,10 +393,10 @@ func (sh *shell) header(cx *core.Scope) []core.Node {
 		core.Show{
 			When: func() bool { return len(sh.stack.Get()) > 1 },
 			Then: func(cx *core.Scope) core.Node {
-				return ui.IconButton{TestID: "page-back", Icon: lucide.ArrowLeft, Label: locales.Back(cx), Variant: ui.IconButtonGhost, OnPress: sh.back}
+				return ui.IconButton{TestID: "page-back", Icon: lucide.ChevronLeft, Label: locales.Back(cx), Variant: ui.IconButtonGhost, Size: 28, IconSize: 18, OnPress: sh.back}
 			},
 		},
-		core.Text{TestID: "page-title", ContentFunc: func() string { return sh.top().title }, MaxLines: 1, Style: core.Style{FlexShrink: 1, FontWeight: core.FontWeightSemibold}},
+		core.Text{TestID: "page-title", ContentFunc: func() string { return sh.top().title }, MaxLines: 1, Class: "text-[15px] font-semibold text-foreground", Style: core.Style{FlexShrink: 1}},
 	}
 }
 
@@ -380,11 +422,11 @@ func (sh *shell) content(cx *core.Scope, pl *player) core.Node {
 func (sh *shell) page(cx *core.Scope, pl *player, r route) core.Node {
 	switch r.kind {
 	case routeHome:
-		return sh.sectionsPage(cx, r.plugin, func(ctx context.Context, cursor string) (*plugin.Page, error) {
+		return sh.sectionsPage(cx, r.plugin, pageHome, func(ctx context.Context, cursor string) (*plugin.Page, error) {
 			return r.plugin.Home(ctx, plugin.PageParams{Cursor: cursor})
 		})
 	case routeBrowse:
-		return sh.sectionsPage(cx, r.plugin, func(ctx context.Context, cursor string) (*plugin.Page, error) {
+		return sh.sectionsPage(cx, r.plugin, pageBrowse, func(ctx context.Context, cursor string) (*plugin.Page, error) {
 			return r.plugin.Browse(ctx, plugin.BrowseParams{ID: r.id, Cursor: cursor})
 		})
 	case routeSearch:
@@ -393,46 +435,102 @@ func (sh *shell) page(cx *core.Scope, pl *player, r route) core.Node {
 		return sh.videoPage(cx, r.plugin, r.id)
 	case routeSettings:
 		return sh.settingsPage(cx)
+	case routePlugin:
+		if r.refused != nil {
+			return sh.refusedPage(cx, r.refused)
+		}
+		return sh.pluginPage(cx, r.plugin)
 	}
-	return openPage(cx, pl.playLocal)
+	return openPage(cx, sh.dragging.Get, pl.playLocal)
 }
 
-// openPage opens a local file or a pasted URL.
-func openPage(cx *core.Scope, play func(string)) core.Node {
+// appIcon is the app's icon, as the open page shows it.
+//
+//go:embed appicon.png
+var appIcon []byte
+
+// openPage opens a local file or a pasted URL; dragging is a file
+// dragged over the window, which plays where it drops.
+func openPage(cx *core.Scope, dragging func() bool, play func(string)) core.Node {
 	url := core.NewSignal(cx, "")
 	submit := func() {
 		if s := strings.TrimSpace(url.Get()); s != "" {
 			play(s)
 		}
 	}
+	pick := func() {
+		cx.PickFiles(core.PickFilesOptions{}, func(files []core.File, err error) {
+			if err == nil && len(files) > 0 && files[0].Path != "" {
+				play(files[0].Path)
+			}
+		})
+	}
+	drop := core.View{
+		TestID: "drop",
+		ClassFunc: func() string {
+			if dragging() {
+				return "w-[520px] items-center gap-4 rounded-3xl border-2 border-dashed border-accent bg-accent/[0.07] px-10 py-10"
+			}
+			return "w-[520px] items-center gap-4 rounded-3xl border-2 border-dashed border-border bg-chip/60 px-10 py-10"
+		},
+		Children: []core.Node{core.Show{
+			When: dragging,
+			Then: func(cx *core.Scope) core.Node {
+				return core.Group{
+					core.View{Class: "size-20 items-center justify-center rounded-3xl bg-accent shadow-lg", Children: []core.Node{
+						core.Icon{SVG: lucide.ArrowDownToLine(), Class: "size-9 text-white"},
+					}},
+					core.Text{Content: locales.DropToPlay(cx), Class: "text-lg font-semibold text-accent-ink"},
+					core.View{Class: "h-10"},
+				}
+			},
+			Else: func(cx *core.Scope) core.Node {
+				return core.Group{
+					core.Image{Source: core.ImageSource{Data: appIcon}, Class: "size-20", Label: locales.AppName(cx)},
+					core.View{Class: "items-center gap-1", Children: []core.Node{
+						core.Text{Content: locales.DropHere(cx), Class: "text-lg font-semibold text-foreground"},
+						core.Text{Content: locales.DropFormats(cx), Class: "text-center text-[13px] text-muted-foreground"},
+					}},
+					ui.Button{Text: locales.OpenFile(cx), Icon: lucide.FolderOpen, Size: ui.SizeLarge, TestID: "open-file", OnPress: pick},
+				}
+			},
+		}},
+	}
 	return core.View{
 		TestID: "page",
-		Style:  core.Style{FlexGrow: 1, AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter, Gap: 12, Padding: core.All(24)},
+		Class:  "flex-1 items-center justify-center gap-6 px-10 pb-10",
 		Children: []core.Node{
-			ui.Button{Text: locales.OpenFile(cx), Icon: lucide.FolderOpen, TestID: "open-file", OnPress: func() {
-				cx.PickFiles(core.PickFilesOptions{}, func(files []core.File, err error) {
-					if err == nil && len(files) > 0 && files[0].Path != "" {
-						play(files[0].Path)
-					}
-				})
-			}},
-			core.View{
-				Style: core.Style{Direction: core.Row, Gap: 8, Width: core.Pct(100), MaxWidth: core.Pt(520)},
-				Children: []core.Node{
-					ui.Input{
+			drop,
+			core.View{Class: "w-[520px] gap-2", Children: []core.Node{
+				core.Text{Content: locales.OrPlayURL(cx), Class: "px-1 text-xs font-semibold text-muted-foreground"},
+				core.View{Class: "flex-row gap-2", Children: []core.Node{
+					field(lucide.Link, ui.Input{
 						TestID:      "url",
 						Label:       locales.Url(cx),
 						Placeholder: locales.UrlPlaceholder(cx),
 						Value:       url.Get,
 						OnChange:    url.Set,
 						OnSubmit:    func(string) { submit() },
-						Style:       core.Style{FlexGrow: 1, FlexShrink: 1},
-					},
-					ui.Button{TestID: "open-url", Text: locales.Open(cx), Variant: ui.ButtonSecondary, OnPress: submit},
-				},
-			},
+					}),
+					ui.Button{TestID: "open-url", Text: locales.Open(cx), Variant: ui.ButtonOutline, Size: ui.SizeLarge, OnPress: submit},
+				}},
+			}},
 		},
 	}
+}
+
+// field is a large input with an icon at its start, as the open and
+// search pages' are; more ends it, such as a spinner.
+func field(icon func() *core.SVG, in ui.Input, more ...core.Node) core.Node {
+	in.Style = in.Style.Merge(core.Style{Height: core.Pt(40), CornerRadius: 12, FontSize: 14, Padding: core.Edges{Left: 38, Right: 36}, Width: core.Pct(100)})
+	children := []core.Node{
+		in,
+		core.Icon{SVG: icon(), Class: "absolute top-3 left-3.5 size-4 text-faint-ink"},
+	}
+	for _, m := range more {
+		children = append(children, core.View{Class: "absolute top-0 right-3 bottom-0 justify-center", Children: []core.Node{m}})
+	}
+	return core.View{Class: "flex-1", Style: core.Style{FlexShrink: 1}, Children: children}
 }
 
 // player is the player page over the window and what it plays: a local
@@ -456,11 +554,15 @@ type part struct {
 	video   *plugin.Video
 	index   int
 	quality string
+	// fromStart plays it from its start without offering to resume.
+	fromStart bool
 }
 
 func newPlayer(sh *shell, positions *store.Positions, client *http.Client) *player {
 	pl := &player{sh: sh, positions: positions, client: client, playing: core.NewSignal[*playback.Source](sh.cx, nil), parts: map[string]*part{}}
-	sh.play = func(p *plugin.Plugin, v *plugin.Video, i int) { pl.playPart(&part{p: p, video: v, index: i}, 0) }
+	sh.play = func(p *plugin.Plugin, v *plugin.Video, i int, start time.Duration, fromStart bool) {
+		pl.playPart(&part{p: p, video: v, index: i, fromStart: fromStart}, start)
+	}
 	return pl
 }
 
@@ -481,7 +583,14 @@ func (pl *player) playPart(pt *part, start time.Duration) {
 		cur := *pt
 		cur.quality = s.Quality
 		src := sourceOf(partKey(pt.p, pt.video, pt.index), partTitle(cx, pt.video, pt.index), s)
-		src.Start = start
+		src.Start, src.FromStart = start, pt.fromStart && start == 0
+		cur.fromStart = false
+		if len(pt.video.Parts) > 1 {
+			for i, vp := range pt.video.Parts {
+				src.Parts = append(src.Parts, playback.Part{Label: locales.PartNumber(cx, i+1), Title: vp.Title, Duration: seconds(vp.Duration)})
+			}
+			src.Part = pt.index
+		}
 		pl.now = &cur
 		pl.parts[src.Key] = &cur
 		pl.playing.Set(&src)
@@ -489,8 +598,13 @@ func (pl *player) playPart(pt *part, start time.Duration) {
 }
 
 func partKey(p *plugin.Plugin, v *plugin.Video, i int) string {
-	return p.Manifest.ID + ":" + v.ID + ":" + v.Parts[i].ID
+	return videoKey(p, v.ID) + v.Parts[i].ID
 }
+
+// videoKey starts the keys of the parts of p's video id.
+func videoKey(p *plugin.Plugin, id string) string { return p.Manifest.ID + ":" + id + ":" }
+
+func seconds(s float64) time.Duration { return time.Duration(s * float64(time.Second)) }
 
 func partTitle(cx *core.Scope, v *plugin.Video, i int) string {
 	if len(v.Parts) == 1 {
@@ -556,8 +670,10 @@ func (pl *player) page(cx *core.Scope) core.Node {
 				OnClose: func() {
 					pl.now = nil
 					pl.playing.Set(nil)
+					pl.sh.played.Update(func(n int) int { return n + 1 })
 				},
 				OnQuality:  pl.switchQuality,
+				OnPart:     pl.playIndex,
 				OnEnded:    pl.next,
 				OnPosition: pl.report,
 			}
@@ -571,6 +687,16 @@ func (pl *player) switchQuality(id string, at time.Duration) {
 		pt := *pl.now
 		pt.quality = id
 		pl.playPart(&pt, at)
+	}
+}
+
+// playIndex plays the part at index i of the video playing, at its
+// quality, from its start.
+func (pl *player) playIndex(i int) {
+	if pt := pl.now; pt != nil && i >= 0 && i < len(pt.video.Parts) {
+		other := *pt
+		other.index = i
+		pl.playPart(&other, 0)
 	}
 }
 

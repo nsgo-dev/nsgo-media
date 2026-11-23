@@ -104,4 +104,4 @@ Each plugin runs in its own [moejs](https://github.com/MoeForge/moejs) runtime w
 
 ## Trying it
 
-While you write a plugin, open **Settings → Plugins → Use from Path** in NSGo Player and type its folder's path. The app reads it where it is at every start, so restart the app to load your changes. To share a plugin, zip its folder; others install it from the zip.
+While you write a plugin, choose **Settings → Plugins → Add Plugin → Use from Path…** in NSGo Player and pick its folder. The app reads it where it is at every start, so restart the app to load your changes. To share a plugin, zip its folder; others install it from the zip.
