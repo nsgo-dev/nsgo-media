@@ -105,3 +105,13 @@ Each plugin runs in its own [moejs](https://github.com/MoeForge/moejs) runtime w
 ## Trying it
 
 While you write a plugin, choose **Settings → Plugins → Add Plugin → Use from Path…** in NSGo Player and pick its folder. The app reads it where it is at every start, so restart the app to load your changes. To share a plugin, zip its folder; others install it from the zip.
+
+## Publishing on GitHub
+
+To let others install your plugin by typing your repository, publish a GitHub release of it:
+
+1. Raise `version` in `plugin.yaml`, and `minAppVersion` if it needs a newer app.
+2. Zip the plugin's folder, with `plugin.yaml` at the zip's root or in its only folder, and attach the zip to a release that is not a pre-release. Other attached files are fine; the app takes the first `.zip` holding a plugin, of at most 64 MB. GitHub's own source code archives do not count.
+3. Write what changed in the release's description: the app shows it when it offers the update.
+
+The app offers a release as an update when it is the repository's latest and its `version` is newer than the one installed, with the same `id`. Pre-releases and drafts are never installed. An update that adds hosts asks the viewer to approve them first.

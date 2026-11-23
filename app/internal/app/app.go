@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,6 +46,9 @@ type App struct {
 	started func(*player)
 	// report counts the app's use (stats.Report).
 	report bool
+	// gitHub is the root of GitHub's REST API, which tests stand a
+	// server in for; "" is GitHub's.
+	gitHub string
 }
 
 // Root is the installed app.
@@ -91,6 +95,11 @@ func (a App) Render(cx *core.Scope) core.Node {
 		toaster:   ui.NewToaster(cx),
 		accounts:  map[*plugin.Plugin]*account{},
 	}
+	api := a.gitHub
+	if api == "" {
+		api = gitHubAPI
+	}
+	sh.gitHub = &gitHub{api: api, client: &http.Client{Timeout: 60 * time.Second}}
 	builtin := a.Builtin
 	if builtin == nil {
 		builtin = []Builtin{local.Load}
@@ -111,6 +120,12 @@ func (a App) Render(cx *core.Scope) core.Node {
 	sh.installing = core.NewSignal[*candidate](cx, nil)
 	sh.install = core.NewSignal(cx, installState{})
 	sh.removing = core.NewSignal[*removal](cx, nil)
+	sh.typingRepo = core.NewSignal(cx, false)
+	sh.fromGitHub = core.NewSignal(cx, fromGitHubState{})
+	sh.updates = core.NewSignalFunc[map[string]*update](cx, nil, nil)
+	sh.checking = core.NewSignal(cx, checkState{})
+	sh.updating = core.NewSignal[*update](cx, nil)
+	sh.updateState = core.NewSignal(cx, installState{})
 	cx.Cleanup(func() {
 		for _, p := range sh.plugins.GetUntracked() {
 			go p.Close()
@@ -121,6 +136,7 @@ func (a App) Render(cx *core.Scope) core.Node {
 	if a.started != nil {
 		a.started(pl)
 	}
+	sh.checkUpdates()
 	if a.report {
 		// Pages are counted by their kind, never a plugin's own.
 		stats.Report(cx, stats.Options{Tag: "app",
@@ -159,7 +175,9 @@ func (a App) Render(cx *core.Scope) core.Node {
 			},
 			pl.page(cx),
 			sh.signInDialog(cx),
+			sh.fromGitHubDialog(cx),
 			sh.installDialog(cx),
+			sh.updateDialog(cx),
 			sh.removeDialog(cx),
 			ui.Toasts{Toaster: sh.toaster, TestID: "toasts"},
 		},
@@ -191,10 +209,25 @@ type shell struct {
 	installing *core.Signal[*candidate]
 	install    *core.Signal[installState]
 	removing   *core.Signal[*removal]
-	pictures   *pictures
-	prompts    *prompts
-	accounts   map[*plugin.Plugin]*account
-	toaster    *ui.Toaster
+	// gitHub finds plugins' releases; typingRepo is the viewer typing a
+	// repository to install from, and fromGitHub how finding it goes.
+	gitHub     *gitHub
+	typingRepo *core.Signal[bool]
+	fromGitHub *core.Signal[fromGitHubState]
+	// updates are the newer releases of the plugins installed from
+	// GitHub, by the plugins' ids, and checking how checking for them
+	// goes; updating is the one the viewer is asked to install, and
+	// updateState how installing it goes.
+	updates     *core.Signal[map[string]*update]
+	checking    *core.Signal[checkState]
+	updating    *core.Signal[*update]
+	updateState *core.Signal[installState]
+	// replaced tells the player of a plugin loaded in another's place.
+	replaced func(old, p *plugin.Plugin)
+	pictures *pictures
+	prompts  *prompts
+	accounts map[*plugin.Plugin]*account
+	toaster  *ui.Toaster
 	// stack is the pages opened from the sidebar's entry, the last
 	// showing; opened counts the pages opened.
 	stack  *core.Signal[[]route]
@@ -369,12 +402,31 @@ func (sh *shell) sidebarFooter(cx *core.Scope) core.Node {
 		TestID: "nav-footer",
 		SectionsFunc: func() []ui.SidebarSection {
 			return []ui.SidebarSection{{Items: []ui.SidebarItem{
-				{ID: "settings", Text: locales.Settings(cx), Icon: lucide.Settings, TestID: "nav-settings"},
+				{ID: "settings", Text: locales.Settings(cx), Content: settingsEntry(cx, locales.Settings(cx), func() int { return len(sh.updates.Get()) }), TestID: "nav-settings"},
 			}}}
 		},
 		Selected: func() string { return sh.stack.Get()[0].entry() },
 		OnSelect: func(id string) { sh.choose(cx, id) },
 	}}}
+}
+
+// settingsEntry is the sidebar's settings entry, with a badge counting
+// the plugins with an update.
+func settingsEntry(cx *core.Scope, text string, updates func() int) core.Node {
+	label := ui.Text(text, 13, ui.Regular, ui.ColorsOf(cx).Text)
+	label.MaxLines, label.Style.FlexGrow, label.Style.FlexShrink = 1, 1, 1
+	return core.Group{
+		ui.Icon(lucide.Settings, 16, ui.ColorsOf(cx).Accent),
+		label,
+		core.Show{
+			When: func() bool { return updates() > 0 },
+			Then: func(cx *core.Scope) core.Node {
+				return core.View{TestID: "updates-badge", Class: "h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5", Children: []core.Node{
+					core.Text{ContentFunc: func() string { return strconv.Itoa(updates()) }, Class: "text-[11px] font-semibold text-white"},
+				}}
+			},
+		},
+	}
 }
 
 // choose starts over at the sidebar's entry id.
@@ -562,6 +614,18 @@ func newPlayer(sh *shell, positions *store.Positions, client *http.Client) *play
 	pl := &player{sh: sh, positions: positions, client: client, playing: core.NewSignal[*playback.Source](sh.cx, nil), parts: map[string]*part{}}
 	sh.play = func(p *plugin.Plugin, v *plugin.Video, i int, start time.Duration, fromStart bool) {
 		pl.playPart(&part{p: p, video: v, index: i, fromStart: fromStart}, start)
+	}
+	// What plays keeps playing; its qualities and parts come from the
+	// plugin loaded in its place.
+	sh.replaced = func(old, p *plugin.Plugin) {
+		for _, pt := range pl.parts {
+			if pt.p == old {
+				pt.p = p
+			}
+		}
+		if pl.now != nil && pl.now.p == old {
+			pl.now.p = p
+		}
 	}
 	return pl
 }

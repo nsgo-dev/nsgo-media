@@ -6,6 +6,7 @@ import (
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/i18n"
 	"strings"
+	"time"
 )
 
 // Source is the language the messages are written in.
@@ -69,6 +70,21 @@ var Parameters = map[string][]string{
 	"NeedsNewerAppToUse":  {"version"},
 	"VersionN":            {"version"},
 	"Installing":          {"name", "version"},
+	"NoRepository":        {"repo"},
+	"RepoReason":          {"repo", "reason"},
+	"RepoReleased":        {"repo", "date"},
+	"UpdateTo":            {"version"},
+	"UpdatePlugin":        {"name", "version"},
+	"YouHaveReleased":     {"version", "date"},
+	"YouHave":             {"version"},
+	"UpdatingPlugin":      {"name", "version"},
+	"CannotUpdate":        {"name"},
+	"StaysInstalled":      {"version"},
+	"VersionAvailable":    {"version"},
+	"Released":            {"date"},
+	"CheckedMinutesAgo":   {"n"},
+	"CheckedHoursAgo":     {"n"},
+	"CouldNotCheck":       {"reason"},
 }
 
 // Translation is a language's messages another package supplies:
@@ -102,6 +118,21 @@ type Translation struct {
 	NeedsNewerAppToUse  func(version string) string
 	VersionN            func(version string) string
 	Installing          func(name string, version string) string
+	NoRepository        func(repo string) string
+	RepoReason          func(repo string, reason string) string
+	RepoReleased        func(hc string, repo string, date time.Time) string
+	UpdateTo            func(version string) string
+	UpdatePlugin        func(name string, version string) string
+	YouHaveReleased     func(hc string, version string, date time.Time) string
+	YouHave             func(version string) string
+	UpdatingPlugin      func(name string, version string) string
+	CannotUpdate        func(name string) string
+	StaysInstalled      func(version string) string
+	VersionAvailable    func(version string) string
+	Released            func(hc string, date time.Time) string
+	CheckedMinutesAgo   func(n int) string
+	CheckedHoursAgo     func(n int) string
+	CouldNotCheck       func(reason string) string
 }
 
 var supplied = map[string]Translation{}
@@ -196,6 +227,32 @@ const (
 	textRemovePluginAction
 	textInstallingShort
 	textWaitingToScan
+	textFromGitHub
+	textInstallFromGitHub
+	textInstallFromGitHubHint
+	textRepository
+	textRepositoryPlaceholder
+	textContinue
+	textFindingRelease
+	textNotARepository
+	textNoRelease
+	textNoPluginZip
+	textGitHubLimited
+	textGitHubUnreachable
+	textWhatsNew
+	textSameHosts
+	textAlsoConnects
+	textUpdate
+	textApproveAndUpdate
+	textUpdatingShort
+	textClose
+	textUpdateAction
+	textCheckForUpdates
+	textCheckingUpdates
+	textCheckedJustNow
+	textNoPluginsAdded
+	textPluginsOnGitHub
+	textInstallFromGitHubAction
 	numTexts
 )
 
@@ -290,6 +347,32 @@ var keyOfText = [numTexts]string{
 	"removePluginAction",
 	"installingShort",
 	"waitingToScan",
+	"fromGitHub",
+	"installFromGitHub",
+	"installFromGitHubHint",
+	"repository",
+	"repositoryPlaceholder",
+	"continue",
+	"findingRelease",
+	"notARepository",
+	"noRelease",
+	"noPluginZip",
+	"gitHubLimited",
+	"gitHubUnreachable",
+	"whatsNew",
+	"sameHosts",
+	"alsoConnects",
+	"update",
+	"approveAndUpdate",
+	"updatingShort",
+	"close",
+	"updateAction",
+	"checkForUpdates",
+	"checkingUpdates",
+	"checkedJustNow",
+	"noPluginsAdded",
+	"pluginsOnGitHub",
+	"installFromGitHubAction",
 }
 
 // textsEn are the messages without arguments in en.
@@ -381,7 +464,33 @@ var textsEn = i18n.NewTexts(""+
 	"It cannot reach your files or other plugins either."+
 	"Remove Plugin…"+
 	"Installing…"+
-	"Waiting for you to scan…",
+	"Waiting for you to scan…"+
+	"From GitHub…"+
+	"Install from GitHub"+
+	"Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates."+
+	"Repository"+
+	"owner/repo"+
+	"Continue"+
+	"Finding the latest release…"+
+	"Type a repository as owner/repo, or its URL on GitHub."+
+	"It has no release yet."+
+	"Its latest release has no plugin zip."+
+	"GitHub limits requests now. Try again later."+
+	"GitHub could not be reached."+
+	"What's new"+
+	"It connects to the same hosts as before."+
+	"It can now also connect to:"+
+	"Update"+
+	"Approve and Update"+
+	"Updating…"+
+	"Close"+
+	"Update…"+
+	"Check for Updates"+
+	"Checking for updates…"+
+	"Checked just now"+
+	"Add a plugin to browse more videos"+
+	"Plugins are published on GitHub. Type a repository to install its latest release."+
+	"Install from GitHub…",
 	[]uint16{
 		11,
 		12,
@@ -471,6 +580,32 @@ var textsEn = i18n.NewTexts(""+
 		16,
 		13,
 		26,
+		14,
+		19,
+		132,
+		10,
+		10,
+		8,
+		29,
+		54,
+		22,
+		37,
+		44,
+		28,
+		10,
+		40,
+		27,
+		6,
+		18,
+		11,
+		5,
+		9,
+		17,
+		23,
+		16,
+		34,
+		81,
+		22,
 	})
 
 // textsZhHans are the messages without arguments in zh-Hans.
@@ -562,7 +697,33 @@ var textsZhHans = i18n.NewTexts(""+
 	"它也访问不了你的文件或别的插件。"+
 	"删除插件…"+
 	"正在安装…"+
-	"等待扫码…",
+	"等待扫码…"+
+	"从 GitHub…"+
+	"从 GitHub 安装"+
+	"输入 owner/repo 形式的仓库，或粘贴它的网址。NSGo Player 会安装它最新 Release 里的插件 zip，并提示之后的更新。"+
+	"仓库"+
+	"owner/repo"+
+	"继续"+
+	"正在查找最新 Release…"+
+	"请输入 owner/repo 形式的仓库，或它在 GitHub 上的网址。"+
+	"它还没有 Release。"+
+	"它最新的 Release 里没有插件 zip。"+
+	"GitHub 暂时限制了请求，请稍后再试。"+
+	"无法连接 GitHub。"+
+	"新内容"+
+	"它连接的主机和之前一样。"+
+	"它现在还能连接："+
+	"更新"+
+	"允许并更新"+
+	"正在更新…"+
+	"关闭"+
+	"更新…"+
+	"检查更新"+
+	"正在检查更新…"+
+	"刚刚检查过"+
+	"添加插件，浏览更多视频"+
+	"插件发布在 GitHub 上。输入一个仓库，即可安装它最新的 Release。"+
+	"从 GitHub 安装…",
 	[]uint16{
 		11,
 		15,
@@ -652,6 +813,32 @@ var textsZhHans = i18n.NewTexts(""+
 		15,
 		15,
 		15,
+		13,
+		17,
+		145,
+		6,
+		10,
+		6,
+		29,
+		71,
+		23,
+		43,
+		49,
+		22,
+		9,
+		36,
+		24,
+		6,
+		15,
+		15,
+		6,
+		9,
+		12,
+		21,
+		15,
+		33,
+		85,
+		20,
 	})
 
 // texts returns the messages without arguments in lang, nil for a
@@ -782,6 +969,51 @@ func Supply(lang string, t Translation) {
 	}
 	if t.Installing != nil {
 		s.Installing = t.Installing
+	}
+	if t.NoRepository != nil {
+		s.NoRepository = t.NoRepository
+	}
+	if t.RepoReason != nil {
+		s.RepoReason = t.RepoReason
+	}
+	if t.RepoReleased != nil {
+		s.RepoReleased = t.RepoReleased
+	}
+	if t.UpdateTo != nil {
+		s.UpdateTo = t.UpdateTo
+	}
+	if t.UpdatePlugin != nil {
+		s.UpdatePlugin = t.UpdatePlugin
+	}
+	if t.YouHaveReleased != nil {
+		s.YouHaveReleased = t.YouHaveReleased
+	}
+	if t.YouHave != nil {
+		s.YouHave = t.YouHave
+	}
+	if t.UpdatingPlugin != nil {
+		s.UpdatingPlugin = t.UpdatingPlugin
+	}
+	if t.CannotUpdate != nil {
+		s.CannotUpdate = t.CannotUpdate
+	}
+	if t.StaysInstalled != nil {
+		s.StaysInstalled = t.StaysInstalled
+	}
+	if t.VersionAvailable != nil {
+		s.VersionAvailable = t.VersionAvailable
+	}
+	if t.Released != nil {
+		s.Released = t.Released
+	}
+	if t.CheckedMinutesAgo != nil {
+		s.CheckedMinutesAgo = t.CheckedMinutesAgo
+	}
+	if t.CheckedHoursAgo != nil {
+		s.CheckedHoursAgo = t.CheckedHoursAgo
+	}
+	if t.CouldNotCheck != nil {
+		s.CouldNotCheck = t.CouldNotCheck
 	}
 	supplied[lang] = s
 	Catalog.Add(lang)
@@ -2072,3 +2304,603 @@ func WaitingToScan(cx *core.Scope) string { return For(cx).WaitingToScan() }
 
 // WaitingToScan is the package's WaitingToScan in the language of msgs.
 func (msgs Messages) WaitingToScan() string { return msgs.text(textWaitingToScan) }
+
+// FromGitHub says "From GitHub…"
+// in the language the app shows under cx.
+//
+// Installs a plugin from the latest release of a GitHub repository.
+func FromGitHub(cx *core.Scope) string { return For(cx).FromGitHub() }
+
+// FromGitHub is the package's FromGitHub in the language of msgs.
+func (msgs Messages) FromGitHub() string { return msgs.text(textFromGitHub) }
+
+// InstallFromGitHub says "Install from GitHub"
+// in the language the app shows under cx.
+func InstallFromGitHub(cx *core.Scope) string { return For(cx).InstallFromGitHub() }
+
+// InstallFromGitHub is the package's InstallFromGitHub in the language of msgs.
+func (msgs Messages) InstallFromGitHub() string { return msgs.text(textInstallFromGitHub) }
+
+// InstallFromGitHubHint says "Type a repository as owner/repo, or paste its URL. NSGo Player installs the plugin zip of its latest release and offers its updates."
+// in the language the app shows under cx.
+func InstallFromGitHubHint(cx *core.Scope) string { return For(cx).InstallFromGitHubHint() }
+
+// InstallFromGitHubHint is the package's InstallFromGitHubHint in the language of msgs.
+func (msgs Messages) InstallFromGitHubHint() string { return msgs.text(textInstallFromGitHubHint) }
+
+// Repository says "Repository"
+// in the language the app shows under cx.
+func Repository(cx *core.Scope) string { return For(cx).Repository() }
+
+// Repository is the package's Repository in the language of msgs.
+func (msgs Messages) Repository() string { return msgs.text(textRepository) }
+
+// RepositoryPlaceholder says "owner/repo"
+// in the language the app shows under cx.
+//
+// The placeholder of the field a GitHub repository is typed in; owner and repo stand for its owner's and its own name.
+func RepositoryPlaceholder(cx *core.Scope) string { return For(cx).RepositoryPlaceholder() }
+
+// RepositoryPlaceholder is the package's RepositoryPlaceholder in the language of msgs.
+func (msgs Messages) RepositoryPlaceholder() string { return msgs.text(textRepositoryPlaceholder) }
+
+// Continue says "Continue"
+// in the language the app shows under cx.
+func Continue(cx *core.Scope) string { return For(cx).Continue() }
+
+// Continue is the package's Continue in the language of msgs.
+func (msgs Messages) Continue() string { return msgs.text(textContinue) }
+
+// FindingRelease says "Finding the latest release…"
+// in the language the app shows under cx.
+func FindingRelease(cx *core.Scope) string { return For(cx).FindingRelease() }
+
+// FindingRelease is the package's FindingRelease in the language of msgs.
+func (msgs Messages) FindingRelease() string { return msgs.text(textFindingRelease) }
+
+// NotARepository says "Type a repository as owner/repo, or its URL on GitHub."
+// in the language the app shows under cx.
+//
+// Says the text typed is not a GitHub repository.
+func NotARepository(cx *core.Scope) string { return For(cx).NotARepository() }
+
+// NotARepository is the package's NotARepository in the language of msgs.
+func (msgs Messages) NotARepository() string { return msgs.text(textNotARepository) }
+
+// NoRepository says "There is no repository {repo} on GitHub."
+// in the language the app shows under cx.
+//
+// A GitHub repository that does not exist, by its owner/repo.
+func NoRepository(cx *core.Scope, repo string) string { return For(cx).NoRepository(repo) }
+
+// NoRepository is the package's NoRepository in the language of msgs.
+func (msgs Messages) NoRepository(repo string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.NoRepository(repo))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].NoRepository; f != nil {
+			return f(repo)
+		}
+		switch lang {
+		case "", "en":
+			return "There is no repository " + msgs.arg(repo) + " on GitHub."
+		case "zh-Hans":
+			return "GitHub 上没有仓库 " + repo + "。"
+		}
+	}
+}
+
+// NoRelease says "It has no release yet."
+// in the language the app shows under cx.
+func NoRelease(cx *core.Scope) string { return For(cx).NoRelease() }
+
+// NoRelease is the package's NoRelease in the language of msgs.
+func (msgs Messages) NoRelease() string { return msgs.text(textNoRelease) }
+
+// NoPluginZip says "Its latest release has no plugin zip."
+// in the language the app shows under cx.
+func NoPluginZip(cx *core.Scope) string { return For(cx).NoPluginZip() }
+
+// NoPluginZip is the package's NoPluginZip in the language of msgs.
+func (msgs Messages) NoPluginZip() string { return msgs.text(textNoPluginZip) }
+
+// GitHubLimited says "GitHub limits requests now. Try again later."
+// in the language the app shows under cx.
+func GitHubLimited(cx *core.Scope) string { return For(cx).GitHubLimited() }
+
+// GitHubLimited is the package's GitHubLimited in the language of msgs.
+func (msgs Messages) GitHubLimited() string { return msgs.text(textGitHubLimited) }
+
+// GitHubUnreachable says "GitHub could not be reached."
+// in the language the app shows under cx.
+func GitHubUnreachable(cx *core.Scope) string { return For(cx).GitHubUnreachable() }
+
+// GitHubUnreachable is the package's GitHubUnreachable in the language of msgs.
+func (msgs Messages) GitHubUnreachable() string { return msgs.text(textGitHubUnreachable) }
+
+// RepoReason says "{repo}: {reason}"
+// in the language the app shows under cx.
+//
+// Why a GitHub repository could not be checked, by its owner/repo.
+func RepoReason(cx *core.Scope, repo string, reason string) string {
+	return For(cx).RepoReason(repo, reason)
+}
+
+// RepoReason is the package's RepoReason in the language of msgs.
+func (msgs Messages) RepoReason(repo string, reason string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.RepoReason(repo, reason))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].RepoReason; f != nil {
+			return f(repo, reason)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(repo) + ": " + msgs.arg(reason)
+		case "zh-Hans":
+			return repo + "：" + reason
+		}
+	}
+}
+
+// RepoReleased says "{repo} · Released {date, date, medium}"
+// in the language the app shows under cx.
+//
+// The GitHub repository a plugin is installed from, with its release's date.
+func RepoReleased(cx *core.Scope, repo string, date time.Time) string {
+	return For(cx).RepoReleased(repo, date)
+}
+
+// RepoReleased is the package's RepoReleased in the language of msgs.
+func (msgs Messages) RepoReleased(repo string, date time.Time) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.RepoReleased(repo, date))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].RepoReleased; f != nil {
+			return f(msgs.hc, repo, date)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(repo) + " · Released " + msgs.arg(i18n.FormatDate(msgs.dated("en"), date, i18n.DateOptions{Date: i18n.MediumStyle}))
+		case "zh-Hans":
+			return repo + " · 发布于 " + i18n.FormatDate(msgs.dated("zh-Hans"), date, i18n.DateOptions{Date: i18n.MediumStyle})
+		}
+	}
+}
+
+// UpdateTo says "Update to {version}"
+// in the language the app shows under cx.
+//
+// Says a plugin has a newer version, which pressing asks to install.
+func UpdateTo(cx *core.Scope, version string) string { return For(cx).UpdateTo(version) }
+
+// UpdateTo is the package's UpdateTo in the language of msgs.
+func (msgs Messages) UpdateTo(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.UpdateTo(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].UpdateTo; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return "Update to " + msgs.arg(version)
+		case "zh-Hans":
+			return "更新到 " + version
+		}
+	}
+}
+
+// UpdatePlugin says "Update {name} to {version}?"
+// in the language the app shows under cx.
+//
+// The title asking to install a plugin's newer version, by its name.
+func UpdatePlugin(cx *core.Scope, name string, version string) string {
+	return For(cx).UpdatePlugin(name, version)
+}
+
+// UpdatePlugin is the package's UpdatePlugin in the language of msgs.
+func (msgs Messages) UpdatePlugin(name string, version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.UpdatePlugin(name, version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].UpdatePlugin; f != nil {
+			return f(name, version)
+		}
+		switch lang {
+		case "", "en":
+			return "Update " + msgs.arg(name) + " to " + msgs.arg(version) + "?"
+		case "zh-Hans":
+			return "将 " + name + " 更新到 " + version + "？"
+		}
+	}
+}
+
+// YouHaveReleased says "You have {version} · Released {date, date, medium}"
+// in the language the app shows under cx.
+//
+// The version of a plugin installed, and when its newer version was released.
+func YouHaveReleased(cx *core.Scope, version string, date time.Time) string {
+	return For(cx).YouHaveReleased(version, date)
+}
+
+// YouHaveReleased is the package's YouHaveReleased in the language of msgs.
+func (msgs Messages) YouHaveReleased(version string, date time.Time) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.YouHaveReleased(version, date))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].YouHaveReleased; f != nil {
+			return f(msgs.hc, version, date)
+		}
+		switch lang {
+		case "", "en":
+			return "You have " + msgs.arg(version) + " · Released " + msgs.arg(i18n.FormatDate(msgs.dated("en"), date, i18n.DateOptions{Date: i18n.MediumStyle}))
+		case "zh-Hans":
+			return "当前为 " + version + " · 发布于 " + i18n.FormatDate(msgs.dated("zh-Hans"), date, i18n.DateOptions{Date: i18n.MediumStyle})
+		}
+	}
+}
+
+// YouHave says "You have {version}"
+// in the language the app shows under cx.
+//
+// The version of a plugin installed.
+func YouHave(cx *core.Scope, version string) string { return For(cx).YouHave(version) }
+
+// YouHave is the package's YouHave in the language of msgs.
+func (msgs Messages) YouHave(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.YouHave(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].YouHave; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return "You have " + msgs.arg(version)
+		case "zh-Hans":
+			return "当前为 " + version
+		}
+	}
+}
+
+// WhatsNew says "What's new"
+// in the language the app shows under cx.
+//
+// Heads the notes of a plugin's newer version.
+func WhatsNew(cx *core.Scope) string { return For(cx).WhatsNew() }
+
+// WhatsNew is the package's WhatsNew in the language of msgs.
+func (msgs Messages) WhatsNew() string { return msgs.text(textWhatsNew) }
+
+// SameHosts says "It connects to the same hosts as before."
+// in the language the app shows under cx.
+func SameHosts(cx *core.Scope) string { return For(cx).SameHosts() }
+
+// SameHosts is the package's SameHosts in the language of msgs.
+func (msgs Messages) SameHosts() string { return msgs.text(textSameHosts) }
+
+// AlsoConnects says "It can now also connect to:"
+// in the language the app shows under cx.
+//
+// Heads the hosts a plugin's newer version may reach, with the new ones marked.
+func AlsoConnects(cx *core.Scope) string { return For(cx).AlsoConnects() }
+
+// AlsoConnects is the package's AlsoConnects in the language of msgs.
+func (msgs Messages) AlsoConnects() string { return msgs.text(textAlsoConnects) }
+
+// Update says "Update"
+// in the language the app shows under cx.
+func Update(cx *core.Scope) string { return For(cx).Update() }
+
+// Update is the package's Update in the language of msgs.
+func (msgs Messages) Update() string { return msgs.text(textUpdate) }
+
+// ApproveAndUpdate says "Approve and Update"
+// in the language the app shows under cx.
+func ApproveAndUpdate(cx *core.Scope) string { return For(cx).ApproveAndUpdate() }
+
+// ApproveAndUpdate is the package's ApproveAndUpdate in the language of msgs.
+func (msgs Messages) ApproveAndUpdate() string { return msgs.text(textApproveAndUpdate) }
+
+// UpdatingPlugin says "Updating {name} to {version}…"
+// in the language the app shows under cx.
+//
+// The title while a plugin's newer version is being installed.
+func UpdatingPlugin(cx *core.Scope, name string, version string) string {
+	return For(cx).UpdatingPlugin(name, version)
+}
+
+// UpdatingPlugin is the package's UpdatingPlugin in the language of msgs.
+func (msgs Messages) UpdatingPlugin(name string, version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.UpdatingPlugin(name, version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].UpdatingPlugin; f != nil {
+			return f(name, version)
+		}
+		switch lang {
+		case "", "en":
+			return "Updating " + msgs.arg(name) + " to " + msgs.arg(version) + "…"
+		case "zh-Hans":
+			return "正在将 " + name + " 更新到 " + version + "…"
+		}
+	}
+}
+
+// UpdatingShort says "Updating…"
+// in the language the app shows under cx.
+func UpdatingShort(cx *core.Scope) string { return For(cx).UpdatingShort() }
+
+// UpdatingShort is the package's UpdatingShort in the language of msgs.
+func (msgs Messages) UpdatingShort() string { return msgs.text(textUpdatingShort) }
+
+// CannotUpdate says "{name} could not be updated"
+// in the language the app shows under cx.
+//
+// The title saying a plugin's newer version could not be installed, by its name.
+func CannotUpdate(cx *core.Scope, name string) string { return For(cx).CannotUpdate(name) }
+
+// CannotUpdate is the package's CannotUpdate in the language of msgs.
+func (msgs Messages) CannotUpdate(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.CannotUpdate(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].CannotUpdate; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(name) + " could not be updated"
+		case "zh-Hans":
+			return "无法更新 " + name
+		}
+	}
+}
+
+// StaysInstalled says "{version} stays installed"
+// in the language the app shows under cx.
+//
+// Says the version of a plugin installed stays after its update failed.
+func StaysInstalled(cx *core.Scope, version string) string { return For(cx).StaysInstalled(version) }
+
+// StaysInstalled is the package's StaysInstalled in the language of msgs.
+func (msgs Messages) StaysInstalled(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.StaysInstalled(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].StaysInstalled; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return msgs.arg(version) + " stays installed"
+		case "zh-Hans":
+			return "仍保留 " + version
+		}
+	}
+}
+
+// Close says "Close"
+// in the language the app shows under cx.
+func Close(cx *core.Scope) string { return For(cx).Close() }
+
+// Close is the package's Close in the language of msgs.
+func (msgs Messages) Close() string { return msgs.text(textClose) }
+
+// VersionAvailable says "Version {version} is available"
+// in the language the app shows under cx.
+//
+// Says a plugin has a newer version.
+func VersionAvailable(cx *core.Scope, version string) string {
+	return For(cx).VersionAvailable(version)
+}
+
+// VersionAvailable is the package's VersionAvailable in the language of msgs.
+func (msgs Messages) VersionAvailable(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.VersionAvailable(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].VersionAvailable; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return "Version " + msgs.arg(version) + " is available"
+		case "zh-Hans":
+			return "版本 " + version + " 可用"
+		}
+	}
+}
+
+// Released says "Released {date, date, medium}"
+// in the language the app shows under cx.
+//
+// When a plugin's newer version was released.
+func Released(cx *core.Scope, date time.Time) string { return For(cx).Released(date) }
+
+// Released is the package's Released in the language of msgs.
+func (msgs Messages) Released(date time.Time) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.Released(date))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].Released; f != nil {
+			return f(msgs.hc, date)
+		}
+		switch lang {
+		case "", "en":
+			return "Released " + msgs.arg(i18n.FormatDate(msgs.dated("en"), date, i18n.DateOptions{Date: i18n.MediumStyle}))
+		case "zh-Hans":
+			return "发布于 " + i18n.FormatDate(msgs.dated("zh-Hans"), date, i18n.DateOptions{Date: i18n.MediumStyle})
+		}
+	}
+}
+
+// UpdateAction says "Update…"
+// in the language the app shows under cx.
+//
+// Asks to install a plugin's newer version.
+func UpdateAction(cx *core.Scope) string { return For(cx).UpdateAction() }
+
+// UpdateAction is the package's UpdateAction in the language of msgs.
+func (msgs Messages) UpdateAction() string { return msgs.text(textUpdateAction) }
+
+// CheckForUpdates says "Check for Updates"
+// in the language the app shows under cx.
+func CheckForUpdates(cx *core.Scope) string { return For(cx).CheckForUpdates() }
+
+// CheckForUpdates is the package's CheckForUpdates in the language of msgs.
+func (msgs Messages) CheckForUpdates() string { return msgs.text(textCheckForUpdates) }
+
+// CheckingUpdates says "Checking for updates…"
+// in the language the app shows under cx.
+func CheckingUpdates(cx *core.Scope) string { return For(cx).CheckingUpdates() }
+
+// CheckingUpdates is the package's CheckingUpdates in the language of msgs.
+func (msgs Messages) CheckingUpdates() string { return msgs.text(textCheckingUpdates) }
+
+// CheckedJustNow says "Checked just now"
+// in the language the app shows under cx.
+//
+// When the plugins from GitHub were last checked for updates.
+func CheckedJustNow(cx *core.Scope) string { return For(cx).CheckedJustNow() }
+
+// CheckedJustNow is the package's CheckedJustNow in the language of msgs.
+func (msgs Messages) CheckedJustNow() string { return msgs.text(textCheckedJustNow) }
+
+// CheckedMinutesAgo says "Checked {n, plural, one {# minute} other {# minutes}} ago"
+// in the language the app shows under cx.
+//
+// When the plugins from GitHub were last checked for updates.
+func CheckedMinutesAgo(cx *core.Scope, n int) string { return For(cx).CheckedMinutesAgo(n) }
+
+// CheckedMinutesAgo is the package's CheckedMinutesAgo in the language of msgs.
+func (msgs Messages) CheckedMinutesAgo(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.CheckedMinutesAgo(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].CheckedMinutesAgo; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			var b strings.Builder
+			b.WriteString("Checked ")
+			switch i18n.Cardinal("en", float64(n)) {
+			case i18n.One:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" minute")
+			default:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" minutes")
+			}
+			b.WriteString(" ago")
+			return b.String()
+		case "zh-Hans":
+			return i18n.FormatNumber("zh-Hans", float64(n)) + " 分钟前检查过"
+		}
+	}
+}
+
+// CheckedHoursAgo says "Checked {n, plural, one {# hour} other {# hours}} ago"
+// in the language the app shows under cx.
+//
+// When the plugins from GitHub were last checked for updates.
+func CheckedHoursAgo(cx *core.Scope, n int) string { return For(cx).CheckedHoursAgo(n) }
+
+// CheckedHoursAgo is the package's CheckedHoursAgo in the language of msgs.
+func (msgs Messages) CheckedHoursAgo(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.CheckedHoursAgo(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].CheckedHoursAgo; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			var b strings.Builder
+			b.WriteString("Checked ")
+			switch i18n.Cardinal("en", float64(n)) {
+			case i18n.One:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" hour")
+			default:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" hours")
+			}
+			b.WriteString(" ago")
+			return b.String()
+		case "zh-Hans":
+			return i18n.FormatNumber("zh-Hans", float64(n)) + " 小时前检查过"
+		}
+	}
+}
+
+// CouldNotCheck says "Could not check for updates: {reason}"
+// in the language the app shows under cx.
+//
+// Says checking the plugins from GitHub for updates failed, and why.
+func CouldNotCheck(cx *core.Scope, reason string) string { return For(cx).CouldNotCheck(reason) }
+
+// CouldNotCheck is the package's CouldNotCheck in the language of msgs.
+func (msgs Messages) CouldNotCheck(reason string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.CouldNotCheck(reason))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].CouldNotCheck; f != nil {
+			return f(reason)
+		}
+		switch lang {
+		case "", "en":
+			return "Could not check for updates: " + msgs.arg(reason)
+		case "zh-Hans":
+			return "无法检查更新：" + reason
+		}
+	}
+}
+
+// NoPluginsAdded says "Add a plugin to browse more videos"
+// in the language the app shows under cx.
+func NoPluginsAdded(cx *core.Scope) string { return For(cx).NoPluginsAdded() }
+
+// NoPluginsAdded is the package's NoPluginsAdded in the language of msgs.
+func (msgs Messages) NoPluginsAdded() string { return msgs.text(textNoPluginsAdded) }
+
+// PluginsOnGitHub says "Plugins are published on GitHub. Type a repository to install its latest release."
+// in the language the app shows under cx.
+func PluginsOnGitHub(cx *core.Scope) string { return For(cx).PluginsOnGitHub() }
+
+// PluginsOnGitHub is the package's PluginsOnGitHub in the language of msgs.
+func (msgs Messages) PluginsOnGitHub() string { return msgs.text(textPluginsOnGitHub) }
+
+// InstallFromGitHubAction says "Install from GitHub…"
+// in the language the app shows under cx.
+//
+// Installs a plugin from the latest release of a GitHub repository.
+func InstallFromGitHubAction(cx *core.Scope) string { return For(cx).InstallFromGitHubAction() }
+
+// InstallFromGitHubAction is the package's InstallFromGitHubAction in the language of msgs.
+func (msgs Messages) InstallFromGitHubAction() string { return msgs.text(textInstallFromGitHubAction) }
+
+// dated is lang with the hour cycle the user set, which times take.
+func (msgs Messages) dated(lang string) string {
+	if msgs.hc == "" {
+		return lang
+	}
+	return lang + "-u-hc-" + msgs.hc
+}

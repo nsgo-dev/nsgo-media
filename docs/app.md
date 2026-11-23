@@ -13,15 +13,14 @@ It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Lin
 | Local files | The built-in plugin: the viewer's video folders, their subfolders, searching their names, a pasted path, and subtitle files beside a video |
 | Plugins | A folder with a YAML manifest, YAML locales and one JavaScript or TypeScript file, run by moejs with only the network hosts its manifest lists |
 | Plugin pages | A sidebar entry per plugin with its home, its own pages and search; video pages with their parts; playing what the plugin's `stream` answers, at a quality the viewer picks |
-| Plugin management | Listing, enabling and disabling plugins, installing one from a folder or zip, or using one where its folder is picked, each after approving its hosts; each plugin's page with its account, settings and hosts, and removing it with its data; listing those refused until removed |
-| Look | Every page and state of the designs in `design/` but the following page and following a show, which wait for a plugin export of their own, and installing and updating from GitHub |
+| Plugin management | Listing, enabling and disabling plugins, installing one from the latest release of a GitHub repository, a folder or a zip, or using one where its folder is picked, each after approving its hosts; checking the repositories of those from GitHub for a newer release and updating one when the viewer agrees, keeping its data; each plugin's page with its account, settings and hosts, and removing it with its data; listing those refused until removed |
+| Look | Every page and state of the designs in `design/` but the following page and following a show, which wait for a plugin export of their own |
 | Languages | Simplified Chinese and English, for the app and for plugins' own text |
 
 ### First version on macOS
 
 Goals, in the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
 
-- Installing from GitHub: typing a repository as `owner/repo` or its URL installs the plugin zip of its latest release, after the viewer approves its hosts. The app checks the repositories of plugins installed this way for a newer release, never a pre-release, and updates one when the viewer agrees.
 - A release: one universal disk image, signed with a Developer ID, notarized and published on this repository's GitHub releases by a local command. A plugin from its own repository, installed from GitHub, plays in it.
 
 Out of scope: danmaku, comments and posting to a site; downloading, casting, live streams and DRM; a catalog of plugins; the app updating itself; playlists; mobile targets. No plugin for a particular site ships in this repository.
@@ -52,14 +51,16 @@ Out of scope: danmaku, comments and posting to a site; downloading, casting, liv
 
 **Browse.** A sidebar entry or a search calls the plugin's export and renders the sections it answers: cards of videos, uploaders and collections, and links to further pages. Opening a video calls `video` for its parts and related videos.
 
+**GitHub.** A repository typed as `owner/repo` or its URL is asked for its latest release, whose plugin zip is downloaded and read as a picked zip is, then approved and installed ([Publishing on GitHub](plugins.md#publishing-on-github)). At start, every six hours and on Refresh, the app asks for each such plugin's latest release and reads a newer one ahead, so its badge, notes and added hosts show before the viewer agrees. An update closes the plugin, swaps its folder, loads the new one and puts it in the old one's place in the pages; one that fails to load puts the old folder back.
+
 **Play.** Playing a part calls `stream` and opens its video, and its audio if separate, with their headers. The quality menu calls `stream` again and resumes at the same position. The position is stored locally and reported to the plugin's `progress`; at the end, the next part follows.
 
 ## Data
 
-The app keeps its data in the user's configuration directory: its settings, which list the folders of the plugins used where they are and whether it sends usage statistics, the installed plugins' folders, each plugin's data folder with its storage and settings, and the resume positions. Only the app writes them; a plugin writes only its own storage, through the host object.
+The app keeps its data in the user's configuration directory: its settings, which list the folders of the plugins used where they are, the repository and release each plugin from GitHub came from, and whether it sends usage statistics, the installed plugins' folders, each plugin's data folder with its storage and settings, and the resume positions. Only the app writes them; a plugin writes only its own storage, through the host object.
 
 The installed app counts its use in the website's Umami (`internal/stats`): a pageview for each kind of page, never a plugin's own, heartbeats while a page is new or a video is open, and a random ID kept in its storage, until the viewer turns it off in the settings.
 
 ## Verification
 
-From `app/`, `go tool nsgo check` and `go tool nsgo test` cover its packages. Plugin tests load the demo plugin and check permissions, limits, errors and every host function, and native plugins' file URLs. The local files plugin's tests browse, search and stream a folder made for them, and the app's play a clip of the core's `testdata/` from it. The player page's tests play the core's clips, headless and in a real window with `-target`.
+From `app/`, `go tool nsgo check` and `go tool nsgo test` cover its packages. Plugin tests load the demo plugin and check permissions, limits, errors and every host function, and native plugins' file URLs. A local server stands in for GitHub's API and downloads in the tests of installing and updating from GitHub: a repository missing, without a release or a plugin zip, a pre-release, a limited or unreachable API, a newer `minAppVersion`, added hosts, data kept and a failed update rolled back. The local files plugin's tests browse, search and stream a folder made for them, and the app's play a clip of the core's `testdata/` from it. The player page's tests play the core's clips, headless and in a real window with `-target`.

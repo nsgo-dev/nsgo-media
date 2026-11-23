@@ -36,10 +36,10 @@ func (sh *shell) settingsPage(cx *core.Scope) core.Node {
 		core.View{Class: "gap-2", Children: []core.Node{
 			core.View{Class: "flex-row items-center gap-2 px-1", Children: []core.Node{
 				core.Text{Content: locales.Plugins(cx), Class: "flex-1 text-xs font-semibold text-muted-foreground"},
-				// Checking GitHub's plugins for updates (#26) shows
-				// here, before Add Plugin.
+				sh.checkStatus(cx),
 				sh.addMenu(cx),
 			}},
+			sh.checkFailed(cx),
 			core.View{TestID: "plugin-list", Class: "overflow-hidden rounded-xl border border-border bg-background", Children: []core.Node{
 				core.Each(sh.plugins.Get, func(p *plugin.Plugin) *plugin.Plugin { return p }, func(cx *core.Scope, item func() *plugin.Plugin, index func() int) core.Node {
 					return sh.pluginRow(cx, item(), func() bool { return index() == len(sh.plugins.Get())-1 && len(sh.refused.Get()) == 0 })
@@ -47,6 +47,7 @@ func (sh *shell) settingsPage(cx *core.Scope) core.Node {
 				core.Each(sh.refused.Get, func(r *refusal) *refusal { return r }, func(cx *core.Scope, item func() *refusal, index func() int) core.Node {
 					return sh.refusedRow(cx, item(), func() bool { return index() == len(sh.refused.Get())-1 })
 				}),
+				core.Show{When: sh.onlyBuiltIn, Then: sh.noPluginsAdded},
 			}},
 		}},
 	)
@@ -65,6 +66,34 @@ func page(testID string, children ...core.Node) core.Node {
 	}
 }
 
+// onlyBuiltIn reports whether the viewer added no plugin yet.
+func (sh *shell) onlyBuiltIn() bool {
+	if len(sh.refused.Get()) > 0 {
+		return false
+	}
+	for _, p := range sh.plugins.Get() {
+		if !p.Builtin {
+			return false
+		}
+	}
+	return true
+}
+
+// noPluginsAdded ends the list of plugins while only the built-in ones
+// are there, offering to install one from GitHub.
+func (sh *shell) noPluginsAdded(cx *core.Scope) core.Node {
+	return core.View{TestID: "no-plugins", Class: "items-center gap-3 border-t border-border px-6 py-8", Children: []core.Node{
+		core.View{Class: "size-12 items-center justify-center rounded-2xl bg-chip", Children: []core.Node{
+			core.Icon{SVG: lucide.Puzzle(), Class: "size-6 text-faint-ink"},
+		}},
+		core.View{Class: "items-center gap-1", Children: []core.Node{
+			core.Text{Content: locales.NoPluginsAdded(cx), Class: "text-[13px] font-semibold text-foreground"},
+			core.Text{Content: locales.PluginsOnGitHub(cx), Class: "max-w-[400px] text-center text-xs leading-relaxed text-muted-foreground"},
+		}},
+		ui.Button{TestID: "empty-install-github", Text: locales.InstallFromGitHubAction(cx), Icon: lucide.GitFork, OnPress: sh.openFromGitHub},
+	}}
+}
+
 // addMenu adds a plugin: from a folder or a zip, copied into the app, or
 // from a path, used where it is.
 func (sh *shell) addMenu(cx *core.Scope) core.Node {
@@ -73,8 +102,9 @@ func (sh *shell) addMenu(cx *core.Scope) core.Node {
 		Label:   locales.AddPlugin(cx),
 		Trigger: ui.Button{Text: locales.AddPlugin(cx), Icon: lucide.Plus, Variant: ui.ButtonOutline, Size: ui.SizeSmall},
 		Children: []core.Node{
-			// Installing from GitHub (#26) comes first here, as plugins
-			// are published there.
+			// GitHub comes first, as plugins are published there.
+			ui.MenuItem{TestID: "install-github", Text: locales.FromGitHub(cx), Icon: lucide.GitFork, OnSelect: sh.openFromGitHub},
+			ui.MenuSeparator{},
 			ui.MenuItem{TestID: "install-folder", Text: locales.InstallFromFolder(cx), Icon: lucide.Folder, OnSelect: func() { sh.pickFolder(cx) }},
 			ui.MenuItem{TestID: "install-zip", Text: locales.InstallFromZip(cx), Icon: lucide.FileArchive, OnSelect: func() { sh.pickZip(cx) }},
 			ui.MenuItem{TestID: "link-folder", Text: locales.UseFromPath(cx), Icon: lucide.FolderCode, OnSelect: func() { sh.pickLink(cx) }},
@@ -133,6 +163,9 @@ func (sh *shell) source(cx *core.Scope, p *plugin.Plugin) (func() *core.SVG, str
 	if dir, ok := sh.library.linkedDir(p); ok {
 		return lucide.Folder, dir
 	}
+	if r, ok := sh.library.releaseOf(p); ok {
+		return lucide.GitFork, r.Repo
+	}
 	if hosts := p.Manifest.Permissions.Network; len(hosts) > 0 {
 		return lucide.Globe, strings.Join(hosts, ", ")
 	}
@@ -181,8 +214,7 @@ func (sh *shell) pluginRow(cx *core.Scope, p *plugin.Plugin, last func() bool) c
 					core.Text{TestID: "plugin-source-" + id, Content: from, MaxLines: 1, Class: "text-xs text-muted-foreground", Style: core.Style{FlexShrink: 1}},
 				}},
 			}},
-			// An update of a plugin installed from GitHub (#26) shows
-			// here, before its switch.
+			sh.updatePill(cx, p),
 			sh.enableSwitch(cx, p, "enable-"),
 			core.Icon{SVG: lucide.ChevronRight(), Class: "size-4 text-faint-ink"},
 		},
@@ -395,6 +427,9 @@ func installError(cx *core.Scope, err error) string {
 	if errors.As(err, &tooNew) {
 		return locales.NeedsNewerApp(cx, tooNew.MinAppVersion)
 	}
+	if m, ok := gitHubMessage(cx, err); ok {
+		return m
+	}
 	return err.Error()
 }
 
@@ -407,11 +442,18 @@ func (sh *shell) pluginPage(cx *core.Scope, p *plugin.Plugin) core.Node {
 	if p.Builtin {
 		line = append(line, core.Text{Content: locales.BuiltIntoApp(cx), Class: "text-[13px] text-muted-foreground"})
 	} else {
+		source := core.Node(core.Text{Content: from, MaxLines: 1, Class: "text-[13px] font-medium text-muted-foreground", Style: core.Style{FlexShrink: 1}})
+		if r, ok := sh.library.releaseOf(p); ok {
+			// The repository opens in the browser.
+			source = core.Text{TestID: "repository-link", Content: r.Repo, MaxLines: 1, Role: core.RoleLink, Label: r.Repo,
+				OnPress: func(core.PressEvent) { cx.OpenURL("https://github.com/"+r.Repo, nil) },
+				Class:   "text-[13px] font-medium text-accent", Style: core.Style{FlexShrink: 1, Cursor: core.CursorPointer}}
+		}
 		line = append(line,
 			core.Text{Content: locales.VersionN(cx, p.Manifest.Version), Class: "text-[13px] text-muted-foreground"},
 			core.Text{Content: "·", Class: "text-[13px] text-faint-ink"},
 			core.Icon{SVG: icon(), Class: "size-3.5 text-faint-ink"},
-			core.Text{Content: from, MaxLines: 1, Class: "text-[13px] font-medium text-muted-foreground", Style: core.Style{FlexShrink: 1}},
+			source,
 		)
 	}
 	children := []core.Node{
@@ -423,8 +465,7 @@ func (sh *shell) pluginPage(cx *core.Scope, p *plugin.Plugin) core.Node {
 			}},
 			sh.enableSwitch(cx, p, "page-enable-"),
 		}},
-		// A newer release of a plugin installed from GitHub (#26) shows
-		// here.
+		sh.updateBanner(cx, p),
 	}
 	if p.Has(plugin.ExportAccount) || p.Has(plugin.ExportSignIn) {
 		children = append(children, group(locales.Account(cx), sh.accountRow(cx, p)))
@@ -598,6 +639,11 @@ func (sh *shell) removeDialog(cx *core.Scope) core.Node {
 			return slices.DeleteFunc(slices.Clone(ps), func(q *plugin.Plugin) bool { return q == p })
 		})
 		delete(sh.accounts, p)
+		sh.updates.Update(func(m map[string]*update) map[string]*update {
+			m = clonedUpdates(m)
+			delete(m, p.Manifest.ID)
+			return m
+		})
 		if err := sh.settings.SetEnabled(p.Manifest.ID, true); err != nil {
 			log.Printf("settings: %v", err)
 		}

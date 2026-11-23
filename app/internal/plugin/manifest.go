@@ -280,3 +280,11 @@ func compareVersions(a, b [3]int) int {
 	}
 	return 0
 }
+
+// Newer reports whether version a is newer than b, both such as 1.0.0;
+// one that is not a version is never newer.
+func Newer(a, b string) bool {
+	va, ok := parseVersion(a)
+	vb, okb := parseVersion(b)
+	return ok && okb && compareVersions(va, vb) > 0
+}

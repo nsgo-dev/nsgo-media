@@ -41,6 +41,35 @@ func InstallPlugin(dir, name string, src fs.FS) error {
 	return nil
 }
 
+// ReplacePlugin replaces the folder name of dir, the plugins folder, with
+// the regular files of src, then calls load with the new folder. A failed
+// copy or load puts the old folder back.
+func ReplacePlugin(dir, name string, src fs.FS, load func(path string) error) error {
+	dst := filepath.Join(dir, name)
+	tmp, err := os.MkdirTemp(dir, "."+name+".*")
+	if err != nil {
+		return err
+	}
+	if err := copyFS(tmp, src); err != nil {
+		os.RemoveAll(tmp)
+		return err
+	}
+	old := tmp + ".old"
+	if err := os.Rename(dst, old); err != nil {
+		os.RemoveAll(tmp)
+		return err
+	}
+	if err := os.Rename(tmp, dst); err != nil {
+		os.RemoveAll(tmp)
+		return errors.Join(err, os.Rename(old, dst))
+	}
+	if err := load(dst); err != nil {
+		os.RemoveAll(dst)
+		return errors.Join(err, os.Rename(old, dst))
+	}
+	return os.RemoveAll(old)
+}
+
 func copyFS(dst string, src fs.FS) error {
 	var size int64
 	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
