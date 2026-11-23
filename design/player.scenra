@@ -1,7 +1,7 @@
 design playing name="Player/Playing" device=desktop class="overflow-hidden rounded-xl bg-black"
-box class="flex-1" note="The player page covers the whole window, sidebar too, while a source plays; the window's buttons stay over its top left. Moving the pointer shows the bars; they hide after three seconds of stillness while playing. Space plays or pauses, ←/→ seek, ↑/↓ change the volume, F toggles full screen and Esc leaves it, then the page."
+box class="flex-1" note="The player page covers the whole window, sidebar too, while a source plays; the window's buttons stay over its top left. Moving the pointer shows the back button and the floating controls; they hide after three seconds of stillness while playing. Space plays or pauses, ←/→ seek, ↑/↓ change the volume, F toggles full screen and Esc leaves it, then the page."
   image "Alpine lake at sunrise, the video playing" src="assets/thumbs/mountains.jpg" class="absolute inset-0"
-  box class="absolute top-[14px] left-5 flex-row gap-2"
+  box class="absolute top-[32px] left-5 flex-row gap-2" note="The window's own buttons, moved down so their centre lines up with the back button's."
     box class="size-3 rounded-full bg-[#FF5F57]"
     end
     box class="size-3 rounded-full bg-[#FEBC2E]"
@@ -10,34 +10,38 @@ box class="flex-1" note="The player page covers the whole window, sidebar too, w
     end
   end
   use player-top class="absolute top-0 right-0 left-0" back.tap="close"
-  box class="absolute bottom-[104px] left-5 flex-row items-center gap-1 rounded-full bg-black/60 py-1 pr-1 pl-3.5 shadow-lg" note="Offered for a few seconds when the part was left partway; pressing it seeks there."
+  box class="absolute bottom-[136px] left-[200px] flex-row items-center gap-1 rounded-full border border-white/25 bg-white/10 py-1 pr-1 pl-3.5 shadow-lg backdrop-blur-2xl" note="Offered for a few seconds when the part was left partway; pressing it seeks there."
     icon rotate-ccw class="size-4 text-white"
     text "Resume at 1:31:05" class="px-1 text-[13px] font-medium text-white"
     box class="size-7 items-center justify-center rounded-full hover:bg-white/15"
       icon x class="size-3.5 text-white/80"
     end
   end
-  use player-controls class="absolute right-0 bottom-0 left-0" quality.tap="open #quality" subtitles.tap="open #tracks" parts.tap="open #parts" fullscreen.tap="open #fullscreen" speed.tap="open #speed"
+  box class="absolute right-0 bottom-5 left-0 items-center"
+    use player-controls class="w-[800px]" quality.tap="open #quality" subtitles.tap="open #tracks" parts.tap="open #parts" fullscreen.tap="open #fullscreen" speed.tap="open #speed"
+  end
 end
 
 design quality name="Player · Quality" device=desktop class="overflow-hidden rounded-xl bg-black"
 box class="flex-1"
   image "Alpine lake at sunrise, the video playing" src="assets/thumbs/mountains.jpg" class="absolute inset-0"
   use player-top class="absolute top-0 right-0 left-0"
-  use player-controls class="absolute right-0 bottom-0 left-0" quality.class="bg-white/15"
-  box class="absolute right-[52px] bottom-[64px] w-44 gap-0.5 rounded-xl border border-white/10 bg-zinc-900/90 p-1.5 shadow-2xl" note="Choosing calls stream again for the quality and resumes at the same position."
+  box class="absolute right-0 bottom-5 left-0 items-center"
+    use player-controls class="w-[800px]" quality.class="bg-white/25"
+  end
+  box class="absolute right-[262px] bottom-[136px] w-44 gap-0.5 rounded-[20px] border border-white/20 bg-zinc-900/50 p-1.5 shadow-2xl backdrop-blur-2xl backdrop-saturate-150" note="Choosing calls stream again for the quality and resumes at the same position."
     text "Quality" class="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold text-white/50"
-    box class="h-8 flex-row items-center gap-2 rounded-lg px-2.5 hover:bg-white/10"
+    box class="h-8 flex-row items-center gap-2 rounded-xl px-2.5 hover:bg-white/10"
       text "4K" class="flex-1 text-[13px] text-white/90"
     end
-    box class="h-8 flex-row items-center gap-2 rounded-lg bg-white/10 px-2.5"
+    box class="h-8 flex-row items-center gap-2 rounded-xl bg-white/15 px-2.5"
       text "1080p" class="flex-1 text-[13px] font-medium text-white"
-      icon check class="size-4 text-[#FF6B4A]"
+      icon check class="size-4 text-white"
     end
-    box class="h-8 flex-row items-center gap-2 rounded-lg px-2.5 hover:bg-white/10"
+    box class="h-8 flex-row items-center gap-2 rounded-xl px-2.5 hover:bg-white/10"
       text "720p" class="flex-1 text-[13px] text-white/90"
     end
-    box class="h-8 flex-row items-center gap-2 rounded-lg px-2.5 hover:bg-white/10"
+    box class="h-8 flex-row items-center gap-2 rounded-xl px-2.5 hover:bg-white/10"
       text "480p" class="flex-1 text-[13px] text-white/90"
     end
   end
@@ -47,26 +51,28 @@ design speed name="Player · Speed" device=desktop class="overflow-hidden rounde
 box class="flex-1"
   image "Alpine lake at sunrise, the video playing" src="assets/thumbs/mountains.jpg" class="absolute inset-0"
   use player-top class="absolute top-0 right-0 left-0"
-  use player-controls class="absolute right-0 bottom-0 left-0" speed.class="bg-white/15"
-  box class="absolute right-[140px] bottom-[64px] w-32 gap-0.5 rounded-xl border border-white/10 bg-zinc-900/90 p-1.5 shadow-2xl"
+  box class="absolute right-0 bottom-5 left-0 items-center"
+    use player-controls class="w-[800px]" speed.class="bg-white/25"
+  end
+  box class="absolute right-[366px] bottom-[136px] w-32 gap-0.5 rounded-[20px] border border-white/20 bg-zinc-900/50 p-1.5 shadow-2xl backdrop-blur-2xl backdrop-saturate-150"
     text "Speed" class="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold text-white/50"
-    box class="h-8 flex-row items-center rounded-lg px-2.5"
+    box class="h-8 flex-row items-center rounded-xl px-2.5"
       text "0.5×" class="flex-1 text-[13px] text-white/90"
     end
-    box class="h-8 flex-row items-center rounded-lg px-2.5"
+    box class="h-8 flex-row items-center rounded-xl px-2.5"
       text "0.75×" class="flex-1 text-[13px] text-white/90"
     end
-    box class="h-8 flex-row items-center rounded-lg bg-white/10 px-2.5"
+    box class="h-8 flex-row items-center rounded-xl bg-white/15 px-2.5"
       text "1×" class="flex-1 text-[13px] font-medium text-white"
-      icon check class="size-4 text-[#FF6B4A]"
+      icon check class="size-4 text-white"
     end
-    box class="h-8 flex-row items-center rounded-lg px-2.5"
+    box class="h-8 flex-row items-center rounded-xl px-2.5"
       text "1.25×" class="flex-1 text-[13px] text-white/90"
     end
-    box class="h-8 flex-row items-center rounded-lg px-2.5"
+    box class="h-8 flex-row items-center rounded-xl px-2.5"
       text "1.5×" class="flex-1 text-[13px] text-white/90"
     end
-    box class="h-8 flex-row items-center rounded-lg px-2.5"
+    box class="h-8 flex-row items-center rounded-xl px-2.5"
       text "2×" class="flex-1 text-[13px] text-white/90"
     end
   end
@@ -76,19 +82,21 @@ design tracks name="Player · Subtitles and audio" device=desktop class="overflo
 box class="flex-1"
   image "Alpine lake at sunrise, the video playing" src="assets/thumbs/mountains.jpg" class="absolute inset-0"
   use player-top class="absolute top-0 right-0 left-0"
-  text "The mist lifts as the sun reaches the water." class="absolute right-0 bottom-[150px] left-0 text-center text-[22px] font-medium text-white" note="Subtitles, over the picture and above the bars while they show."
-  use player-controls class="absolute right-0 bottom-0 left-0" subtitles.class="bg-white/15"
-  box class="absolute right-[100px] bottom-[64px] w-[380px] flex-row gap-1 rounded-xl border border-white/10 bg-zinc-900/90 p-1.5 shadow-2xl" note="The source's subtitle tracks, its own or the plugin's, and audio tracks, each by its title or else its number."
+  text "The mist lifts as the sun reaches the water." class="absolute right-0 bottom-[148px] left-0 text-center text-[22px] font-medium text-white" note="Subtitles, over the picture and above the floating controls while they show."
+  box class="absolute right-0 bottom-5 left-0 items-center"
+    use player-controls class="w-[800px]" subtitles.class="bg-white/25"
+  end
+  box class="absolute right-[324px] bottom-[136px] w-[380px] flex-row gap-1 rounded-[20px] border border-white/20 bg-zinc-900/50 p-1.5 shadow-2xl backdrop-blur-2xl backdrop-saturate-150" note="The source's subtitle tracks, its own or the plugin's, and audio tracks, each by its title or else its number."
     box class="flex-1 gap-0.5"
       text "Subtitles" class="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold text-white/50"
-      box class="h-8 flex-row items-center rounded-lg px-2.5"
+      box class="h-8 flex-row items-center rounded-xl px-2.5"
         text "Off" class="flex-1 text-[13px] text-white/90"
       end
-      box class="h-8 flex-row items-center rounded-lg bg-white/10 px-2.5"
+      box class="h-8 flex-row items-center rounded-xl bg-white/15 px-2.5"
         text "English" class="flex-1 truncate text-[13px] font-medium text-white"
-        icon check class="size-4 text-[#FF6B4A]"
+        icon check class="size-4 text-white"
       end
-      box class="h-8 flex-row items-center rounded-lg px-2.5"
+      box class="h-8 flex-row items-center rounded-xl px-2.5"
         text "简体中文" class="flex-1 truncate text-[13px] text-white/90"
       end
     end
@@ -96,11 +104,11 @@ box class="flex-1"
     end
     box class="flex-1 gap-0.5"
       text "Audio" class="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold text-white/50"
-      box class="h-8 flex-row items-center rounded-lg bg-white/10 px-2.5"
+      box class="h-8 flex-row items-center rounded-xl bg-white/15 px-2.5"
         text "Natural sound" class="flex-1 truncate text-[13px] font-medium text-white"
-        icon check class="size-4 text-[#FF6B4A]"
+        icon check class="size-4 text-white"
       end
-      box class="h-8 flex-row items-center rounded-lg px-2.5"
+      box class="h-8 flex-row items-center rounded-xl px-2.5"
         text "Track 2" class="flex-1 truncate text-[13px] text-white/90"
       end
     end
@@ -111,25 +119,27 @@ design parts name="Player · Parts" device=desktop class="overflow-hidden rounde
 box class="flex-1"
   image "Alpine lake at sunrise, the video playing" src="assets/thumbs/mountains.jpg" class="absolute inset-0"
   use player-top class="absolute top-0 right-0 left-0"
-  use player-controls class="absolute right-0 bottom-0 left-0" parts.class="bg-white/15"
-  box class="absolute top-4 right-4 bottom-[76px] w-[300px] gap-1 rounded-2xl border border-white/10 bg-zinc-900/90 p-2 shadow-2xl" note="The video's parts beside the picture; choosing one plays it. At a part's end the next follows."
+  box class="absolute right-0 bottom-5 left-0 items-center"
+    use player-controls class="w-[800px]" parts.class="bg-white/25"
+  end
+  box class="absolute top-4 right-5 bottom-[136px] w-[300px] gap-1 rounded-[24px] border border-white/20 bg-zinc-900/50 p-2 shadow-2xl backdrop-blur-2xl backdrop-saturate-150" note="The video's parts beside the picture; choosing one plays it. At a part's end the next follows."
     text "Parts · 3" class="px-2.5 pt-1.5 pb-2 text-[13px] font-semibold text-white"
-    box class="flex-row items-center gap-3 rounded-xl px-2.5 py-2"
+    box class="flex-row items-center gap-3 rounded-2xl px-2.5 py-2"
       text "P1" class="w-6 text-xs font-semibold text-white/50"
       box class="flex-1 gap-0.5"
         text "Before first light" class="truncate text-[13px] text-white/90"
         text "1:24:10 · Watched" class="text-xs text-white/40"
       end
     end
-    box class="flex-row items-center gap-3 rounded-xl bg-white/10 px-2.5 py-2"
-      text "P2" class="w-6 text-xs font-semibold text-[#FF6B4A]"
+    box class="flex-row items-center gap-3 rounded-2xl bg-white/15 px-2.5 py-2"
+      text "P2" class="w-6 text-xs font-semibold text-white"
       box class="flex-1 gap-0.5"
         text "The ridge catches the sun" class="truncate text-[13px] font-medium text-white"
-        text "1:46:32" class="text-xs text-[#FF6B4A]"
+        text "1:46:32 · Playing" class="text-xs text-white/60"
       end
-      icon audio-lines class="size-4 text-[#FF6B4A]"
+      icon audio-lines class="size-4 text-white"
     end
-    box class="flex-row items-center gap-3 rounded-xl px-2.5 py-2"
+    box class="flex-row items-center gap-3 rounded-2xl px-2.5 py-2"
       text "P3" class="w-6 text-xs font-semibold text-white/50"
       box class="flex-1 gap-0.5"
         text "Mist off the water" class="truncate text-[13px] text-white/90"
@@ -144,16 +154,18 @@ box class="flex-1" note="Opening the source, buffering, or calling stream for an
   image "Alpine lake at sunrise, dimmed" src="assets/thumbs/mountains.jpg" class="absolute inset-0 opacity-40"
   use player-top class="absolute top-0 right-0 left-0"
   box class="absolute inset-0 items-center justify-center"
-    box class="size-14 items-center justify-center rounded-full bg-black/50"
+    box class="size-16 items-center justify-center rounded-full border border-white/25 bg-white/10 shadow-2xl backdrop-blur-2xl"
       icon loader-circle class="size-7 text-white"
     end
   end
-  use player-controls class="absolute right-0 bottom-0 left-0" play-icon=play
+  box class="absolute right-0 bottom-5 left-0 items-center"
+    use player-controls class="w-[800px]" play-icon=play
+  end
 end
 
 design error name="Player · Cannot play" device=desktop class="overflow-hidden rounded-xl bg-black"
 box class="flex-1" note="The source failed to open or play. A stream the plugin could not answer never opens the player: its error shows as a toast on the page, with Sign In or Open Settings when it asks for them."
-  use player-top class="absolute top-0 right-0 left-0" title="Driving through the city in the rain"
+  use player-top variant=titled class="absolute top-0 right-0 left-0" title="Driving through the city in the rain"
   box class="flex-1 items-center justify-center gap-3 px-10"
     box class="size-14 items-center justify-center rounded-2xl bg-white/10"
       icon circle-alert class="size-6 text-rose-400"
@@ -172,16 +184,18 @@ box class="flex-1" note="The source failed to open or play. A stream the plugin 
 end
 
 design fullscreen name="Player · Full screen" device=desktop width=1512 height=982 class="rounded-none border-0 bg-black"
-box class="flex-1" note="Full screen: no window buttons, the bars over the whole screen."
+box class="flex-1" note="Full screen: no window buttons; the floating controls sit centred a little higher."
   image "Alpine lake at sunrise, the video playing" src="assets/thumbs/mountains.jpg" class="absolute inset-0"
   use player-top variant=fullscreen class="absolute top-0 right-0 left-0" back.tap="close"
-  use player-controls variant=fullscreen class="absolute right-0 bottom-0 left-0 px-8 pb-6" fullscreen.tap="close"
+  box class="absolute right-0 bottom-8 left-0 items-center"
+    use player-controls variant=fullscreen class="w-[800px]" fullscreen.tap="close"
+  end
 end
 
 design local name="Player · Local file" device=desktop class="overflow-hidden rounded-xl bg-black"
 box class="flex-1" note="A local file or a URL from the Open page: no parts or qualities, and its own subtitle and audio tracks."
   image "A city street at night, the video playing" src="assets/thumbs/city.jpg" class="absolute inset-0"
-  box class="absolute top-[14px] left-5 flex-row gap-2"
+  box class="absolute top-[32px] left-5 flex-row gap-2" note="The window's own buttons, moved down so their centre lines up with the back button's."
     box class="size-3 rounded-full bg-[#FF5F57]"
     end
     box class="size-3 rounded-full bg-[#FEBC2E]"
@@ -189,6 +203,8 @@ box class="flex-1" note="A local file or a URL from the Open page: no parts or q
     box class="size-3 rounded-full bg-[#28C840]"
     end
   end
-  use player-top class="absolute top-0 right-0 left-0" title="night-drive-2026-10-03.mkv" back.tap="close"
-  use player-controls variant=local class="absolute right-0 bottom-0 left-0" time="12:48 / 1:12:05"
+  use player-top class="absolute top-0 right-0 left-0" back.tap="close"
+  box class="absolute right-0 bottom-5 left-0 items-center"
+    use player-controls variant=local class="w-[800px]" elapsed="12:48" remaining="−59:17" caption="night-drive-2026-10-03.mkv"
+  end
 end
