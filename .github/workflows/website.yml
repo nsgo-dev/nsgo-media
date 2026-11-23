@@ -1,13 +1,12 @@
 name: Website
 
 # Builds website/ with Bun and publishes it on GitHub Pages whenever main changes the site or its docs in docs/public. A pull request that touches them only builds, so a broken page fails before it lands; a run by hand (Actions › Website › Run workflow) redeploys main.
-# Paused until the site is published: only a run by hand starts it. Uncomment push and pull_request to build and deploy on every change again.
 on:
-  # push:
-  #   branches: [main]
-  #   paths: [website/**, docs/public/**, .github/workflows/website.yml]
-  # pull_request:
-  #   paths: [website/**, docs/public/**, .github/workflows/website.yml]
+  push:
+    branches: [main]
+    paths: [website/**, docs/public/**, .github/workflows/website.yml]
+  pull_request:
+    paths: [website/**, docs/public/**, .github/workflows/website.yml]
   workflow_dispatch:
 
 permissions:
