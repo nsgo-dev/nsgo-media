@@ -89,9 +89,11 @@ type pendingSeek struct {
 	mode SeekMode
 }
 
-// frameRef is the picture a view shows: a buffer and its version.
+// frameRef is the picture a view shows: a buffer and its version, or a
+// frame on the GPU without a buffer.
 type frameRef struct {
 	img     *image.RGBA
+	frame   *pipeline.Frame
 	version uint64
 }
 
@@ -333,6 +335,7 @@ func (p *Player) opened(pl *pipeline.Pipeline, info *pipeline.Info) {
 	pl.SetMuted(p.mutedV)
 	pl.SetLoop(p.loopV)
 	p.updateOutputSize()
+	p.updateGPU()
 	for _, path := range p.pendSubs {
 		p.addSubtitles(path)
 	}
@@ -400,8 +403,9 @@ func (p *Player) tick() {
 	st := p.pl.Tick()
 	if st.Frame != nil {
 		v := p.frame.GetUntracked().version + 1
-		p.frame.Set(frameRef{img: st.Frame.Image, version: v})
+		p.frame.Set(frameRef{img: st.Frame.Image, frame: st.Frame, version: v})
 	}
+	p.drawGPU(p.frame.GetUntracked().frame)
 	p.position.Set(st.Position)
 	p.buffered.Set(max(p.pl.Buffered(), st.Position))
 	p.output.Set(outputOf(p.pl.AudioOutput()))
@@ -674,6 +678,12 @@ func (p *Player) closePipeline() {
 	}
 	// Views stop pointing at frames before their memory goes.
 	p.frame.Set(frameRef{})
+	p.drawGPU(nil)
+	for s := range p.views {
+		if s.gpu != nil {
+			s.gpu.drop()
+		}
+	}
 	if p.pl != nil {
 		p.pl.Close()
 		p.pl = nil

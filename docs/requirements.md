@@ -38,7 +38,7 @@ Targets: macOS (arm64 and x64), Windows x64 and Linux x64, and iOS as its row sa
 In the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
 
 - What NSGo Player needs.
-- Zero-copy GPU rendering of hardware-decoded frames, then HDR output and tone mapping.
+- Zero-copy GPU rendering of hardware-decoded frames on macOS and iOS (Windows and Linux have it), then HDR output and tone mapping.
 
 ## Out of scope
 

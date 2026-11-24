@@ -17,9 +17,10 @@ type Decoder struct {
 
 // NewDecoder opens a decoder for par's codec, with threads threads (0 for
 // FFmpeg's choice) and, when hwDevice names one, on that hardware device
-// type ("videotoolbox", "d3d11va", "vaapi"). It fails when the codec has no
-// decoder or the device cannot be made for it.
-func NewDecoder(par *CodecParameters, tb Rational, threads int, hwDevice string) (*Decoder, error) {
+// type ("videotoolbox", "d3d11va", "vaapi"), whose pool keeps extraHW
+// surfaces beyond what decoding needs for frames the caller holds. It
+// fails when the codec has no decoder or the device cannot be made for it.
+func NewDecoder(par *CodecParameters, tb Rational, threads int, hwDevice string, extraHW int) (*Decoder, error) {
 	codec := avcodecFindDecoder(par.CodecID())
 	if codec == nil {
 		return nil, fmt.Errorf("ffmpeg: no decoder for %s", par.CodecName())
@@ -49,8 +50,7 @@ func NewDecoder(par *CodecParameters, tb Rational, threads int, hwDevice string)
 	*(*int32)(at(c, offAVCodecContextThreadCount)) = int32(threads)
 	if d.hw != nil {
 		*(*unsafe.Pointer)(at(c, offAVCodecContextHwDeviceCtx)) = avBufferRef(d.hw)
-		// Frames the pipeline holds in its queue stay in the decoder's pool.
-		*(*int32)(at(c, offAVCodecContextExtraHwFrames)) = 4
+		*(*int32)(at(c, offAVCodecContextExtraHwFrames)) = int32(extraHW)
 	}
 	if err := check(avcodecOpen2(d.ctx, codec, nil)); err != nil {
 		d.Close()

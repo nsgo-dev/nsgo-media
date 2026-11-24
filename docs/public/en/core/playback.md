@@ -78,7 +78,7 @@ core.Text{ContentFunc: func() string {
 
 ## The view
 
-`player.View` draws the picture in its box. Its children draw above the picture, as do views placed after it: the picture is an ordinary image view on every desktop, never a native window.
+`player.View` draws the picture in its box. Its children draw above the picture, as do views placed after it: the picture is an ordinary image view, or on Windows and Linux a GPU view for hardware-decoded pictures, never a native window.
 
 ```go
 player.View{

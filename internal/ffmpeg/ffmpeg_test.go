@@ -111,17 +111,17 @@ func TestDecodeVideoAndAudioFromGoSource(t *testing.T) {
 	}
 	defer in.Close()
 	streams := in.Format.Streams()
-	vdec, err := NewDecoder(streams[0].Params(), streams[0].TimeBase(), 0, "")
+	vdec, err := NewDecoder(streams[0].Params(), streams[0].TimeBase(), 0, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer vdec.Close()
-	adec, err := NewDecoder(streams[1].Params(), streams[1].TimeBase(), 0, "")
+	adec, err := NewDecoder(streams[1].Params(), streams[1].TimeBase(), 0, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer adec.Close()
-	sdec, err := NewDecoder(streams[3].Params(), streams[3].TimeBase(), 0, "")
+	sdec, err := NewDecoder(streams[3].Params(), streams[3].TimeBase(), 0, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

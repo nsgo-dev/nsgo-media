@@ -29,7 +29,12 @@ const (
 	minQueuePackets = 25       // a stream's queue is full past this many packets
 	minQueueTime    = 2 * time.Second
 	queuedFrames    = 3 // decoded frames waiting for display
+	poolFrames      = queuedFrames + 4
 	resumeTime      = time.Second
+	// extraSurfaces are the surfaces a hardware decoder's pool keeps
+	// beyond what decoding needs: 4 for FFmpeg, and where pictures go to
+	// the GPU, one for each frame of the pool holding one.
+	extraSurfaces = 4 + gpuSurfaces
 )
 
 // EventKind tells events apart.
@@ -101,6 +106,7 @@ type Pipeline struct {
 	opened      atomic.Bool  // Open returned the source
 	vp          atomic.Pointer[videoParams]
 	hwDevice    atomic.Value // string
+	gpuKind     atomic.Int32 // the GPUKind pictures go to the views as
 	reopenVideo atomic.Bool
 	audioOnly   atomic.Bool // the picture is not decoded (SetAudioOnly)
 
@@ -264,7 +270,7 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 	for _, t := range p.info.Tracks {
 		if t.Kind == Subtitle {
 			s := streams[t.ID]
-			if d, err := ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 1, ""); err == nil {
+			if d, err := ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 1, "", 0); err == nil {
 				p.subs[t.ID] = d
 				if bitmapSubtitles[t.Codec] {
 					p.cues.setBitmap(t.ID)
@@ -283,7 +289,7 @@ func (p *Pipeline) OpenSources(src Source, audio *Source) (*Info, error) {
 	p.aq = newPacketQueue(ffmpeg.Rational{Num: 1, Den: 1}, wake)
 	// The queue, the shown and the retiring frame, the one being decoded
 	// and a rotation's scratch frame.
-	p.pool = newFramePool(queuedFrames + 4)
+	p.pool = newFramePool(poolFrames)
 
 	var vdec *ffmpeg.Decoder
 	if p.videoStream >= 0 {
@@ -422,20 +428,20 @@ func (p *Pipeline) openVideoDecoder(hardware bool) (*ffmpeg.Decoder, error) {
 	s := p.in.Format.Streams()[p.video()]
 	if hardware {
 		if dev := hardwareDevice(); dev != "" {
-			if d, err := ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 0, dev); err == nil {
+			if d, err := ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 0, dev, extraSurfaces); err == nil {
 				p.hwDevice.Store(dev)
 				return d, nil
 			}
 		}
 	}
 	p.hwDevice.Store("")
-	return ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 0, "")
+	return ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 0, "", 0)
 }
 
 func (p *Pipeline) openAudioDecoder(id int) (*ffmpeg.Decoder, error) {
 	_, s := p.stream(id)
 	p.aq.setTimeBase(s.TimeBase())
-	return ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 1, "")
+	return ffmpeg.NewDecoder(s.Params(), s.TimeBase(), 1, "", 0)
 }
 
 // HardwareDevice is the device video decodes on, empty for software.

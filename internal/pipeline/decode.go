@@ -13,7 +13,7 @@ import (
 )
 
 // decodeVideo decodes the video queue, of track stream, into RGBA frames
-// for the presenter.
+// for the presenter, or frames on the GPU when the views import them.
 func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder, stream int) {
 	defer p.wg.Done()
 	defer func() {
@@ -97,6 +97,14 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder, stream int) {
 			}
 			if vdrop >= 0 && pts < vdrop || p.audioOnly.Load() {
 				frame.Unref()
+				continue
+			}
+			if out, ok := p.toGPU(frame, dec.HWDevice, pts, gen); ok {
+				if out == nil {
+					return nil // closed, or a seek made the frame stale
+				}
+				failures = 0
+				p.frames.push(out)
 				continue
 			}
 			src, err := take()

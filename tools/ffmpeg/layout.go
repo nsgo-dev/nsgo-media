@@ -34,6 +34,13 @@ var layoutFields = map[string][]string{
 	"AVSubtitleRect":    {"x", "y", "w", "h", "nb_colors", "data", "linesize", "type", "text", "ass"},
 	"AVDictionaryEntry": {"key", "value"},
 	"AVIOInterruptCB":   {"callback", "opaque"},
+	"AVBufferRef":       {"data"},
+	"AVHWFramesContext": {"device_ctx", "sw_format", "width", "height"},
+	"AVHWDeviceContext": {"type", "hwctx"},
+	// Stub headers stand in for d3d11.h and va/va.h, whose types these
+	// hold only pointers to or integers of.
+	"AVD3D11VADeviceContext": {"device", "device_context", "lock", "unlock", "lock_ctx"},
+	"AVVAAPIDeviceContext":   {"display"},
 }
 
 // layoutSizes are the structs whose size the binding needs: those it
@@ -43,7 +50,26 @@ var layoutSizes = []string{"AVPacketSideData", "AVChannelLayout", "AVSubtitle", 
 // layoutHeaders are the public headers the dump reads.
 var layoutHeaders = []string{
 	"libavformat/avformat.h", "libavformat/avio.h", "libavcodec/avcodec.h", "libavutil/frame.h",
-	"libavutil/channel_layout.h", "libavutil/dict.h", "libavutil/hwcontext.h",
+	"libavutil/channel_layout.h", "libavutil/dict.h", "libavutil/hwcontext.h", "libavutil/buffer.h",
+	"libavutil/hwcontext_d3d11va.h", "libavutil/hwcontext_vaapi.h",
+}
+
+// layoutStubs stand in for the system headers hwcontext_d3d11va.h and
+// hwcontext_vaapi.h include: the binding reads only pointers and
+// integers of their types, the same size on every desktop.
+var layoutStubs = map[string]string{
+	"d3d11.h": `typedef unsigned int UINT;
+typedef struct ID3D11Device ID3D11Device;
+typedef struct ID3D11DeviceContext ID3D11DeviceContext;
+typedef struct ID3D11VideoDevice ID3D11VideoDevice;
+typedef struct ID3D11VideoContext ID3D11VideoContext;
+typedef struct ID3D11Texture2D ID3D11Texture2D;
+`,
+	"va/va.h": `typedef void *VADisplay;
+typedef unsigned int VASurfaceID;
+typedef unsigned int VAConfigID;
+typedef struct VASurfaceAttrib VASurfaceAttrib;
+`,
 }
 
 // writeLayout dumps the layouts of layoutFields from FFmpeg's headers for
@@ -60,6 +86,15 @@ func writeLayout(b *builder, out string) error {
 	}
 	if err := os.WriteFile(filepath.Join(inc, "libavutil", "avconfig.h"), []byte("#define AV_HAVE_BIGENDIAN 0\n#define AV_HAVE_FAST_UNALIGNED 1\n"), 0o644); err != nil {
 		return err
+	}
+	for name, stub := range layoutStubs {
+		path := filepath.Join(inc, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(stub), 0o644); err != nil {
+			return err
+		}
 	}
 	var src bytes.Buffer
 	for _, h := range layoutHeaders {
