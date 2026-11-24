@@ -203,11 +203,16 @@ func (pg Page) Render(cx *core.Scope) core.Node {
 		return shown.Get() || menu.Get() != "" || !playing(p) || invalid.Get() || p.State() == player.Failed
 	}
 	bindKeys(cx, p, menu, pg.OnClose)
+	placeTrafficLights(cx)
 	src := func() Source { return *current.Get() }
+	failed := func() bool { return invalid.Get() || p.State() == player.Failed }
+	at := &anchors{page: &core.Ref{}, panel: &core.Ref{}, buttons: map[string]*core.Ref{}, layout: core.NewSignal(cx, 0)}
 	return core.View{
 		TestID:      "player",
+		Ref:         at.page,
 		Class:       "absolute inset-0 overflow-hidden bg-black",
 		OnMouseMove: func(core.MouseEvent) { wake() },
+		OnLayout:    func(core.Bounds) { at.layout.Set(at.layout.GetUntracked() + 1) },
 		Children: []core.Node{
 			player.View{
 				Player: p,
@@ -234,17 +239,17 @@ func (pg Page) Render(cx *core.Scope) core.Node {
 				When: bars,
 				Then: func(cx *core.Scope) core.Node {
 					return core.Group{
-						header(cx, title.Get, pg.OnClose),
+						header(cx, title.Get, failed, pg.OnClose),
 						core.Show{
-							When: func() bool { return !invalid.Get() && p.State() != player.Failed },
+							When: func() bool { return !failed() },
 							Then: func(cx *core.Scope) core.Node {
-								return core.Group{controls(cx, p, src, menu, pg), resumeOffer(cx, p, offer)}
+								return core.Group{controls(cx, p, src, menu, pg, at), resumeOffer(cx, p, offer, at)}
 							},
 						},
 					}
 				},
 			},
-			menus(cx, p, src, menu, pg),
+			menus(cx, p, src, menu, pg, at),
 		},
 	}
 }
@@ -295,20 +300,112 @@ func togglePlay(p *player.Player) {
 	}
 }
 
-// header is the page's top bar over the picture: back and the source's
-// title, clear of the window's buttons and moving the window as the
-// title bar it replaces does.
-func header(cx *core.Scope, title func() string, onClose func()) core.Node {
+// header is the page's top bar over the picture: a round back button
+// beside the window's buttons, and the source's title once it failed,
+// moving the window as the title bar it replaces does.
+func header(cx *core.Scope, title func() string, titled func() bool, onClose func()) core.Node {
+	back := darkButton(cx, "back", locales.Back(cx), "size-9 rounded-full", onClose, core.Icon{SVG: lucide.ChevronLeft(), Class: "size-[18px] text-white"})
+	back.StyleFunc = glass(cx, core.GlassClear, true)
 	return core.View{
 		Desktop: core.DesktopViewProps{WindowDrag: core.WindowDragOn},
-		Class:   "absolute top-0 right-0 left-0 h-[64px] flex-row items-center gap-3 bg-linear-to-b from-black/70 to-transparent pr-5",
+		Class:   "absolute top-0 right-0 left-0 h-[76px] flex-row items-center gap-3",
+		ClassFunc: func() string {
+			if titled() {
+				return "bg-linear-to-b from-black/70 to-transparent"
+			}
+			return ""
+		},
 		StyleFunc: func() core.Style {
-			return core.Style{Padding: core.Edges{Left: max(desktop.TitleBar(cx).Left+12, 20), Right: 20}}
+			// The window's buttons end 8 points before TitleBar's Left.
+			return core.Style{Padding: core.Edges{Left: max(desktop.TitleBar(cx).Left+8, 20), Right: 20}}
 		},
 		Children: []core.Node{
-			darkButton(cx, "back", locales.Back(cx), "size-8 bg-white/10 hover:bg-white/20", onClose, core.Icon{SVG: lucide.ChevronLeft(), Class: "size-[18px] text-white"}),
-			core.Text{TestID: "title", ContentFunc: title, MaxLines: 1, Class: "flex-1 text-sm font-semibold text-white"},
+			back,
+			core.Show{When: titled, Then: func(*core.Scope) core.Node {
+				return core.Text{TestID: "title", ContentFunc: title, MaxLines: 1, Class: "flex-1 text-sm font-semibold text-white"}
+			}},
 		},
+	}
+}
+
+// Where macOS's close button goes while the page shows: its 14-point
+// frame puts the buttons' centre on the back button's, 38 points from
+// the top, and their dots 20 points in.
+const trafficLightsX, trafficLightsY = 19, 31
+
+// placeTrafficLights moves macOS's window buttons down beside the back
+// button while the page shows.
+func placeTrafficLights(cx *core.Scope) {
+	if !desktop.IsAvailable(cx) {
+		return
+	}
+	desktop.SetWindowControls(cx, desktop.WindowControls{TrafficLights: core.Point{X: trafficLightsX, Y: trafficLightsY}})
+	cx.Cleanup(func() { desktop.SetWindowControls(cx, desktop.WindowControls{}) })
+}
+
+// glass is Liquid Glass, untinted, where the system draws it, and
+// elsewhere a translucent white fill and rim over a blur of the picture.
+func glass(cx *core.Scope, effect core.GlassEffect, rim bool) func() core.Style {
+	return func() core.Style {
+		st := core.Style{BackdropFilters: []core.Filter{core.Blur(40), core.Saturate(1.5)}, GlassEffect: effect}
+		if !systemGlass(cx) {
+			st.Background = core.RGBA(0xffffff, 0.1)
+			if rim {
+				st.BorderWidth, st.BorderColor = 1, core.RGBA(0xffffff, 0.25)
+			}
+		}
+		return st
+	}
+}
+
+// systemGlass reports whether the system draws Liquid Glass with its own
+// rim, as Apple's do.
+func systemGlass(cx *core.Scope) bool {
+	switch cx.Env().OS() {
+	case core.OSMacOS, core.OSIOS:
+		return !cx.Env().Simulated()
+	}
+	return false
+}
+
+// anchors are where the floating controls lie in the page, so what
+// opens from them sits above them.
+type anchors struct {
+	page, panel *core.Ref
+	buttons     map[string]*core.Ref
+	// layout changes as the page lays out again.
+	layout *core.Signal[int]
+}
+
+// ref is the ref of the button named name.
+func (a *anchors) ref(name string) *core.Ref {
+	r := a.buttons[name]
+	if r == nil {
+		r = &core.Ref{}
+		a.buttons[name] = r
+	}
+	return r
+}
+
+// above places a view 12 points above the panel, its right edge on the
+// named button's, or its left on the panel's for "".
+func (a *anchors) above(name string) func() core.Style {
+	return func() core.Style {
+		a.layout.Get()
+		page, _ := a.page.Bounds()
+		panel, ok := a.panel.Bounds()
+		if !ok {
+			return core.Style{Bottom: core.Pt(136), Left: core.Pt(20)}
+		}
+		st := core.Style{Bottom: core.Pt(page.Origin.Y + page.Size.Height - panel.Origin.Y + 12)}
+		if name == "" {
+			st.Left = core.Pt(panel.Origin.X - page.Origin.X)
+			return st
+		}
+		if b, ok := a.ref(name).Bounds(); ok {
+			st.Right = core.Pt(max(page.Origin.X+page.Size.Width-b.Origin.X-b.Size.Width, 8))
+		}
+		return st
 	}
 }
 
@@ -317,7 +414,7 @@ func darkButton(cx *core.Scope, testID, label, class string, press func(), child
 	return core.View{
 		TestID: testID, Role: core.RoleButton, Label: label,
 		OnPress:  func(core.PressEvent) { press() },
-		Class:    "items-center justify-center rounded-lg hover:bg-white/10 " + class,
+		Class:    "items-center justify-center rounded-full hover:bg-white/15 " + class,
 		Children: children,
 	}
 }
@@ -364,7 +461,7 @@ func status(cx *core.Scope, p *player.Player, invalid func() bool, cause func() 
 			When: func() bool { return !failed() && (p.State() == player.Buffering || p.State() == player.Opening) },
 			Then: func(*core.Scope) core.Node {
 				return core.View{TestID: "loading", Class: "absolute inset-0 items-center justify-center bg-black/60", PointerEvents: core.PointerEventsNone, Children: []core.Node{
-					core.View{Class: "size-14 items-center justify-center rounded-full bg-black/50", Children: []core.Node{
+					core.View{Class: "size-16 items-center justify-center rounded-full shadow-2xl", StyleFunc: glass(cx, core.GlassClear, true), Children: []core.Node{
 						ui.Spinner{Size: 28, Tint: func() core.Color { return core.RGB(0xffffff) }},
 					}},
 				}}
@@ -400,7 +497,7 @@ func status(cx *core.Scope, p *player.Player, invalid func() bool, cause func() 
 }
 
 // resumeOffer offers to jump to where the video was left.
-func resumeOffer(cx *core.Scope, p *player.Player, offer *core.Signal[time.Duration]) core.Node {
+func resumeOffer(cx *core.Scope, p *player.Player, offer *core.Signal[time.Duration], an *anchors) core.Node {
 	return core.Dynamic(func(cx *core.Scope) core.Node {
 		at := offer.Get()
 		if at == 0 {
@@ -410,8 +507,10 @@ func resumeOffer(cx *core.Scope, p *player.Player, offer *core.Signal[time.Durat
 			When: func() bool { return p.State() != player.Failed },
 			Then: func(cx *core.Scope) core.Node {
 				text := locales.ResumeAt(cx, clock(at))
+				place, look := an.above(""), glass(cx, core.GlassClear, true)
 				return core.View{
-					Class: "absolute bottom-[104px] left-5 flex-row items-center gap-1 rounded-full bg-black/60 py-1 pr-1 pl-3.5 shadow-lg",
+					Class:     "absolute flex-row items-center gap-1 rounded-full py-1 pr-1 pl-3.5 shadow-lg",
+					StyleFunc: func() core.Style { return look().Merge(place()) },
 					Children: []core.Node{
 						core.View{
 							TestID: "resume", Role: core.RoleButton, Label: text,
@@ -437,29 +536,23 @@ func resumeOffer(cx *core.Scope, p *player.Player, offer *core.Signal[time.Durat
 	})
 }
 
-// track is a thin bar the pointer sets a share of, as the seek bar and
-// the volume are: pressed or dragged, set hears the share there.
-func track(testID, label, class string, share, buffered func() float64, set func(float64), thumb bool) core.Node {
+// track is a bar the pointer sets a share of, as the seek bar and the
+// volume are: pressed or dragged, set hears the share there. A seek bar
+// shows what is buffered and a thumb.
+func track(testID, label, class, bar string, share, buffered func() float64, set func(float64), seekBar bool) core.Node {
 	width := core.Points(1)
 	at := func(x core.Points) float64 { return float64(min(max(x/width, 0), 1)) }
+	pct := func(f float64) core.Length { return core.Pct(float32(min(max(f, 0), 1) * 100)) }
 	down := false
-	children := []core.Node{core.View{Class: "h-1 overflow-hidden rounded-full bg-white/25", Children: []core.Node{
-		core.View{Class: "absolute top-0 bottom-0 left-0 bg-white/35", StyleFunc: func() core.Style {
-			if buffered == nil {
-				return core.Style{Width: core.Pt(0)}
-			}
-			return core.Style{Width: core.Pct(float32(min(max(buffered(), 0), 1) * 100))}
-		}},
-		core.View{Class: "absolute top-0 bottom-0 left-0 rounded-full", ClassFunc: func() string {
-			if thumb {
-				return "bg-accent"
-			}
-			return "bg-white"
-		}, StyleFunc: func() core.Style { return core.Style{Width: core.Pct(float32(min(max(share(), 0), 1) * 100))} }},
-	}}}
-	if thumb {
-		children = append(children, core.View{Class: "absolute -ml-1.5 size-3 rounded-full bg-white shadow-md", PointerEvents: core.PointerEventsNone,
-			StyleFunc: func() core.Style { return core.Style{Left: core.Pct(float32(min(max(share(), 0), 1) * 100))} }})
+	fill := []core.Node{}
+	if buffered != nil {
+		fill = append(fill, core.View{Class: "absolute top-0 bottom-0 left-0 bg-white/30", StyleFunc: func() core.Style { return core.Style{Width: pct(buffered())} }})
+	}
+	fill = append(fill, core.View{Class: "absolute top-0 bottom-0 left-0 rounded-full bg-white", StyleFunc: func() core.Style { return core.Style{Width: pct(share())} }})
+	children := []core.Node{core.View{Class: "overflow-hidden rounded-full " + bar, Children: fill}}
+	if seekBar {
+		children = append(children, core.View{Class: "absolute -ml-2 size-4 rounded-full bg-white shadow-lg", PointerEvents: core.PointerEventsNone,
+			StyleFunc: func() core.Style { return core.Style{Left: pct(share())} }})
 	}
 	return core.View{
 		TestID: testID, Label: label, Role: core.RoleAdjustable,
@@ -482,10 +575,11 @@ func track(testID, label, class string, share, buffered func() float64, set func
 	}
 }
 
-// controls are the bars at the bottom: the seek bar, then playing,
-// the next part, the volume and the time, and at the end the parts,
-// speed, tracks, quality and full screen.
-func controls(cx *core.Scope, p *player.Player, src func() Source, menu *core.Signal[string], pg Page) core.Node {
+// controls are the floating panel over the picture's bottom: playing and
+// the next part, the volume, the title, then the parts, speed, tracks,
+// quality and full screen, over the seek bar between the time played and
+// the time left.
+func controls(cx *core.Scope, p *player.Player, src func() Source, menu *core.Signal[string], pg Page, at *anchors) core.Node {
 	share := func() float64 {
 		if d := p.Duration(); d > 0 {
 			return p.Position().Seconds() / d.Seconds()
@@ -512,15 +606,28 @@ func controls(cx *core.Scope, p *player.Player, src func() Source, menu *core.Si
 			}
 		}
 	}
-	open := func(name, class string) func() string {
-		return func() string {
+	// opener is a button that opens a menu above it, lit while it is open.
+	opener := func(name, testID, label, class string, children ...core.Node) core.View {
+		v := darkButton(cx, testID, label, class, toggle(name), children...)
+		v.Ref = at.ref(name)
+		v.ClassFunc = func() string {
 			if menu.Get() == name {
-				return class + " bg-white/15"
+				return "bg-white/25"
 			}
-			return class
+			return ""
 		}
+		return v
 	}
-	white := "text-[13px] font-medium text-white"
+	// Where the system draws Liquid Glass, nothing tints it; elsewhere the
+	// groups of buttons are lighter capsules on the panel.
+	tint := " bg-white/10"
+	if systemGlass(cx) {
+		tint = ""
+	}
+	capsule := func(children ...core.Node) core.Node {
+		return core.View{Class: "flex-row items-center gap-0.5 rounded-full p-1" + tint, Children: children}
+	}
+	label := "text-[13px] font-semibold text-white"
 	timeStyle := core.Style{FontVariant: core.FontTabularNums}
 	hasParts := func() bool { return len(src().Parts) > 1 && pg.OnPart != nil }
 	hasNext := func() bool { s := src(); return hasParts() && s.Part+1 < len(s.Parts) }
@@ -529,89 +636,123 @@ func controls(cx *core.Scope, p *player.Player, src func() Source, menu *core.Si
 	when := func(cond func() bool, n core.Node) core.Node {
 		return core.Show{When: cond, Then: func(*core.Scope) core.Node { return n }}
 	}
-	parts := darkButton(cx, "parts", locales.Parts(cx), "h-8 flex-row gap-1.5 px-2.5", toggle("parts"),
-		core.Icon{SVG: lucide.ListVideo(), Class: "size-[18px] text-white"},
-		core.Text{ContentFunc: func() string {
-			s := src()
-			return fmt.Sprintf("%s/%d", s.Parts[min(s.Part, len(s.Parts)-1)].Label, len(s.Parts))
-		}, Class: white},
-	)
-	parts.ClassFunc = open("parts", "")
-	speed := darkButton(cx, "rate", locales.Speed(cx), "h-8 px-2.5", toggle("speed"),
-		core.Text{ContentFunc: func() string { return rateLabel(p.Rate()) }, Class: "text-[13px] font-semibold text-white"})
-	speed.ClassFunc = open("speed", "")
-	tracks := darkButton(cx, "tracks", locales.SubtitlesAndAudio(cx), "size-9", toggle("tracks"),
-		core.Icon{SVG: lucide.Captions(), Class: "size-5 text-white"})
-	tracks.ClassFunc = open("tracks", "")
-	quality := darkButton(cx, "quality", locales.Quality(cx), "h-8 px-2.5", toggle("quality"),
-		core.Text{ContentFunc: func() string { return qualityLabel(src()) }, Class: "text-[13px] font-semibold text-white"})
-	quality.ClassFunc = open("quality", "")
+	// caption is the part's title over the video's name, else the title.
+	caption := func() string {
+		if s := src(); len(s.Parts) > 1 && s.Video != "" {
+			return s.Parts[min(s.Part, len(s.Parts)-1)].Title
+		}
+		return src().title()
+	}
+	subcaption := func() string {
+		s := src()
+		if len(s.Parts) <= 1 || s.Video == "" {
+			return ""
+		}
+		return s.Parts[min(s.Part, len(s.Parts)-1)].Label + " · " + s.Video
+	}
+	// total shows the duration in place of the time left.
+	total := core.NewSignal(cx, false)
+	play := labelled(darkButton(cx, "play", "", "size-10 bg-white/90 shadow-md hover:bg-white", func() { togglePlay(p) }, core.Icon{SVGFunc: func() *core.SVG {
+		if playing(p) {
+			return lucide.Pause()
+		}
+		return lucide.Play()
+	}, Class: "size-5 text-zinc-900"}), func() string {
+		if playing(p) {
+			return locales.Pause(cx)
+		}
+		return locales.Play(cx)
+	})
+	top := core.View{Class: "flex-row items-center gap-2", Children: []core.Node{
+		capsule(play, when(hasNext, darkButton(cx, "next", locales.NextPart(cx), "size-10", func() { pg.OnPart(src().Part + 1) },
+			core.Icon{SVG: lucide.SkipForward(), Class: "size-[18px] text-white"}))),
+		core.View{Class: "h-12 flex-row items-center gap-2 rounded-full pr-4 pl-1" + tint, Children: []core.Node{
+			labelled(darkButton(cx, "mute", "", "size-10", func() { p.SetMuted(!p.Muted()) }, core.Icon{SVGFunc: func() *core.SVG {
+				if p.Muted() || p.Volume() == 0 {
+					return lucide.VolumeX()
+				}
+				return lucide.Volume2()
+			}, Class: "size-[18px] text-white"}), func() string {
+				if p.Muted() {
+					return locales.Unmute(cx)
+				}
+				return locales.Mute(cx)
+			}),
+			track("volume", locales.Volume(cx), "w-20", "h-1 bg-white/25", func() float64 {
+				if p.Muted() {
+					return 0
+				}
+				return p.Volume()
+			}, nil, func(v float64) {
+				p.SetMuted(false)
+				p.SetVolume(v)
+			}, false),
+		}},
+		core.View{Class: "flex-1 items-center gap-0.5 px-4", Style: core.Style{FlexShrink: 1, MinWidth: core.Pt(0)}, Children: []core.Node{
+			core.Text{TestID: "title", ContentFunc: caption, MaxLines: 1, Class: "text-[13px] font-semibold text-white"},
+			when(func() bool { return subcaption() != "" }, core.Text{TestID: "subtitle", ContentFunc: subcaption, MaxLines: 1, Class: "text-[11px] font-medium text-white/60"}),
+		}},
+		capsule(
+			when(hasParts, opener("parts", "parts", locales.Parts(cx), "h-10 flex-row gap-1.5 px-3",
+				core.Icon{SVG: lucide.ListVideo(), Class: "size-[18px] text-white"},
+				core.Text{ContentFunc: func() string {
+					s := src()
+					return fmt.Sprintf("%s/%d", s.Parts[min(s.Part, len(s.Parts)-1)].Label, len(s.Parts))
+				}, Class: "text-[13px] font-medium text-white"})),
+			opener("speed", "rate", locales.Speed(cx), "h-10 min-w-10 px-2.5",
+				core.Text{ContentFunc: func() string { return rateLabel(p.Rate()) }, Class: label}),
+			when(hasTracks, opener("tracks", "tracks", locales.SubtitlesAndAudio(cx), "size-10",
+				core.Icon{SVG: lucide.Captions(), Class: "size-5 text-white"})),
+			when(hasQualities, opener("quality", "quality", locales.Quality(cx), "h-10 px-3",
+				core.Text{ContentFunc: func() string { return qualityLabel(src()) }, Class: label})),
+			labelled(darkButton(cx, "fullscreen", "", "size-10", func() { desktop.ToggleFullScreen(cx) }, core.Icon{SVGFunc: func() *core.SVG {
+				if desktop.FullScreen(cx) {
+					return lucide.Minimize()
+				}
+				return lucide.Maximize()
+			}, Class: "size-[18px] text-white"}), func() string {
+				if desktop.FullScreen(cx) {
+					return locales.ExitFullScreen(cx)
+				}
+				return locales.FullScreen(cx)
+			}),
+		),
+	}}
+	bottom := core.View{Class: "flex-row items-center gap-3 px-1", Children: []core.Node{
+		core.Text{TestID: "position", ContentFunc: func() string { return clock(p.Position()) }, Class: "w-14 text-[12px] font-medium text-white/90", Style: timeStyle},
+		track("seek", locales.Position(cx), "flex-1", "h-1.5 bg-white/20", share, buffered, seek, true),
+		core.Text{TestID: "duration", ContentFunc: func() string {
+			if total.Get() {
+				return clock(p.Duration())
+			}
+			return "−" + clock(max(p.Duration()-p.Position(), 0))
+		}, OnPress: func(core.PressEvent) { total.Set(!total.GetUntracked()) },
+			Class: "w-14 text-right text-[12px] font-medium text-white/60", Style: timeStyle},
+	}}
+	look := glass(cx, core.GlassClear, true)
 	return core.View{
-		Class: "absolute right-0 bottom-0 left-0 gap-2 bg-linear-to-t from-black/80 via-black/45 to-transparent px-5 pt-14 pb-4",
-		// The gradient lets presses through to what is under it, as the
-		// resume offer; its controls take theirs.
-		PointerEvents: core.PointerEventsBoxNone,
-		Children: []core.Node{
-			track("seek", locales.Position(cx), "", share, buffered, seek, true),
-			core.View{Class: "flex-row items-center gap-1", Children: []core.Node{
-				labelled(darkButton(cx, "play", "", "size-9", func() { togglePlay(p) }, core.Icon{SVGFunc: func() *core.SVG {
-					if playing(p) {
-						return lucide.Pause()
-					}
-					return lucide.Play()
-				}, Class: "size-5 text-white"}), func() string {
-					if playing(p) {
-						return locales.Pause(cx)
-					}
-					return locales.Play(cx)
-				}),
-				when(hasNext, darkButton(cx, "next", locales.NextPart(cx), "size-9", func() { pg.OnPart(src().Part + 1) },
-					core.Icon{SVG: lucide.SkipForward(), Class: "size-[18px] text-white"})),
-				core.View{Class: "flex-row items-center gap-2 pr-2", Children: []core.Node{
-					labelled(darkButton(cx, "mute", "", "size-9", func() { p.SetMuted(!p.Muted()) }, core.Icon{SVGFunc: func() *core.SVG {
-						if p.Muted() || p.Volume() == 0 {
-							return lucide.VolumeX()
-						}
-						return lucide.Volume2()
-					}, Class: "size-[18px] text-white"}), func() string {
-						if p.Muted() {
-							return locales.Unmute(cx)
-						}
-						return locales.Mute(cx)
-					}),
-					track("volume", locales.Volume(cx), "w-20", func() float64 {
-						if p.Muted() {
-							return 0
-						}
-						return p.Volume()
-					}, nil, func(v float64) {
-						p.SetMuted(false)
-						p.SetVolume(v)
-					}, false),
-				}},
-				core.View{Class: "flex-row items-center gap-1", Children: []core.Node{
-					core.Text{TestID: "position", ContentFunc: func() string { return clock(p.Position()) }, Class: white + " text-white/90", Style: timeStyle},
-					core.Text{Content: "/", Class: white + " text-white/90"},
-					core.Text{TestID: "duration", ContentFunc: func() string { return clock(p.Duration()) }, Class: white + " text-white/90", Style: timeStyle},
-				}},
-				core.View{Class: "flex-1"},
-				when(hasParts, parts),
-				speed,
-				when(hasTracks, tracks),
-				when(hasQualities, quality),
-				labelled(darkButton(cx, "fullscreen", "", "size-9", func() { desktop.ToggleFullScreen(cx) }, core.Icon{SVGFunc: func() *core.SVG {
-					if desktop.FullScreen(cx) {
-						return lucide.Minimize()
-					}
-					return lucide.Maximize()
-				}, Class: "size-[18px] text-white"}), func() string {
-					if desktop.FullScreen(cx) {
-						return locales.ExitFullScreen(cx)
-					}
-					return locales.FullScreen(cx)
-				}),
-			}},
+		Class: "absolute right-0 left-0 items-center px-5",
+		StyleFunc: func() core.Style {
+			if desktop.FullScreen(cx) {
+				return core.Style{Bottom: core.Pt(32)}
+			}
+			return core.Style{Bottom: core.Pt(20)}
 		},
+		// The space beside the panel lets presses through to the picture.
+		PointerEvents: core.PointerEventsBoxNone,
+		Children: []core.Node{core.View{
+			TestID: "controls", Ref: at.panel,
+			Class:     "w-[800px] max-w-full gap-3 rounded-[28px] px-4 pt-3 pb-4 shadow-2xl",
+			StyleFunc: look,
+			Children: []core.Node{
+				// The light along the panel's top, which Liquid Glass draws
+				// itself.
+				core.Show{When: func() bool { return !systemGlass(cx) }, Then: func(*core.Scope) core.Node {
+					return core.View{Class: "absolute top-0 right-0 left-0 h-12 rounded-t-[28px] bg-linear-to-b from-white/20 to-transparent", PointerEvents: core.PointerEventsNone}
+				}},
+				top, bottom,
+			},
+		}},
 	}
 }
 
@@ -644,7 +785,7 @@ func qualityLabel(s Source) string {
 
 // menus are the panels the controls open over the picture, closing as
 // one is chosen or the picture is pressed.
-func menus(cx *core.Scope, p *player.Player, src func() Source, menu *core.Signal[string], pg Page) core.Node {
+func menus(cx *core.Scope, p *player.Player, src func() Source, menu *core.Signal[string], pg Page, at *anchors) core.Node {
 	return core.Dynamic(func(cx *core.Scope) core.Node {
 		switch menu.Get() {
 		case "speed":
@@ -655,7 +796,7 @@ func menus(cx *core.Scope, p *player.Player, src func() Source, menu *core.Signa
 					menu.Set("")
 				}))
 			}
-			return panel("right-[140px] w-32", locales.Speed(cx), rows...)
+			return panel(cx, at.above("speed"), "w-32", locales.Speed(cx), rows...)
 		case "quality":
 			var rows []core.Node
 			for i, q := range src().Qualities {
@@ -666,21 +807,36 @@ func menus(cx *core.Scope, p *player.Player, src func() Source, menu *core.Signa
 					}
 				}))
 			}
-			return panel("right-[52px] w-44", locales.Quality(cx), rows...)
+			return panel(cx, at.above("quality"), "w-44", locales.Quality(cx), rows...)
 		case "tracks":
-			return tracksPanel(cx, p, menu)
+			return tracksPanel(cx, p, at)
 		case "parts":
-			return partsPanel(cx, src, menu, pg)
+			return partsPanel(cx, src, menu, pg, at)
 		}
 		return nil
 	})
 }
 
-// panel is a menu over the picture, above the controls at its right.
-func panel(class, title string, rows ...core.Node) core.Node {
+// menuGlass is the look of a menu over the picture: regular glass,
+// denser than the controls' for reading, or a dark fill over a blur
+// where the system draws no Liquid Glass.
+func menuGlass(cx *core.Scope, place func() core.Style) func() core.Style {
+	return func() core.Style {
+		st := core.Style{BackdropFilters: []core.Filter{core.Blur(40), core.Saturate(1.5)}, GlassEffect: core.GlassRegular}
+		if !systemGlass(cx) {
+			st.Background = core.RGBA(0x18181b, 0.5)
+			st.BorderWidth, st.BorderColor = 1, core.RGBA(0xffffff, 0.2)
+		}
+		return st.Merge(place())
+	}
+}
+
+// panel is a menu over the picture, above the button that opened it.
+func panel(cx *core.Scope, place func() core.Style, class, title string, rows ...core.Node) core.Node {
 	return core.View{
-		TestID: "menu",
-		Class:  "absolute bottom-[64px] gap-0.5 rounded-xl border border-white/10 bg-zinc-900/90 p-1.5 shadow-2xl " + class,
+		TestID:    "menu",
+		Class:     "absolute gap-0.5 rounded-[20px] p-1.5 shadow-2xl " + class,
+		StyleFunc: menuGlass(cx, place),
 		Children: append([]core.Node{
 			core.Text{Content: title, Class: "px-2.5 pt-1 pb-1.5 text-[11px] font-semibold text-white/50"},
 		}, rows...),
@@ -693,11 +849,11 @@ func choice(testID, label string, checked func() bool, choose func()) core.Node 
 	return core.View{
 		TestID: testID, Role: core.RoleMenuItemRadio, Label: label, Selected: checked,
 		OnPress: func(core.PressEvent) { choose() },
-		Class:   "group h-8 flex-row items-center gap-2 rounded-lg px-2.5 hover:bg-white/10 selected:bg-white/10",
+		Class:   "group h-8 flex-row items-center gap-2 rounded-xl px-2.5 hover:bg-white/10 selected:bg-white/15",
 		Children: []core.Node{
 			core.Text{Content: label, MaxLines: 1, Class: "flex-1 text-[13px] text-white/90 group-selected:font-medium group-selected:text-white"},
 			core.Show{When: checked, Then: func(*core.Scope) core.Node {
-				return core.Icon{SVG: lucide.Check(), Class: "size-4 text-accent"}
+				return core.Icon{SVG: lucide.Check(), Class: "size-4 text-white"}
 			}},
 		},
 	}
@@ -705,7 +861,7 @@ func choice(testID, label string, checked func() bool, choose func()) core.Node 
 
 // tracksPanel chooses the subtitle and audio tracks, each by its title
 // or else its number.
-func tracksPanel(cx *core.Scope, p *player.Player, menu *core.Signal[string]) core.Node {
+func tracksPanel(cx *core.Scope, p *player.Player, at *anchors) core.Node {
 	column := func(title string, rows []core.Node) core.Node {
 		return core.View{Class: "flex-1 gap-0.5", Children: append([]core.Node{
 			core.Text{Content: title, Class: "px-2.5 pt-1 pb-1.5 text-[11px] font-semibold text-white/50"},
@@ -732,9 +888,10 @@ func tracksPanel(cx *core.Scope, p *player.Player, menu *core.Signal[string]) co
 		columns = append(columns, core.View{Class: "w-px bg-white/10"}, column(locales.Audio(cx), audio))
 	}
 	return core.View{
-		TestID:   "menu",
-		Class:    "absolute right-[100px] bottom-[64px] w-[380px] flex-row gap-1 rounded-xl border border-white/10 bg-zinc-900/90 p-1.5 shadow-2xl",
-		Children: columns,
+		TestID:    "menu",
+		Class:     "absolute w-[380px] flex-row gap-1 rounded-[20px] p-1.5 shadow-2xl",
+		StyleFunc: menuGlass(cx, at.above("tracks")),
+		Children:  columns,
 	}
 }
 
@@ -753,7 +910,7 @@ func trackLabel(cx *core.Scope, t player.Track, n int) string {
 
 // partsPanel lists the video's parts beside the picture; choosing one
 // plays it.
-func partsPanel(cx *core.Scope, src func() Source, menu *core.Signal[string], pg Page) core.Node {
+func partsPanel(cx *core.Scope, src func() Source, menu *core.Signal[string], pg Page, at *anchors) core.Node {
 	s := src()
 	var rows []core.Node
 	for i, pt := range s.Parts {
@@ -763,10 +920,10 @@ func partsPanel(cx *core.Scope, src func() Source, menu *core.Signal[string], pg
 			length = clock(pt.Duration)
 		}
 		label, title, sub := "w-8 text-xs font-semibold text-white/50", "text-[13px] text-white/90", "text-xs text-white/40"
-		box := "flex-row items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-white/10"
+		box := "flex-row items-center gap-3 rounded-2xl px-2.5 py-2 hover:bg-white/10"
 		if current {
-			label, title, sub = "w-8 text-xs font-semibold text-accent", "text-[13px] font-medium text-white", "text-xs text-accent"
-			box += " bg-white/10"
+			label, title, sub = "w-8 text-xs font-semibold text-white", "text-[13px] font-medium text-white", "text-xs text-white/60"
+			box += " bg-white/15"
 		}
 		text := []core.Node{core.Text{Content: pt.Title, MaxLines: 1, Class: title}}
 		if length != "" {
@@ -777,7 +934,7 @@ func partsPanel(cx *core.Scope, src func() Source, menu *core.Signal[string], pg
 			core.View{Class: "flex-1 gap-0.5", Style: core.Style{FlexShrink: 1}, Children: text},
 		}
 		if current {
-			children = append(children, core.Icon{SVG: lucide.AudioLines(), Class: "size-4 text-accent"})
+			children = append(children, core.Icon{SVG: lucide.AudioLines(), Class: "size-4 text-white"})
 		}
 		rows = append(rows, core.View{
 			TestID: "part-" + strconv.Itoa(i), Role: core.RoleButton, Label: pt.Label + " " + pt.Title,
@@ -790,9 +947,15 @@ func partsPanel(cx *core.Scope, src func() Source, menu *core.Signal[string], pg
 			Class: box, Children: children,
 		})
 	}
+	// The parts run down the picture's right, from its top to above the
+	// controls.
+	place := func() core.Style {
+		return core.Style{Bottom: at.above("")().Bottom}
+	}
 	return core.View{
-		TestID: "menu",
-		Class:  "absolute top-4 right-4 bottom-[76px] w-[300px] gap-1 rounded-2xl border border-white/10 bg-zinc-900/90 p-2 shadow-2xl",
+		TestID:    "menu",
+		Class:     "absolute top-4 right-5 w-[300px] gap-1 rounded-[24px] p-2 shadow-2xl",
+		StyleFunc: menuGlass(cx, place),
 		Children: []core.Node{
 			core.Text{Content: locales.PartsN(cx, len(s.Parts)), Class: "px-2.5 pt-1.5 pb-2 text-[13px] font-semibold text-white"},
 			ui.ScrollView{Style: core.Style{FlexGrow: 1, FlexShrink: 1}, ContentStyle: core.Style{Gap: 4}, Children: rows},

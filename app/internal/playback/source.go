@@ -20,6 +20,9 @@ type Source struct {
 	// change between calls; the URL names it when empty.
 	Key   string
 	Title string
+	// Video is the name of the video a part of several is, which the
+	// controls show under the part's title.
+	Video string
 	// URL is a file path or an http(s) URL, requested with Headers.
 	URL     string
 	Headers http.Header

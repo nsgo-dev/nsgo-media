@@ -61,7 +61,12 @@ func TestPagePlaysAndSeeks(t *testing.T) {
 	app := start(t, Source{URL: clip(t, "av.mkv")}, nil)
 	app.Find("text:av.mkv")
 	text := func(id string) string { return app.Find("id:" + id).Text }
-	play(t, app, 5*time.Second, func() bool { return text("duration") == "0:02" && text("position") != "0:00" })
+	// The time left shows the duration once pressed.
+	play(t, app, 5*time.Second, func() bool { return strings.HasPrefix(text("duration"), "−0:0") && text("position") != "0:00" })
+	app.Press("id:duration")
+	if d := text("duration"); d != "0:02" {
+		t.Fatalf("duration %q", d)
+	}
 
 	// Space pauses, and the arrow keys seek back to the start.
 	app.Key("space")
@@ -183,4 +188,26 @@ func openSubtitles(app *nsgotest.App) bool {
 		app.Press("id:tracks")
 	}
 	return app.Exists("id:menu >> text:English")
+}
+
+func TestPageTitlesAPart(t *testing.T) {
+	src := Source{URL: clip(t, "av.mkv"), Title: "Lake – Ridge", Video: "Lake", Part: 1,
+		Parts: []Part{{Label: "P1", Title: "Dawn"}, {Label: "P2", Title: "Ridge"}}}
+	var asked = -1
+	app := startWith(t, Page{Source: func() Source { return src }, OnPart: func(i int) { asked = i }})
+	if got := app.Find("id:title").Text; got != "Ridge" {
+		t.Fatalf("title %q", got)
+	}
+	if got := app.Find("id:subtitle").Text; got != "P2 · Lake" {
+		t.Fatalf("subtitle %q", got)
+	}
+	// The last part has no next one; the menu over the parts plays another.
+	if app.Exists("id:next") {
+		t.Fatal("the last part offers a next one")
+	}
+	app.Press("id:parts")
+	app.Press("id:part-0")
+	if asked != 0 {
+		t.Fatalf("asked for part %d", asked)
+	}
 }

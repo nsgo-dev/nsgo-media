@@ -650,6 +650,7 @@ func (pl *player) playPart(pt *part, start time.Duration) {
 		src.Start, src.FromStart = start, pt.fromStart && start == 0
 		cur.fromStart = false
 		if len(pt.video.Parts) > 1 {
+			src.Video = pt.video.Title
 			for i, vp := range pt.video.Parts {
 				src.Parts = append(src.Parts, playback.Part{Label: locales.PartNumber(cx, i+1), Title: vp.Title, Duration: seconds(vp.Duration)})
 			}
