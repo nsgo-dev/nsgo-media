@@ -54,7 +54,7 @@ Its folders are a setting: open **Settings**, press **Local Files** in the list 
 
 ## Plugins
 
-Each enabled plugin gets its own section in the sidebar, with its home, its pages and its search, and signing in to its account when it has one. **Settings → Plugins** lists every plugin with its switch, and **Add Plugin** adds one:
+Each enabled plugin gets its own section in the sidebar, with its home, its pages and its search, and signing in to its account when it has one. A plugin that keeps the shows its account follows adds **Following**, counting the shows with new episodes: its page lists them by status, and a show's page follows it, changes its status or unfollows it, and plays the episode after the last you watched. **Settings → Plugins** lists every plugin with its switch, and **Add Plugin** adds one:
 
 - **From GitHub…** installs the plugin zip of a repository's latest release: type the repository as `owner/repo` or paste its URL. If the repository does not exist, has no release, or its latest release has no plugin zip, the dialog says which;
 - **From Folder…** or **From Zip…** copies a plugin into the app;

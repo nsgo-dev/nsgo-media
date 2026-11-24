@@ -28,7 +28,7 @@ func (p *Plugin) do(ctx context.Context, export string, params any, out any, che
 		return &InvalidError{Plugin: p.Manifest.ID, Export: export, Err: err}
 	}
 	if check != nil {
-		c := checker{allow: p.allow, files: p.native != nil}
+		c := checker{allow: p.allow, files: p.native != nil, statuses: p.Manifest.Statuses}
 		check(&c)
 		if err := c.err(); err != nil {
 			return &InvalidError{Plugin: p.Manifest.ID, Export: export, Err: err}
@@ -146,6 +146,28 @@ func (p *Plugin) Stream(ctx context.Context, params StreamParams) (*Stream, erro
 // Progress reports the position the viewer reached.
 func (p *Plugin) Progress(ctx context.Context, params ProgressParams) error {
 	return p.do(ctx, ExportProgress, params, nil, nil)
+}
+
+// Following is the shows the account follows, newest update first.
+func (p *Plugin) Following(ctx context.Context, params FollowingParams) (*Following, error) {
+	var f Following
+	if err := p.do(ctx, ExportFollowing, params, &f, f.check); err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+// Follow follows a show on the account, or changes its status.
+func (p *Plugin) Follow(ctx context.Context, params FollowParams) error {
+	if _, ok := p.Manifest.Status(params.Status); !ok {
+		return fmt.Errorf("plugin %s has no status %q", p.Manifest.ID, params.Status)
+	}
+	return p.do(ctx, ExportFollow, params, nil, nil)
+}
+
+// Unfollow unfollows a show on the account.
+func (p *Plugin) Unfollow(ctx context.Context, params UnfollowParams) error {
+	return p.do(ctx, ExportUnfollow, params, nil, nil)
 }
 
 // Setting is the viewer's value of a setting, or its default.

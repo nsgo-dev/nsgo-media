@@ -40,11 +40,15 @@ settings:
       - { value: "720", label: 720p }
 navigation:
   - { id: favorites, label: Favorites }
+statuses:
+  - { id: watching, label: Watching }
+  - { id: completed, label: Completed }
 ```
 
 - `permissions.network` 列出 `fetch` 能访问的全部主机，应用也只从这些主机获取你给出的图片、流和字幕。`*.example.com` 匹配它的子域名。
 - `settings` 显示在应用的设置里，代码用 `host.settings.get` 读取。
 - `navigation` 添加侧栏入口，每个入口用它的 `id` 打开 `browse`。
+- `statuses` 是关注的剧集可以有的状态；导出 `follow` 的插件至少要列一个。
 - 不认识的字段会被拒绝。`minAppVersion` 比应用新时也会拒绝，并提示更新应用。
 
 ## 翻译
@@ -69,6 +73,8 @@ Default quality: 默认清晰度
 | `stream` | 某个分 P 在某个清晰度下的视频和音频地址、请求头、可选清晰度和字幕轨 |
 | `progress` | 不返回；告诉你观看到的位置 |
 | `account`、`signIn`、`signOut` | 已登录的账号，或 `null` |
+| `following` | 账号关注的剧集，最近更新的在前：每部带打开它的视频、状态、已看（`watched`）和已出的集数，以及是否有新剧集（`new`） |
+| `follow`、`unfollow` | 不返回；在账号上按某个状态关注剧集、更改状态或取消关注 |
 | `setSetting` | 不返回；告诉你某项设置变了 |
 
 ```ts
@@ -80,6 +86,14 @@ export async function stream({ video, part, quality }) {
     qualities: [{ id: "1080", label: "1080p" }, { id: "720", label: "720p" }],
     subtitles: [{ label: "English", url: "https://cdn.example.com/en.vtt" }],
   };
+}
+```
+
+关注记在账号上，不在应用里。剧集的每一集是一个视频的分 P，`video` 返回它所属的 `show`，带状态 `status`（没关注时为 `""`）和已看的集数 `watched`，这样视频页就能关注它，并播放下一集：
+
+```ts
+export function video({ id }) {
+  return { id, title: "某部剧", parts: [/* 它的各集 */], show: { id: "s1", status: "watching", watched: 2 } };
 }
 ```
 

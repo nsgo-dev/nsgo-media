@@ -85,6 +85,13 @@ var Parameters = map[string][]string{
 	"CheckedMinutesAgo":   {"n"},
 	"CheckedHoursAgo":     {"n"},
 	"CouldNotCheck":       {"reason"},
+	"FollowingEmpty":      {"name"},
+	"WatchedEpisode":      {"n"},
+	"UpdatedTo":           {"n"},
+	"EpisodesCount":       {"n"},
+	"EpisodeNumber":       {"n"},
+	"EpisodeLabel":        {"n", "title"},
+	"WatchEpisode":        {"n"},
 }
 
 // Translation is a language's messages another package supplies:
@@ -133,6 +140,13 @@ type Translation struct {
 	CheckedMinutesAgo   func(n int) string
 	CheckedHoursAgo     func(n int) string
 	CouldNotCheck       func(reason string) string
+	FollowingEmpty      func(name string) string
+	WatchedEpisode      func(n int) string
+	UpdatedTo           func(n int) string
+	EpisodesCount       func(n int) string
+	EpisodeNumber       func(n int) string
+	EpisodeLabel        func(n int, title string) string
+	WatchEpisode        func(n int) string
 }
 
 var supplied = map[string]Translation{}
@@ -253,6 +267,19 @@ const (
 	textNoPluginsAdded
 	textPluginsOnGitHub
 	textInstallFromGitHubAction
+	textFollowing
+	textStatusAll
+	textFollowStatus
+	textNewEpisodes
+	textNotFollowing
+	textNewBadge
+	textNotStarted
+	textEpisodes
+	textFollow
+	textUnfollow
+	textCouldNotFollow
+	textCouldNotUnfollow
+	textCouldNotChangeStatus
 	numTexts
 )
 
@@ -373,6 +400,19 @@ var keyOfText = [numTexts]string{
 	"noPluginsAdded",
 	"pluginsOnGitHub",
 	"installFromGitHubAction",
+	"following",
+	"statusAll",
+	"followStatus",
+	"newEpisodes",
+	"notFollowing",
+	"newBadge",
+	"notStarted",
+	"episodes",
+	"follow",
+	"unfollow",
+	"couldNotFollow",
+	"couldNotUnfollow",
+	"couldNotChangeStatus",
 }
 
 // textsEn are the messages without arguments in en.
@@ -490,7 +530,20 @@ var textsEn = i18n.NewTexts(""+
 	"Checked just now"+
 	"Add a plugin to browse more videos"+
 	"Plugins are published on GitHub. Type a repository to install its latest release."+
-	"Install from GitHub…",
+	"Install from GitHub…"+
+	"Following"+
+	"All"+
+	"Status"+
+	"New Episodes"+
+	"You're not following anything yet"+
+	"New"+
+	"Not started"+
+	"Episodes"+
+	"Follow"+
+	"Unfollow"+
+	"Could not follow"+
+	"Could not unfollow"+
+	"Could not change the status",
 	[]uint16{
 		11,
 		12,
@@ -606,6 +659,19 @@ var textsEn = i18n.NewTexts(""+
 		34,
 		81,
 		22,
+		9,
+		3,
+		6,
+		12,
+		33,
+		3,
+		11,
+		8,
+		6,
+		8,
+		16,
+		18,
+		27,
 	})
 
 // textsZhHans are the messages without arguments in zh-Hans.
@@ -723,7 +789,20 @@ var textsZhHans = i18n.NewTexts(""+
 	"刚刚检查过"+
 	"添加插件，浏览更多视频"+
 	"插件发布在 GitHub 上。输入一个仓库，即可安装它最新的 Release。"+
-	"从 GitHub 安装…",
+	"从 GitHub 安装…"+
+	"关注"+
+	"全部"+
+	"状态"+
+	"有更新"+
+	"还没有关注任何剧集"+
+	"新"+
+	"尚未开始"+
+	"剧集"+
+	"关注"+
+	"取消关注"+
+	"无法关注"+
+	"无法取消关注"+
+	"无法更改状态",
 	[]uint16{
 		11,
 		15,
@@ -839,6 +918,19 @@ var textsZhHans = i18n.NewTexts(""+
 		33,
 		85,
 		20,
+		6,
+		6,
+		6,
+		9,
+		27,
+		3,
+		12,
+		6,
+		6,
+		12,
+		12,
+		18,
+		18,
 	})
 
 // texts returns the messages without arguments in lang, nil for a
@@ -1014,6 +1106,27 @@ func Supply(lang string, t Translation) {
 	}
 	if t.CouldNotCheck != nil {
 		s.CouldNotCheck = t.CouldNotCheck
+	}
+	if t.FollowingEmpty != nil {
+		s.FollowingEmpty = t.FollowingEmpty
+	}
+	if t.WatchedEpisode != nil {
+		s.WatchedEpisode = t.WatchedEpisode
+	}
+	if t.UpdatedTo != nil {
+		s.UpdatedTo = t.UpdatedTo
+	}
+	if t.EpisodesCount != nil {
+		s.EpisodesCount = t.EpisodesCount
+	}
+	if t.EpisodeNumber != nil {
+		s.EpisodeNumber = t.EpisodeNumber
+	}
+	if t.EpisodeLabel != nil {
+		s.EpisodeLabel = t.EpisodeLabel
+	}
+	if t.WatchEpisode != nil {
+		s.WatchEpisode = t.WatchEpisode
 	}
 	supplied[lang] = s
 	Catalog.Add(lang)
@@ -2896,6 +3009,294 @@ func InstallFromGitHubAction(cx *core.Scope) string { return For(cx).InstallFrom
 
 // InstallFromGitHubAction is the package's InstallFromGitHubAction in the language of msgs.
 func (msgs Messages) InstallFromGitHubAction() string { return msgs.text(textInstallFromGitHubAction) }
+
+// Following says "Following"
+// in the language the app shows under cx.
+//
+// The sidebar entry and page of the shows the viewer follows on a plugin's account.
+func Following(cx *core.Scope) string { return For(cx).Following() }
+
+// Following is the package's Following in the language of msgs.
+func (msgs Messages) Following() string { return msgs.text(textFollowing) }
+
+// StatusAll says "All"
+// in the language the app shows under cx.
+//
+// The tab of the following page showing the shows of every status.
+func StatusAll(cx *core.Scope) string { return For(cx).StatusAll() }
+
+// StatusAll is the package's StatusAll in the language of msgs.
+func (msgs Messages) StatusAll() string { return msgs.text(textStatusAll) }
+
+// FollowStatus says "Status"
+// in the language the app shows under cx.
+//
+// The label of the tabs choosing which status of followed shows the following page shows.
+func FollowStatus(cx *core.Scope) string { return For(cx).FollowStatus() }
+
+// FollowStatus is the package's FollowStatus in the language of msgs.
+func (msgs Messages) FollowStatus() string { return msgs.text(textFollowStatus) }
+
+// NewEpisodes says "New Episodes"
+// in the language the app shows under cx.
+//
+// The section of followed shows with an episode out since the viewer last watched.
+func NewEpisodes(cx *core.Scope) string { return For(cx).NewEpisodes() }
+
+// NewEpisodes is the package's NewEpisodes in the language of msgs.
+func (msgs Messages) NewEpisodes() string { return msgs.text(textNewEpisodes) }
+
+// NotFollowing says "You're not following anything yet"
+// in the language the app shows under cx.
+func NotFollowing(cx *core.Scope) string { return For(cx).NotFollowing() }
+
+// NotFollowing is the package's NotFollowing in the language of msgs.
+func (msgs Messages) NotFollowing() string { return msgs.text(textNotFollowing) }
+
+// FollowingEmpty says "Follow a show from its page on {name}, and its new episodes show up here."
+// in the language the app shows under cx.
+//
+// The following page's message while nothing is followed, with the plugin's name.
+func FollowingEmpty(cx *core.Scope, name string) string { return For(cx).FollowingEmpty(name) }
+
+// FollowingEmpty is the package's FollowingEmpty in the language of msgs.
+func (msgs Messages) FollowingEmpty(name string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.FollowingEmpty(name))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].FollowingEmpty; f != nil {
+			return f(name)
+		}
+		switch lang {
+		case "", "en":
+			return "Follow a show from its page on " + msgs.arg(name) + ", and its new episodes show up here."
+		case "zh-Hans":
+			return "在" + name + "的剧集页面关注它，有新剧集时会出现在这里。"
+		}
+	}
+}
+
+// NewBadge says "New"
+// in the language the app shows under cx.
+//
+// Marks a followed show with an episode out since the viewer last watched.
+func NewBadge(cx *core.Scope) string { return For(cx).NewBadge() }
+
+// NewBadge is the package's NewBadge in the language of msgs.
+func (msgs Messages) NewBadge() string { return msgs.text(textNewBadge) }
+
+// WatchedEpisode says "Watched EP {n, number}"
+// in the language the app shows under cx.
+//
+// The episodes of a followed show the viewer watched, by the last one's number.
+func WatchedEpisode(cx *core.Scope, n int) string { return For(cx).WatchedEpisode(n) }
+
+// WatchedEpisode is the package's WatchedEpisode in the language of msgs.
+func (msgs Messages) WatchedEpisode(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.WatchedEpisode(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].WatchedEpisode; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			return "Watched EP " + msgs.arg(i18n.FormatNumber("en", float64(n)))
+		case "zh-Hans":
+			return "看到第 " + i18n.FormatNumber("zh-Hans", float64(n)) + " 集"
+		}
+	}
+}
+
+// NotStarted says "Not started"
+// in the language the app shows under cx.
+//
+// A followed show of which the viewer watched nothing.
+func NotStarted(cx *core.Scope) string { return For(cx).NotStarted() }
+
+// NotStarted is the package's NotStarted in the language of msgs.
+func (msgs Messages) NotStarted() string { return msgs.text(textNotStarted) }
+
+// UpdatedTo says "Updated to EP {n, number}"
+// in the language the app shows under cx.
+//
+// The latest episode of a followed show with a new one, by its number.
+func UpdatedTo(cx *core.Scope, n int) string { return For(cx).UpdatedTo(n) }
+
+// UpdatedTo is the package's UpdatedTo in the language of msgs.
+func (msgs Messages) UpdatedTo(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.UpdatedTo(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].UpdatedTo; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			return "Updated to EP " + msgs.arg(i18n.FormatNumber("en", float64(n)))
+		case "zh-Hans":
+			return "更新至第 " + i18n.FormatNumber("zh-Hans", float64(n)) + " 集"
+		}
+	}
+}
+
+// EpisodesCount says "{n, plural, one {# episode} other {# episodes}}"
+// in the language the app shows under cx.
+//
+// How many episodes of a followed show are out.
+func EpisodesCount(cx *core.Scope, n int) string { return For(cx).EpisodesCount(n) }
+
+// EpisodesCount is the package's EpisodesCount in the language of msgs.
+func (msgs Messages) EpisodesCount(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.EpisodesCount(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].EpisodesCount; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			var b strings.Builder
+			switch i18n.Cardinal("en", float64(n)) {
+			case i18n.One:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" episode")
+			default:
+				b.WriteString(msgs.arg(i18n.FormatNumber("en", float64(n))))
+				b.WriteString(" episodes")
+			}
+			return b.String()
+		case "zh-Hans":
+			return "共 " + i18n.FormatNumber("zh-Hans", float64(n)) + " 集"
+		}
+	}
+}
+
+// Episodes says "Episodes"
+// in the language the app shows under cx.
+//
+// The title of a show's video's list of its parts, which are its episodes.
+func Episodes(cx *core.Scope) string { return For(cx).Episodes() }
+
+// Episodes is the package's Episodes in the language of msgs.
+func (msgs Messages) Episodes() string { return msgs.text(textEpisodes) }
+
+// EpisodeNumber says "EP {n, number}"
+// in the language the app shows under cx.
+//
+// An episode of a show by its number.
+func EpisodeNumber(cx *core.Scope, n int) string { return For(cx).EpisodeNumber(n) }
+
+// EpisodeNumber is the package's EpisodeNumber in the language of msgs.
+func (msgs Messages) EpisodeNumber(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.EpisodeNumber(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].EpisodeNumber; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			return "EP " + msgs.arg(i18n.FormatNumber("en", float64(n)))
+		case "zh-Hans":
+			return "第 " + i18n.FormatNumber("zh-Hans", float64(n)) + " 集"
+		}
+	}
+}
+
+// EpisodeLabel says "EP {n, number} {title}"
+// in the language the app shows under cx.
+//
+// An episode of a show, by its number and title.
+func EpisodeLabel(cx *core.Scope, n int, title string) string { return For(cx).EpisodeLabel(n, title) }
+
+// EpisodeLabel is the package's EpisodeLabel in the language of msgs.
+func (msgs Messages) EpisodeLabel(n int, title string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.EpisodeLabel(n, title))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].EpisodeLabel; f != nil {
+			return f(n, title)
+		}
+		switch lang {
+		case "", "en":
+			return "EP " + msgs.arg(i18n.FormatNumber("en", float64(n))) + " " + msgs.arg(title)
+		case "zh-Hans":
+			return "第 " + i18n.FormatNumber("zh-Hans", float64(n)) + " 集 " + title
+		}
+	}
+}
+
+// WatchEpisode says "Watch EP {n, number}"
+// in the language the app shows under cx.
+//
+// Plays the episode of a show after the last one the viewer watched, by its number.
+func WatchEpisode(cx *core.Scope, n int) string { return For(cx).WatchEpisode(n) }
+
+// WatchEpisode is the package's WatchEpisode in the language of msgs.
+func (msgs Messages) WatchEpisode(n int) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.WatchEpisode(n))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].WatchEpisode; f != nil {
+			return f(n)
+		}
+		switch lang {
+		case "", "en":
+			return "Watch EP " + msgs.arg(i18n.FormatNumber("en", float64(n)))
+		case "zh-Hans":
+			return "观看第 " + i18n.FormatNumber("zh-Hans", float64(n)) + " 集"
+		}
+	}
+}
+
+// Follow says "Follow"
+// in the language the app shows under cx.
+//
+// Follows a show on the plugin's account.
+func Follow(cx *core.Scope) string { return For(cx).Follow() }
+
+// Follow is the package's Follow in the language of msgs.
+func (msgs Messages) Follow() string { return msgs.text(textFollow) }
+
+// Unfollow says "Unfollow"
+// in the language the app shows under cx.
+//
+// Stops following a show on the plugin's account.
+func Unfollow(cx *core.Scope) string { return For(cx).Unfollow() }
+
+// Unfollow is the package's Unfollow in the language of msgs.
+func (msgs Messages) Unfollow() string { return msgs.text(textUnfollow) }
+
+// CouldNotFollow says "Could not follow"
+// in the language the app shows under cx.
+func CouldNotFollow(cx *core.Scope) string { return For(cx).CouldNotFollow() }
+
+// CouldNotFollow is the package's CouldNotFollow in the language of msgs.
+func (msgs Messages) CouldNotFollow() string { return msgs.text(textCouldNotFollow) }
+
+// CouldNotUnfollow says "Could not unfollow"
+// in the language the app shows under cx.
+func CouldNotUnfollow(cx *core.Scope) string { return For(cx).CouldNotUnfollow() }
+
+// CouldNotUnfollow is the package's CouldNotUnfollow in the language of msgs.
+func (msgs Messages) CouldNotUnfollow() string { return msgs.text(textCouldNotUnfollow) }
+
+// CouldNotChangeStatus says "Could not change the status"
+// in the language the app shows under cx.
+//
+// Says changing the status of a followed show failed.
+func CouldNotChangeStatus(cx *core.Scope) string { return For(cx).CouldNotChangeStatus() }
+
+// CouldNotChangeStatus is the package's CouldNotChangeStatus in the language of msgs.
+func (msgs Messages) CouldNotChangeStatus() string { return msgs.text(textCouldNotChangeStatus) }
 
 // dated is lang with the hour cycle the user set, which times take.
 func (msgs Messages) dated(lang string) string {

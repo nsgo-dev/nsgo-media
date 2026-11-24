@@ -1,5 +1,5 @@
 design en in="main#content" name="Main/Following"
-box class="flex-1" note="Goal, not in the plugin contract yet: a plugin's following export answers the shows its account follows, newest update first, with each one's status, episodes watched, latest episode and whether it has a new one; follow and unfollow change them on the account."
+box class="flex-1" note="A plugin's following export answers the shows its account follows, newest update first, with each one's status, episodes watched, latest episode and whether it has a new one; follow and unfollow change them on the account."
   use toolbar variant=root title="Following"
     fill actions
       use status-tabs all.state=selected all.tap="open following" watching.tap="open #watching"

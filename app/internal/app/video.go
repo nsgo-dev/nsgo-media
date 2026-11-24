@@ -105,6 +105,10 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 	// play plays v as Play does: where it was left, or the part the
 	// plugin names.
 	play := func() {
+		if n := nextEpisode(v); n >= 0 {
+			sh.play(p, v, n, 0, false)
+			return
+		}
 		if v.Part == "" {
 			if r, ok := sh.resumeOf(p, v); ok {
 				sh.play(p, v, r.part, r.at, false)
@@ -140,7 +144,10 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 	if v.Duration > 0 {
 		meta = append(meta, clock(v.Duration))
 	}
-	if len(v.Parts) > 1 {
+	switch {
+	case v.Show != nil:
+		meta = append(meta, locales.EpisodesCount(cx, len(v.Parts)))
+	case len(v.Parts) > 1:
 		meta = append(meta, locales.PartsCount(cx, len(v.Parts)))
 	}
 	line := []core.Node{}
@@ -169,15 +176,23 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 				label = locales.ResumeAt(cx, clock(r.at.Seconds()))
 			}
 		}
+		next := nextEpisode(v)
+		if next >= 0 {
+			label = locales.WatchEpisode(cx, next+1)
+		}
 		buttons := []core.Node{ui.Button{TestID: "play-video", Text: label, Size: ui.SizeLarge, OnPress: play}}
-		if resumable && v.Part == "" {
+		if resumable && v.Part == "" && next < 0 {
 			buttons = append(buttons, ui.Button{
 				TestID: "play-from-start", Text: locales.PlayFromStart(cx), Icon: lucide.RotateCcw, Variant: ui.ButtonOutline, Size: ui.SizeLarge,
 				OnPress: func() { sh.play(p, v, r.part, 0, true) },
 			})
 		}
-		return core.View{Class: "flex-row items-center gap-2 pt-1", Children: buttons}
+		return core.View{Class: "flex-row items-center gap-2", Children: buttons}
 	})
+	row := []core.Node{actions}
+	if v.Show != nil && p.Has(plugin.ExportFollow) {
+		row = append(row, sh.followButton(cx, p, v.Show))
+	}
 
 	info := []core.Node{
 		core.Text{Content: v.Title, MaxLines: 2, Class: "text-[22px] leading-tight font-bold text-foreground"},
@@ -185,7 +200,7 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 	if len(line) > 0 {
 		info = append(info, core.View{Class: "flex-row flex-wrap items-center gap-3", Children: line})
 	}
-	info = append(info, actions)
+	info = append(info, core.View{Class: "flex-row items-center gap-2 pt-1", Children: row})
 	if v.Description != "" {
 		expanded := core.NewSignal(cx, false)
 		info = append(info,
@@ -213,8 +228,12 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 		for i, pt := range v.Parts {
 			parts = append(parts, sh.partRow(cx, p, v, i, pt))
 		}
+		title := locales.Parts(cx)
+		if v.Show != nil {
+			title = locales.Episodes(cx)
+		}
 		children = append(children, core.View{Class: "gap-3", Children: []core.Node{
-			sectionHeader(cx, locales.Parts(cx), "", nil),
+			sectionHeader(cx, title, "", nil),
 			core.View{Class: "flex-row flex-wrap gap-3", Children: parts},
 		}})
 	}
@@ -252,14 +271,15 @@ func (sh *shell) partRow(cx *core.Scope, p *plugin.Plugin, v *plugin.Video, i in
 	if length != "" {
 		text = append(text, core.Text{Content: length, Class: "text-xs text-muted-foreground group-selected:text-accent"})
 	}
+	number, label := episodeLabels(cx, v, i)
 	return core.View{
-		TestID: "part-" + strconv.Itoa(i+1), Role: core.RoleButton, Label: locales.PartLabel(cx, i+1, pt.Title),
+		TestID: "part-" + strconv.Itoa(i+1), Role: core.RoleButton, Label: label,
 		OnPress:  func(core.PressEvent) { sh.play(p, v, i, 0, false) },
 		Selected: current,
 		Class:    "group h-14 w-[290px] flex-row items-center gap-3 overflow-hidden rounded-xl border border-border bg-background px-3 hover:bg-surface-hover selected:border-accent/50 selected:bg-accent/[0.06]",
 		Children: []core.Node{
 			core.View{Class: "h-7 min-w-9 items-center justify-center rounded-lg bg-chip px-1.5 group-selected:bg-accent", Children: []core.Node{
-				core.Text{Content: locales.PartNumber(cx, i+1), Class: "text-xs font-semibold text-muted-foreground group-selected:text-white"},
+				core.Text{Content: number, Class: "text-xs font-semibold text-muted-foreground group-selected:text-white"},
 			}},
 			core.View{Class: "flex-1 gap-0.5", Style: core.Style{FlexShrink: 1}, Children: text},
 			core.Show{When: current, Then: func(*core.Scope) core.Node {

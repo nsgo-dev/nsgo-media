@@ -24,3 +24,7 @@ settings:
 navigation:
   - { id: popular, label: Popular }
   - { id: favorites, label: Favorites }
+statuses:
+  - { id: watching, label: Watching }
+  - { id: planned, label: Plan to Watch }
+  - { id: completed, label: Completed }

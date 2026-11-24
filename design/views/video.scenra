@@ -27,7 +27,7 @@ box class="flex-1"
         box class="flex-row items-center gap-2 pt-1"
           use button variant=large label="Resume P2 at 1:31:05" button.tap="open player" note="Play starts with the part the plugin names, else the first; where the viewer left a part, it resumes there, as the player's resume offer does today."
           use button variant="secondary large" icon=rotate-ccw label="Play from Start" button.tap="open player"
-          use button variant="secondary large" icon=plus label="Follow" button.tap="open #show" note="Goal: shown when the plugin has follow and the video belongs to a show it can follow; follows it on the plugin's account."
+          use button variant="secondary large" icon=plus label="Follow" button.tap="open #show" note="Shown when the plugin has follow and the video belongs to a show it can follow; follows it on the plugin's account."
         end
         text "A slow, uncut morning at a lake high in the Alps: the light comes over the ridge, the mist lifts off the water and the first hikers pass. Recorded in three parts with only natural sound." class="line-clamp-3 pt-1 text-[13px] leading-relaxed text-zinc-600" note="The description, selectable; More expands it."
         text "More" class="text-[13px] font-medium text-[#E8553A]"

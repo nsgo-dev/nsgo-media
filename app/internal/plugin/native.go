@@ -40,6 +40,9 @@ func LoadNative(fsys fs.FS, exports Native, opts Options) (*Plugin, error) {
 		}
 		p.exports[name] = true
 	}
+	if err := p.checkExports(); err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 
