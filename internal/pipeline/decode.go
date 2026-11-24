@@ -95,7 +95,7 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder, stream int) {
 				}
 				continue
 			}
-			if vdrop >= 0 && pts < vdrop {
+			if vdrop >= 0 && pts < vdrop || p.audioOnly.Load() {
 				frame.Unref()
 				continue
 			}
@@ -136,6 +136,12 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder, stream int) {
 		// A packet of a track the decoder is not for came in as the
 		// variant changed.
 		if it.gen != gen || backDone || it.pkt != nil && it.pkt.StreamIndex() != stream {
+			freeItem(it)
+			continue
+		}
+		// Nothing shows the picture: its packets go undecoded until a seek
+		// starts it again.
+		if it.pkt != nil && back == nil && p.audioOnly.Load() {
 			freeItem(it)
 			continue
 		}

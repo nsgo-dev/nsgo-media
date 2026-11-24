@@ -92,4 +92,14 @@ player.View{
 
 ## On iOS
 
-A player pauses as an interruption, such as a call or Siri, begins, and plays again as it ends if the system allows it. It pauses as headphones are unplugged or the app goes to the background, and stays paused until the app plays: it does not play in the background. The core never sets the audio session's category, so iOS's default one, which the Ring/Silent switch silences, applies until the app or NSGo sets another.
+While a player plays, it holds the app's audio session at Playback through NSGo, so the Ring/Silent switch does not silence it, and other apps' audio pauses. It pauses as an interruption, such as a call or Siri, begins, and plays again as it ends if the system allows it. It pauses as headphones are unplugged, and stays paused until the app plays.
+
+To keep playing in the background and with the screen locked, declare the `audio` background mode in `nsgo.yaml`:
+
+```yaml
+apple:
+  info:
+    UIBackgroundModes: [audio]
+```
+
+The sound then plays on there, and the picture comes back where it plays as the app returns; a source without sound pauses. Without the mode, a player pauses as the app goes to the background and stays paused until the app plays. The core shows no lock-screen or Control Center controls.

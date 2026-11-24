@@ -99,3 +99,20 @@ func uintValue(info objc.ID, key string) uint {
 	}
 	return objc.Send[uint](v, objc.RegisterName("unsignedIntegerValue"))
 }
+
+// backgroundAudio reads the app's Info.plist once, which does not change
+// while it runs.
+var backgroundAudio = sync.OnceValue(func() bool {
+	sel := objc.RegisterName
+	bundle := objc.ID(objc.GetClass("NSBundle")).Send(sel("mainBundle"))
+	modes := bundle.Send(sel("objectForInfoDictionaryKey:"), nsString("UIBackgroundModes"))
+	if modes == 0 || !objc.Send[bool](modes, sel("isKindOfClass:"), objc.GetClass("NSArray")) {
+		return false
+	}
+	return objc.Send[bool](modes, sel("containsObject:"), nsString("audio"))
+})
+
+// nsString is s as an NSString, autoreleased.
+func nsString(s string) objc.ID {
+	return objc.ID(objc.GetClass("NSString")).Send(objc.RegisterName("stringWithUTF8String:"), s)
+}

@@ -33,7 +33,8 @@ func (p *Pipeline) Tick() Status {
 		p.retired = nil
 	}
 	p.mu.Lock()
-	hasVideo := p.videoStream >= 0
+	// A picture not decoded holds back neither the start nor the end.
+	hasVideo := p.videoStream >= 0 && !p.audioOnly.Load()
 	hasAudio := p.audioStream >= 0
 	paused, demuxEOF, loop := p.paused, p.demuxEOF(), p.loop
 	p.mu.Unlock()

@@ -215,6 +215,38 @@ func TestRateAndLoop(t *testing.T) {
 	}
 }
 
+// Without the picture the sound plays on, ticked as a background timer
+// would, and the picture comes back where it plays.
+func TestAudioOnly(t *testing.T) {
+	p := open(t, fixture(t, "av.mkv"), nil)
+	p.SetPaused(false)
+	run(t, p, 2*time.Second, func(s Status) bool { return s.Position > 200*time.Millisecond })
+	p.SetAudioOnly(true)
+	// The frames decoded before may still show; none after them decodes.
+	from := p.Position() + 500*time.Millisecond
+	shown := 0
+	deadline := time.Now().Add(2 * time.Second)
+	var st Status
+	for st = p.Tick(); st.Position < 1200*time.Millisecond; st = p.Tick() {
+		if st.Frame != nil && st.Frame.PTS-p.start > from {
+			shown++
+		}
+		if st.Ended || time.Now().After(deadline) {
+			t.Fatalf("stopped at %v, ended %v", st.Position, st.Ended)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if shown > 0 {
+		t.Errorf("%d frames from after %v shown without the picture", shown, from)
+	}
+	p.SetAudioOnly(false)
+	st = run(t, p, 2*time.Second, func(s Status) bool { return s.Frame != nil })
+	if got := st.Frame.PTS - p.start; got < 1150*time.Millisecond {
+		t.Errorf("the picture came back at %v, after 1.2 s", got)
+	}
+	run(t, p, 3*time.Second, func(s Status) bool { return s.Ended })
+}
+
 func TestVideoOnlyWithoutAudioClock(t *testing.T) {
 	p := open(t, fixture(t, "rotated.mp4"), nil)
 	st := run(t, p, 2*time.Second, func(s Status) bool { return s.Frame != nil })
