@@ -110,7 +110,7 @@ func TestDemoExports(t *testing.T) {
 	}
 
 	home := must[*Page](t)(p.Home(ctx, PageParams{}))
-	if len(home.Sections) != 3 || home.Sections[0].Title != "Popular" || home.Next != "2" {
+	if len(home.Sections) != 4 || home.Sections[0].Title != "Popular" || home.Next != "2" {
 		t.Fatalf("home = %+v", home)
 	}
 	if v := home.Sections[0].Items[0]; v.Kind != KindVideo || v.Image == nil || v.Image.Headers["Referer"] == "" {
@@ -182,6 +182,66 @@ func TestDemoExports(t *testing.T) {
 	}
 	if a := must[*Account](t)(p.Account(ctx)); a != nil {
 		t.Fatalf("account after signing out = %+v", a)
+	}
+}
+
+func TestDemoFollowing(t *testing.T) {
+	ctx := context.Background()
+	p := loadDemo(t, options(&fakeUI{}))
+
+	// Signed out, following needs signing in, and a show is not followed.
+	if _, err := p.Following(ctx, FollowingParams{}); !errors.Is(err, ErrSignIn) {
+		t.Fatalf("following signed out = %v", err)
+	}
+	if err := p.Follow(ctx, FollowParams{ID: "s1", Status: "watching"}); !errors.Is(err, ErrSignIn) {
+		t.Fatalf("follow signed out = %v", err)
+	}
+	v := must[*Video](t)(p.Video(ctx, VideoParams{ID: "v4"}))
+	if v.Show == nil || v.Show.ID != "s1" || v.Show.Status != "" || len(v.Parts) != 4 {
+		t.Fatalf("a show's video = %+v", v)
+	}
+	if v := must[*Video](t)(p.Video(ctx, VideoParams{ID: "v1"})); v.Show != nil {
+		t.Fatalf("a video of no show belongs to %+v", v.Show)
+	}
+
+	must[*Account](t)(p.SignIn(ctx))
+	if f := must[*Following](t)(p.Following(ctx, FollowingParams{})); len(f.Shows) != 0 {
+		t.Fatalf("following before following anything = %+v", f)
+	}
+	if err := p.Follow(ctx, FollowParams{ID: "s2", Status: "completed"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Follow(ctx, FollowParams{ID: "s1", Status: "watching"}); err != nil {
+		t.Fatal(err)
+	}
+	f := must[*Following](t)(p.Following(ctx, FollowingParams{}))
+	if len(f.Shows) != 2 || f.Shows[0].ID != "s1" || !f.Shows[0].New || f.Shows[0].Watched != 2 || f.Shows[0].Episodes != 4 || f.Shows[0].Video != "v4" || f.Shows[1].New {
+		t.Fatalf("following = %+v", f)
+	}
+	if f := must[*Following](t)(p.Following(ctx, FollowingParams{Status: "completed"})); len(f.Shows) != 1 || f.Shows[0].ID != "s2" {
+		t.Fatalf("following of one status = %+v", f)
+	}
+	if v := must[*Video](t)(p.Video(ctx, VideoParams{ID: "v4"})); v.Show.Status != "watching" || v.Show.Watched != 2 {
+		t.Fatalf("a followed show's video = %+v", v.Show)
+	}
+
+	// An episode played to its end counts as watched.
+	if err := p.Progress(ctx, ProgressParams{Video: "v4", Part: "3", Position: 295, Duration: 300}); err != nil {
+		t.Fatal(err)
+	}
+	if v := must[*Video](t)(p.Video(ctx, VideoParams{ID: "v4"})); v.Show.Watched != 3 {
+		t.Fatalf("watched after an episode = %d", v.Show.Watched)
+	}
+
+	// A status the manifest lacks never reaches the plugin.
+	if err := p.Follow(ctx, FollowParams{ID: "s1", Status: "dropped"}); err == nil || errors.Is(err, ErrSignIn) {
+		t.Fatalf("follow with a status the manifest lacks = %v", err)
+	}
+	if err := p.Unfollow(ctx, UnfollowParams{ID: "s1"}); err != nil {
+		t.Fatal(err)
+	}
+	if f := must[*Following](t)(p.Following(ctx, FollowingParams{})); len(f.Shows) != 1 || f.Shows[0].ID != "s2" {
+		t.Fatalf("following after unfollowing = %+v", f)
 	}
 }
 
@@ -415,7 +475,11 @@ export function stream({ part }) {
   if (part === "both") return { video: { url: "https://cdn.example.com/v" }, subtitles: [{ label: "A", url: "https://cdn.example.com/a.vtt", text: "WEBVTT" }] }
   return { video: { url: part ? "https://elsewhere.example.com/v" : "file:///etc/passwd" } }
 }
-export function video({ id }) { return id ? { id, title: "T", parts: [{ id: "1", title: "P1" }], part: "2" } : "not a video" }`)
+export function video({ id }) {
+  if (id === "show") return { id, title: "T", parts: [{ id: "1", title: "P1" }], show: { id: "s", status: "watching" } }
+  return id ? { id, title: "T", parts: [{ id: "1", title: "P1" }], part: "2" } : "not a video"
+}
+export function following() { return { shows: [{ id: "s", title: "S", video: "v", status: "dropped" }] } }`)
 	ctx := context.Background()
 	var inv *InvalidError
 	if _, err := p.Home(ctx, PageParams{}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "id is empty") {
@@ -435,6 +499,12 @@ export function video({ id }) { return id ? { id, title: "T", parts: [{ id: "1",
 	}
 	if _, err := p.Video(ctx, VideoParams{ID: "v"}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "not among its parts") {
 		t.Fatalf("video starting at a part it lacks = %v", err)
+	}
+	if _, err := p.Following(ctx, FollowingParams{}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "none of the manifest's statuses") {
+		t.Fatalf("following with a status the manifest lacks = %v", err)
+	}
+	if _, err := p.Video(ctx, VideoParams{ID: "show"}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "none of the manifest's statuses") {
+		t.Fatalf("video of a show with a status the manifest lacks = %v", err)
 	}
 	if _, err := p.Search(ctx, SearchParams{}); !errors.Is(err, ErrNotExported) || p.Has(ExportSearch) {
 		t.Fatalf("search, not exported = %v", err)
@@ -481,10 +551,22 @@ func TestManifests(t *testing.T) {
 		`{` + base + `,"minAppVersion":"0.1.0","settings":[{"key":"q","label":"Q","type":"choice","default":"x","choices":[{"value":"y","label":"Y"}]}]}`,
 		`{` + base + `,"minAppVersion":"0.1.0","settings":[{"key":"t","label":"T","type":"toggle","default":"yes"}]}`,
 		`{` + base + `,"minAppVersion":"0.1.0","navigation":[{"id":"a","label":"A"},{"id":"a","label":"B"}]}`,
+		`{` + base + `,"minAppVersion":"0.1.0","statuses":[{"id":"w","label":"W"},{"id":"w","label":"X"}]}`,
+		`{` + base + `,"minAppVersion":"0.1.0","statuses":[{"id":"w","label":""}]}`,
 	} {
 		if _, err := ParseManifest([]byte(bad), "0.1.0"); err == nil {
 			t.Errorf("manifest %s was accepted", bad)
 		}
+	}
+}
+
+func TestFollowNeedsStatuses(t *testing.T) {
+	fsys := fstest.MapFS{
+		"plugin.yaml": {Data: []byte("id: test\nname: Test\nversion: 1.0.0\nminAppVersion: 0.1.0\nmain: main.js\nmedia: video\n")},
+		"main.js":     {Data: []byte("export function follow() {}")},
+	}
+	if _, err := Load(fsys, false, options(nil)); err == nil || !strings.Contains(err.Error(), "lists no statuses") {
+		t.Fatalf("follow without statuses = %v", err)
 	}
 }
 

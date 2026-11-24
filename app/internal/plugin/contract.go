@@ -24,12 +24,16 @@ const (
 	ExportStream     = "stream"
 	ExportProgress   = "progress"
 	ExportSetSetting = "setSetting"
+	ExportFollowing  = "following"
+	ExportFollow     = "follow"
+	ExportUnfollow   = "unfollow"
 )
 
 // Exports lists every export of the contract.
 var Exports = []string{
 	ExportAccount, ExportSignIn, ExportSignOut, ExportHome, ExportBrowse, ExportSearch,
 	ExportSuggest, ExportResolve, ExportVideo, ExportStream, ExportProgress, ExportSetSetting,
+	ExportFollowing, ExportFollow, ExportUnfollow,
 }
 
 // ItemKind is what an item opens: a video opens video, the others browse.
@@ -97,6 +101,43 @@ type Video struct {
 	// chose one; "" is the first.
 	Part    string `json:"part,omitempty"`
 	Related []Item `json:"related,omitempty"`
+	// Show is the show the video belongs to, whose episodes are its
+	// parts, when it is one the account can follow.
+	Show *VideoShow `json:"show,omitempty"`
+}
+
+// VideoShow is the show a video belongs to, as its page follows it.
+type VideoShow struct {
+	ID string `json:"id"`
+	// Status is the status the account follows it with, one of the
+	// manifest's; "" is not followed.
+	Status string `json:"status,omitempty"`
+	// Watched is the episodes watched, the first of them.
+	Watched int `json:"watched,omitempty"`
+}
+
+// Show is a show the account follows.
+type Show struct {
+	ID    string  `json:"id"`
+	Title string  `json:"title"`
+	Image *Source `json:"image,omitempty"`
+	// Video is the id of the video that opens it, whose parts are its
+	// episodes.
+	Video  string `json:"video"`
+	Status string `json:"status"`
+	// Watched is the episodes watched, the first of them, and Episodes
+	// those out.
+	Watched  int `json:"watched,omitempty"`
+	Episodes int `json:"episodes,omitempty"`
+	// New is an episode out since the viewer last watched.
+	New bool `json:"new,omitempty"`
+}
+
+// Following is what following answers: the shows followed, newest
+// update first, and the cursor of the page after it.
+type Following struct {
+	Shows []Show `json:"shows"`
+	Next  string `json:"next,omitempty"`
 }
 
 // Part is one playable part of a video.
@@ -171,6 +212,18 @@ type (
 		Key   string `json:"key"`
 		Value any    `json:"value"`
 	}
+	FollowingParams struct {
+		// Status, when set, asks for the shows of that status alone.
+		Status string `json:"status,omitempty"`
+		Cursor string `json:"cursor,omitempty"`
+	}
+	FollowParams struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	}
+	UnfollowParams struct {
+		ID string `json:"id"`
+	}
 )
 
 // The error codes a plugin throws, each with what the app does.
@@ -228,9 +281,10 @@ func (e *InvalidError) Unwrap() error { return e.Err }
 // the URLs of sources, which the app fetches only from the plugin's hosts;
 // files lets a native plugin's streams and subtitles be local files.
 type checker struct {
-	allow func(*http.Request) error
-	files bool
-	errs  []error
+	allow    func(*http.Request) error
+	files    bool
+	statuses []Status
+	errs     []error
 }
 
 func (c *checker) fail(at, format string, args ...any) {
@@ -243,6 +297,20 @@ func (c *checker) need(at, name, v string) {
 	if strings.TrimSpace(v) == "" {
 		c.fail(at, "%s is empty", name)
 	}
+}
+
+// status checks a show's status against the manifest's; "" is one when
+// emptyOK.
+func (c *checker) status(at, status string, emptyOK bool) {
+	if status == "" && emptyOK {
+		return
+	}
+	for _, s := range c.statuses {
+		if s.ID == status {
+			return
+		}
+	}
+	c.fail(at, "status %q is none of the manifest's statuses", status)
 }
 
 func (c *checker) source(at string, s *Source) {
@@ -327,6 +395,27 @@ func (v *Video) check(c *checker) {
 		c.fail("video", "part %q is not among its parts", v.Part)
 	}
 	c.items("related", v.Related)
+	if v.Show != nil {
+		c.need("video.show", "id", v.Show.ID)
+		c.status("video.show", v.Show.Status, true)
+		if v.Show.Watched < 0 {
+			c.fail("video.show", "watched is negative")
+		}
+	}
+}
+
+func (f *Following) check(c *checker) {
+	for i, s := range f.Shows {
+		at := fmt.Sprintf("shows[%d]", i)
+		c.need(at, "id", s.ID)
+		c.need(at, "title", s.Title)
+		c.need(at, "video", s.Video)
+		c.source(at+".image", s.Image)
+		c.status(at, s.Status, false)
+		if s.Watched < 0 || s.Episodes < 0 {
+			c.fail(at, "watched or episodes is negative")
+		}
+	}
 }
 
 func (s *Stream) check(c *checker) {

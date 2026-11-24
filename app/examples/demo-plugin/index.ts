@@ -68,6 +68,16 @@ const videos = [
 
 const collections = [{ id: "c1", title: "Walks", videos: ["v1", "v3"] }];
 
+// shows are series the account can follow: each opens a video whose parts
+// are its episodes. An ongoing one gets new episodes.
+const shows = [
+  { id: "s1", video: "v4", title: "Night market stories", uploader: "u2", episodes: ["Lanterns", "Dumplings", "Last orders", "Closing time"], ongoing: true },
+  { id: "s2", video: "v5", title: "Seasons in the valley", uploader: "u1", episodes: ["Spring", "Summer", "Autumn"], ongoing: false },
+];
+
+// The account's history before it follows anything: episodes watched.
+const history: Record<string, number> = { s1: 2 };
+
 // fail throws an error whose code tells the app what to do.
 function fail(code: string, message: string): never {
   const err = new Error(host.t(message)) as Error & { code: string };
@@ -86,6 +96,12 @@ function videoItem(id: string): Item {
     image: { url: `${site}/covers/${v.id}.jpg`, headers },
     duration: v.duration,
   };
+}
+
+function showItem(id: string): Item {
+  const s = shows.find((s) => s.id === id)!;
+  const u = uploaders.find((u) => u.id === s.uploader)!;
+  return { kind: "video", id: s.video, title: s.title, subtitle: u.name, image: { url: `${site}/covers/${s.video}.jpg`, headers } };
 }
 
 function uploaderItem(id: string): Item {
@@ -138,6 +154,7 @@ export async function home({ cursor }: { cursor?: string }): Promise<Page> {
     sections: [
       { title: host.t("Popular"), items: videos.map((v) => videoItem(v.id)), more: "popular" },
       { title: host.t("Uploaders"), items: uploaders.map((u) => uploaderItem(u.id)) },
+      { title: host.t("Shows"), items: shows.map((s) => showItem(s.id)) },
       { items: [{ kind: "link", id: "favorites", title: host.t("Favorites") }] },
     ],
     next: "2",
@@ -202,6 +219,18 @@ export function resolve({ text }: { text: string }): Item | null {
 export function video({ id: asked }: { id: string }) {
   const [id, part] = asked.split("?part=");
   if (id === "gone") fail("unavailable", "This video was removed");
+  const show = shows.find((s) => s.video === id);
+  if (show) {
+    return {
+      id,
+      title: show.title,
+      image: { url: `${site}/covers/${id}.jpg`, headers },
+      uploader: uploaderItem(show.uploader),
+      parts: show.episodes.map((title, i) => ({ id: `${i + 1}`, title, duration: 300 })),
+      part,
+      show: { id: show.id, status: follows()[show.id] ?? "", watched: signedIn() ? watched(show.id) : 0 },
+    };
+  }
   const v = videos.find((v) => v.id === id);
   if (!v) throw new Error(`No video ${id}`);
   return {
@@ -246,8 +275,65 @@ export function stream({ video, part, quality }: { video: string; part: string; 
   };
 }
 
-export function progress({ video, part, position }: { video: string; part: string; position: number }): void {
+export function progress({ video, part, position, duration }: { video: string; part: string; position: number; duration: number }): void {
   host.storage.set(`progress:${video}`, { part, position });
+  // An episode played to its end counts as watched on the account.
+  const show = shows.find((s) => s.video === video);
+  if (show && signedIn() && position >= duration * 0.9) {
+    host.storage.set(`watched:${show.id}`, Math.max(watched(show.id), Number(part)));
+  }
+}
+
+// follows are the account's followed shows' statuses, by their ids.
+function follows(): Record<string, string> {
+  if (!signedIn()) return {};
+  return (host.storage.get("follows") as Record<string, string> | undefined) ?? {};
+}
+
+function watched(id: string): number {
+  return (host.storage.get(`watched:${id}`) as number | undefined) ?? history[id] ?? 0;
+}
+
+const statuses = ["watching", "planned", "completed"];
+
+// following answers the shows followed, the ongoing ones first as their
+// updates are newest, one status of them when asked.
+export async function following({ status }: { status?: string; cursor?: string }) {
+  await sleep(1);
+  if (!signedIn()) fail("signIn", "Sign in to see the shows you follow");
+  const followed = follows();
+  const list = shows
+    .filter((s) => followed[s.id] && (!status || followed[s.id] === status))
+    .sort((a, b) => Number(b.ongoing) - Number(a.ongoing));
+  return {
+    shows: list.map((s) => {
+      const w = watched(s.id);
+      return {
+        id: s.id,
+        title: s.title,
+        image: { url: `${site}/covers/${s.video}.jpg`, headers },
+        video: s.video,
+        status: followed[s.id],
+        watched: w,
+        episodes: s.episodes.length,
+        new: s.ongoing && w < s.episodes.length,
+      };
+    }),
+  };
+}
+
+export function follow({ id, status }: { id: string; status: string }): void {
+  if (!signedIn()) fail("signIn", "Sign in to change what you follow");
+  if (!shows.some((s) => s.id === id)) throw new Error(`No show ${id}`);
+  if (!statuses.includes(status)) throw new Error(`No status ${status}`);
+  host.storage.set("follows", { ...follows(), [id]: status });
+}
+
+export function unfollow({ id }: { id: string }): void {
+  if (!signedIn()) fail("signIn", "Sign in to change what you follow");
+  const followed = follows();
+  delete followed[id];
+  host.storage.set("follows", followed);
 }
 
 export function setSetting({ key, value }: { key: string; value: unknown }): void {

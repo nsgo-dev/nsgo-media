@@ -129,7 +129,18 @@ func Load(fsys fs.FS, builtin bool, opts Options) (*Plugin, error) {
 	for _, name := range mod.Exports() {
 		p.exports[name] = true
 	}
+	if err := p.checkExports(); err != nil {
+		return nil, err
+	}
 	return p, nil
+}
+
+// checkExports refuses exports the manifest lacks the declarations of.
+func (p *Plugin) checkExports() error {
+	if p.exports[ExportFollow] && len(p.Manifest.Statuses) == 0 {
+		return fmt.Errorf("plugin %s exports %s but %s lists no statuses", p.Manifest.ID, ExportFollow, ManifestFile)
+	}
+	return nil
 }
 
 func readManifest(fsys fs.FS, opts Options) (*Manifest, error) {

@@ -288,3 +288,57 @@ pluginsOnGitHub: Plugins are published on GitHub. Type a repository to install i
 installFromGitHubAction:
   message: Install from GitHub…
   description: Installs a plugin from the latest release of a GitHub repository.
+following:
+  message: Following
+  description: The sidebar entry and page of the shows the viewer follows on a plugin's account.
+statusAll:
+  message: All
+  description: The tab of the following page showing the shows of every status.
+followStatus:
+  message: Status
+  description: The label of the tabs choosing which status of followed shows the following page shows.
+newEpisodes:
+  message: New Episodes
+  description: The section of followed shows with an episode out since the viewer last watched.
+notFollowing: You're not following anything yet
+followingEmpty:
+  message: "Follow a show from its page on {name}, and its new episodes show up here."
+  description: The following page's message while nothing is followed, with the plugin's name.
+newBadge:
+  message: New
+  description: Marks a followed show with an episode out since the viewer last watched.
+watchedEpisode:
+  message: "Watched EP {n, number}"
+  description: The episodes of a followed show the viewer watched, by the last one's number.
+notStarted:
+  message: Not started
+  description: A followed show of which the viewer watched nothing.
+updatedTo:
+  message: "Updated to EP {n, number}"
+  description: The latest episode of a followed show with a new one, by its number.
+episodesCount:
+  message: "{n, plural, one {# episode} other {# episodes}}"
+  description: How many episodes of a followed show are out.
+episodes:
+  message: Episodes
+  description: The title of a show's video's list of its parts, which are its episodes.
+episodeNumber:
+  message: "EP {n, number}"
+  description: An episode of a show by its number.
+episodeLabel:
+  message: "EP {n, number} {title}"
+  description: An episode of a show, by its number and title.
+watchEpisode:
+  message: "Watch EP {n, number}"
+  description: Plays the episode of a show after the last one the viewer watched, by its number.
+follow:
+  message: Follow
+  description: Follows a show on the plugin's account.
+unfollow:
+  message: Unfollow
+  description: Stops following a show on the plugin's account.
+couldNotFollow: Could not follow
+couldNotUnfollow: Could not unfollow
+couldNotChangeStatus:
+  message: Could not change the status
+  description: Says changing the status of a followed show failed.

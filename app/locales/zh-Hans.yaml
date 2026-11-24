@@ -152,3 +152,23 @@ couldNotCheck: 无法检查更新：{reason}
 noPluginsAdded: 添加插件，浏览更多视频
 pluginsOnGitHub: 插件发布在 GitHub 上。输入一个仓库，即可安装它最新的 Release。
 installFromGitHubAction: 从 GitHub 安装…
+following: 关注
+statusAll: 全部
+followStatus: 状态
+newEpisodes: 有更新
+notFollowing: 还没有关注任何剧集
+followingEmpty: 在{name}的剧集页面关注它，有新剧集时会出现在这里。
+newBadge: 新
+watchedEpisode: 看到第 {n, number} 集
+notStarted: 尚未开始
+updatedTo: 更新至第 {n, number} 集
+episodesCount: 共 {n, number} 集
+episodes: 剧集
+episodeNumber: 第 {n, number} 集
+episodeLabel: 第 {n, number} 集 {title}
+watchEpisode: 观看第 {n, number} 集
+follow: 关注
+unfollow: 取消关注
+couldNotFollow: 无法关注
+couldNotUnfollow: 无法取消关注
+couldNotChangeStatus: 无法更改状态

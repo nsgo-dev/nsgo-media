@@ -20,6 +20,9 @@ type account struct {
 	busy *core.Signal[bool]
 	// epoch counts signing in and out, after which pages load again.
 	epoch *core.Signal[int]
+	// follows counts the follows changed here, after which the shows
+	// followed load again.
+	follows *core.Signal[int]
 }
 
 // account is the viewer's account of p, asked of the plugin the first
@@ -34,7 +37,7 @@ func (sh *shell) account(p *plugin.Plugin) *account {
 }
 
 func (sh *shell) newAccount(cx *core.Scope, p *plugin.Plugin) *account {
-	a := &account{who: core.NewSignal[*plugin.Account](cx, nil), busy: core.NewSignal(cx, false), epoch: core.NewSignal(cx, 0)}
+	a := &account{who: core.NewSignal[*plugin.Account](cx, nil), busy: core.NewSignal(cx, false), epoch: core.NewSignal(cx, 0), follows: core.NewSignal(cx, 0)}
 	if p.Has(plugin.ExportAccount) {
 		call(cx, sh.ctx, p.Account, func(acc *plugin.Account, err error) {
 			if err == nil {

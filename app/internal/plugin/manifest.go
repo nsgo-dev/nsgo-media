@@ -25,6 +25,8 @@ type Manifest struct {
 	Permissions   Permissions `yaml:"permissions"`
 	Settings      []Setting   `yaml:"settings,omitempty"`
 	Navigation    []Entry     `yaml:"navigation,omitempty"`
+	// Statuses are those a followed show can have, which follow takes.
+	Statuses []Status `yaml:"statuses,omitempty"`
 }
 
 // Permissions are what a plugin may reach beyond its sandbox.
@@ -71,6 +73,12 @@ type Choice struct {
 
 // Entry is a sidebar entry under the plugin, which opens browse with its id.
 type Entry struct {
+	ID    string `yaml:"id"`
+	Label string `yaml:"label"`
+}
+
+// Status is a status a followed show can have, as watching or completed.
+type Status struct {
 	ID    string `yaml:"id"`
 	Label string `yaml:"label"`
 }
@@ -169,7 +177,27 @@ func (m *Manifest) validate() error {
 			fail("navigation entry %q has no label", e.ID)
 		}
 	}
+	statuses := map[string]bool{}
+	for _, s := range m.Statuses {
+		if s.ID == "" || statuses[s.ID] {
+			fail("status id %q is empty or repeated", s.ID)
+		}
+		statuses[s.ID] = true
+		if strings.TrimSpace(s.Label) == "" {
+			fail("status %q has no label", s.ID)
+		}
+	}
 	return errors.Join(errs...)
+}
+
+// Status returns the manifest's status of id.
+func (m *Manifest) Status(id string) (Status, bool) {
+	for _, s := range m.Statuses {
+		if s.ID == id {
+			return s, true
+		}
+	}
+	return Status{}, false
 }
 
 // Setting returns the manifest's setting of key.

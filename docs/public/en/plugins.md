@@ -40,11 +40,15 @@ settings:
       - { value: "720", label: 720p }
 navigation:
   - { id: favorites, label: Favorites }
+statuses:
+  - { id: watching, label: Watching }
+  - { id: completed, label: Completed }
 ```
 
 - `permissions.network` lists the only hosts `fetch` reaches, and the only hosts the app fetches your pictures, streams and subtitles from. `*.example.com` matches its subdomains.
 - `settings` appear in the app's settings; your code reads them with `host.settings.get`.
 - `navigation` adds sidebar entries, each opening `browse` with its `id`.
+- `statuses` are those a followed show can have; a plugin exporting `follow` lists at least one.
 - An unknown field is refused. A `minAppVersion` newer than the app is refused with a message to update it.
 
 ## Translations
@@ -69,6 +73,8 @@ Export the functions you support; the app leaves out what you do not export. A p
 | `stream` | The video and audio URLs of a part at a quality, their request headers, the qualities and the subtitle tracks |
 | `progress` | Nothing; it tells you the position the viewer reached |
 | `account`, `signIn`, `signOut` | The signed-in account, or `null` |
+| `following` | The shows the account follows, newest update first: each with the video that opens it, its status, the episodes `watched` and out, and whether one is `new` |
+| `follow`, `unfollow` | Nothing; they follow a show with a status, change its status, or unfollow it on the account |
 | `setSetting` | Nothing; it tells you a setting changed |
 
 ```ts
@@ -80,6 +86,14 @@ export async function stream({ video, part, quality }) {
     qualities: [{ id: "1080", label: "1080p" }, { id: "720", label: "720p" }],
     subtitles: [{ label: "English", url: "https://cdn.example.com/en.vtt" }],
   };
+}
+```
+
+Following lives on the account, not in the app. A show's episodes are a video's parts, and `video` answers its `show`, with its `status` (`""` when not followed) and episodes `watched`, so its page can follow it and play the next episode:
+
+```ts
+export function video({ id }) {
+  return { id, title: "A show", parts: [/* its episodes */], show: { id: "s1", status: "watching", watched: 2 } };
 }
 ```
 

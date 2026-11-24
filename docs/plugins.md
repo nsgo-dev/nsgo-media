@@ -4,7 +4,7 @@ A plugin of [NSGo Player](app.md) turns one source of videos into pages and stre
 
 ## Manifest
 
-`plugin.yaml` names the plugin (`id`, `name`, `version`), the oldest app version it works with (`minAppVersion`), its module (`main`) and the media it serves (`media`: `video` now, `audio` reserved). It also lists its permissions, its settings and its sidebar entries. Anything a viewer must approve or fill in is declared here, so the app can show it before running any code. Unknown fields are refused, except that a newer `minAppVersion` is reported first.
+`plugin.yaml` names the plugin (`id`, `name`, `version`), the oldest app version it works with (`minAppVersion`), its module (`main`) and the media it serves (`media`: `video` now, `audio` reserved). It also lists its permissions, its settings, its sidebar entries and the statuses a followed show can have (`statuses`), such as watching, plan to watch and completed. Anything a viewer must approve or fill in is declared here, so the app can show it before running any code. Unknown fields are refused, except that a newer `minAppVersion` is reported first.
 
 `locales/<language>.yaml` maps the plugin's own texts, its name, labels and messages, to their translation; the app picks the locale that suits the viewer's language best.
 
@@ -20,11 +20,14 @@ The app calls an export with one object of parameters and awaits its value or pr
 | `video` | A video's details, its parts, the part to start with and related videos |
 | `stream` | What to play for one part at a quality |
 | `progress` | The position the viewer reached, for sources that keep history |
+| `following`, `follow`, `unfollow` | The shows the account follows, and following, changing the status of or unfollowing one |
 | `setSetting` | A setting the viewer changed |
 
 `stream` answers a video URL, an optional separate audio URL, the request headers each needs, the qualities on offer and the subtitle tracks. Sites often serve DASH with separate video and audio behind a `Referer`, so both belong in the contract rather than in one plugin's workaround. A subtitle track is a URL of SRT, WebVTT or ASS, or their text: a plugin converts a site's own format, as the app reads none.
 
 `video` may name the part to start with, so a pasted link to a video's later part plays that part.
+
+Following lives on the plugin's account, never in the app, so it is the same wherever the viewer watches. `following` answers the shows followed, newest update first, a page at a time and optionally of one status: each with the video that opens it, whose parts are its episodes, its status, the episodes watched and out, and whether one came out since the viewer last watched. `video` answers the show a video belongs to, with its status (`""` when not followed) and episodes watched, so its page follows it and plays the episode after the last watched. `follow` takes a show's id and a status of the manifest's, and `unfollow` its id. A plugin exporting `follow` must list statuses. These exports reach nothing new: signed out, they throw `signIn` as other exports do.
 
 An error with a `code` tells the app what to do: `signIn` asks the viewer to sign in, `setup` opens the plugin's settings, `unavailable` marks the video unplayable. Any other error shows its message.
 

@@ -238,8 +238,15 @@ func (sh *shell) failure(cx *core.Scope, p *plugin.Plugin, err error, retry func
 }
 
 // fail tells the viewer in a toast why a call of p failed.
-func (sh *shell) fail(cx *core.Scope, p *plugin.Plugin, err error) {
+func (sh *shell) fail(cx *core.Scope, p *plugin.Plugin, err error) { sh.failAs(cx, p, "", err) }
+
+// failAs tells the viewer in a toast what failed, title, and why, with
+// what they can do; "" titles it with why.
+func (sh *shell) failAs(cx *core.Scope, p *plugin.Plugin, title string, err error) {
 	t := ui.ToastContent{ID: "error", Type: ui.ToastError, Title: errorText(cx, err)}
+	if title != "" {
+		t.Title, t.Description = title, t.Title
+	}
 	switch {
 	case errors.Is(err, plugin.ErrSignIn):
 		t.Action, t.OnAction = locales.SignIn(cx), func() { sh.signIn(p) }

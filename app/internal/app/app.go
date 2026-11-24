@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -250,11 +249,12 @@ const (
 	routeVideo
 	routeSettings
 	routePlugin
+	routeFollowing
 )
 
 // statsPages name the kinds of page in the app's statistics.
 var statsPages = map[routeKind]string{routeOpen: "open", routeHome: "home", routeBrowse: "browse",
-	routeSearch: "search", routeVideo: "video", routeSettings: "settings", routePlugin: "plugin"}
+	routeSearch: "search", routeVideo: "video", routeSettings: "settings", routePlugin: "plugin", routeFollowing: "following"}
 
 // route is a page: the open page, or one of a plugin's.
 type route struct {
@@ -279,6 +279,8 @@ func (r route) entry() string {
 		return r.plugin.Manifest.ID + "/home"
 	case routeSearch:
 		return r.plugin.Manifest.ID + "/search"
+	case routeFollowing:
+		return r.plugin.Manifest.ID + "/following"
 	}
 	return r.plugin.Manifest.ID + "/browse/" + r.id
 }
@@ -345,6 +347,9 @@ func (sh *shell) entries(cx *core.Scope) []ui.SidebarSection {
 		if p.Has(plugin.ExportSearch) {
 			items = append(items, ui.SidebarItem{ID: id + "/search", Text: locales.Search(cx), Icon: lucide.Search, TestID: "nav-" + id + "-search"})
 		}
+		if p.Has(plugin.ExportFollowing) {
+			items = append(items, ui.SidebarItem{ID: id + "/following", Text: locales.Following(cx), Content: sh.followingEntry(cx, p), TestID: "nav-" + id + ":following"})
+		}
 		if p.Has(plugin.ExportBrowse) {
 			for _, e := range p.Manifest.Navigation {
 				items = append(items, ui.SidebarItem{ID: id + "/browse/" + e.ID, Text: p.Translate(e.Label), Icon: lucide.List, TestID: "nav-" + id + "-" + e.ID})
@@ -378,6 +383,8 @@ func (sh *shell) routeOf(cx *core.Scope, entry string) (route, bool) {
 			return route{kind: routeHome, plugin: p, title: p.Name()}, true
 		case rest == "search":
 			return route{kind: routeSearch, plugin: p, title: locales.Search(cx)}, true
+		case rest == "following":
+			return route{kind: routeFollowing, plugin: p, title: locales.Following(cx)}, true
 		}
 		if id, ok := strings.CutPrefix(rest, "browse/"); ok {
 			for _, e := range p.Manifest.Navigation {
@@ -405,31 +412,12 @@ func (sh *shell) sidebarFooter(cx *core.Scope) core.Node {
 		TestID: "nav-footer",
 		SectionsFunc: func() []ui.SidebarSection {
 			return []ui.SidebarSection{{Items: []ui.SidebarItem{
-				{ID: "settings", Text: locales.Settings(cx), Content: settingsEntry(cx, locales.Settings(cx), func() int { return len(sh.updates.Get()) }), TestID: "nav-settings"},
+				{ID: "settings", Text: locales.Settings(cx), Content: badgedEntry(cx, lucide.Settings, locales.Settings(cx), "updates-badge", func() int { return len(sh.updates.Get()) }), TestID: "nav-settings"},
 			}}}
 		},
 		Selected: func() string { return sh.stack.Get()[0].entry() },
 		OnSelect: func(id string) { sh.choose(cx, id) },
 	}}}
-}
-
-// settingsEntry is the sidebar's settings entry, with a badge counting
-// the plugins with an update.
-func settingsEntry(cx *core.Scope, text string, updates func() int) core.Node {
-	label := ui.Text(text, 13, ui.Regular, ui.ColorsOf(cx).Text)
-	label.MaxLines, label.Style.FlexGrow, label.Style.FlexShrink = 1, 1, 1
-	return core.Group{
-		ui.Icon(lucide.Settings, 16, ui.ColorsOf(cx).Accent),
-		label,
-		core.Show{
-			When: func() bool { return updates() > 0 },
-			Then: func(cx *core.Scope) core.Node {
-				return core.View{TestID: "updates-badge", Class: "h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5", Children: []core.Node{
-					core.Text{ContentFunc: func() string { return strconv.Itoa(updates()) }, Class: "text-[11px] font-semibold text-white"},
-				}}
-			},
-		},
-	}
 }
 
 // choose starts over at the sidebar's entry id.
@@ -486,6 +474,8 @@ func (sh *shell) page(cx *core.Scope, pl *player, r route) core.Node {
 		})
 	case routeSearch:
 		return sh.searchPage(cx, r.plugin)
+	case routeFollowing:
+		return sh.followingPage(cx, r.plugin)
 	case routeVideo:
 		return sh.videoPage(cx, r.plugin, r.id)
 	case routeSettings:
