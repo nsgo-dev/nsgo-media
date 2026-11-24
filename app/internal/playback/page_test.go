@@ -1,11 +1,16 @@
 package playback
 
 import (
+	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -93,6 +98,78 @@ func TestPageOffersToResume(t *testing.T) {
 func TestPageRefusesAnInvalidSource(t *testing.T) {
 	app := start(t, Source{URL: "ftp://example.com/a.mkv"}, nil)
 	app.Find("text:This file or URL cannot be played.")
+}
+
+func TestPageRetriesFromLastPosition(t *testing.T) {
+	data, err := os.ReadFile(clip(t, "bitmap.mkv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := len(data) * 2 / 3
+	gate := make(chan struct{})
+	var failOpen, failMid atomic.Bool
+	failMid.Store(true)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if failOpen.Load() {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		var off int
+		if rng, ok := strings.CutPrefix(r.Header.Get("Range"), "bytes="); ok {
+			start, _, _ := strings.Cut(rng, "-")
+			off, _ = strconv.Atoi(start)
+		}
+		if !failMid.Load() || off >= cut {
+			http.ServeContent(w, r, "bitmap.mkv", time.Time{}, bytes.NewReader(data))
+			return
+		}
+		w.Header().Set("Accept-Ranges", "bytes")
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", off, len(data)-1, len(data)))
+		w.Header().Set("Content-Length", strconv.Itoa(len(data)-off))
+		w.WriteHeader(http.StatusPartialContent)
+		w.Write(data[off:cut])
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		select {
+		case <-gate:
+			if h, ok := w.(http.Hijacker); ok {
+				if conn, _, err := h.Hijack(); err == nil {
+					conn.Close()
+				}
+			}
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	app := start(t, Source{Key: "clip", URL: srv.URL + "/bitmap.mkv"}, nil)
+	text := func(id string) string { return app.Find("id:" + id).Text }
+	play(t, app, 5*time.Second, func() bool { return app.Exists("id:position") && text("position") == "0:01" })
+	close(gate)
+	play(t, app, 5*time.Second, func() bool { return app.Exists("id:error-retry") })
+
+	// A retry that fails before opening keeps the position for the next try.
+	failOpen.Store(true)
+	app.Press("id:error-retry")
+	play(t, app, 5*time.Second, func() bool {
+		return app.Exists("id:error-detail") && strings.Contains(text("error-detail"), "503")
+	})
+
+	failOpen.Store(false)
+	failMid.Store(false)
+	app.Press("id:error-retry")
+	play(t, app, 5*time.Second, func() bool {
+		return !app.Exists("id:error-retry") && !app.Exists("id:loading")
+	})
+	app.Key("space")
+	play(t, app, 2*time.Second, func() bool { return app.Exists("id:position") })
+	if got := text("position"); got < "0:01" {
+		t.Fatalf("retried at %q, want >= 0:01", got)
+	}
+	if app.Exists("id:resume") {
+		t.Fatal("retrying offered to resume instead of continuing")
+	}
 }
 
 func TestPagePlaysSeparateAudio(t *testing.T) {

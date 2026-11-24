@@ -339,6 +339,7 @@ func (p *Player) opened(pl *pipeline.Pipeline, info *pipeline.Info) {
 	p.pendSubs = nil
 	if s := p.pendSeek; s != nil {
 		pl.Seek(s.t, s.mode == Exact)
+		p.position.Set(pl.Position())
 		p.pendSeek = nil
 	}
 	pl.SetPaused(!p.wantPlay)
@@ -346,9 +347,18 @@ func (p *Player) opened(pl *pipeline.Pipeline, info *pipeline.Info) {
 }
 
 // ready reports an opened pipeline to command.
-func (p *Player) ready() bool { return p.pl != nil && p.info.GetUntracked() != nil }
+func (p *Player) ready() bool {
+	return p.pl != nil && p.info.GetUntracked() != nil && p.state.GetUntracked() != Failed
+}
 
 func (p *Player) fail(err error) {
+	if p.ready() {
+		p.pl.SetPaused(true)
+	}
+	if p.stopFrame != nil {
+		p.stopFrame()
+		p.stopFrame = nil
+	}
 	p.err.Set(err)
 	p.state.Set(Failed)
 	p.holdSession()
@@ -399,9 +409,6 @@ func (p *Player) tick() {
 	p.videoTrack.Set(p.pl.VideoTrack())
 	p.audioTrack.Set(p.pl.AudioTrack())
 	p.updateCues()
-	if p.state.GetUntracked() == Failed {
-		return
-	}
 	switch {
 	case st.Ended:
 		p.wantPlay = false
