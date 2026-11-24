@@ -30,9 +30,16 @@ func folder(t *testing.T) string {
 	return dir
 }
 
+// load loads the plugin with folders set, and no videos folder of the
+// system.
 func load(t *testing.T, folders string) *plugin.Plugin {
 	t.Helper()
-	p, err := Load(plugin.Options{AppVersion: "0.1.0", Language: "en"})
+	return loadWith(t, "", folders)
+}
+
+func loadWith(t *testing.T, videos, folders string) *plugin.Plugin {
+	t.Helper()
+	p, err := Loader(videos)(plugin.Options{AppVersion: "0.1.0", Language: "en"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,9 +154,26 @@ func TestVideoAndStream(t *testing.T) {
 }
 
 func TestMissingFoldersAskForSetup(t *testing.T) {
-	p := load(t, filepath.Join(t.TempDir(), "none"))
-	if _, err := p.Home(context.Background(), plugin.PageParams{}); !errors.Is(err, plugin.ErrSetup) {
-		t.Fatalf("home without folders = %v", err)
+	for _, folders := range []string{filepath.Join(t.TempDir(), "none"), ""} {
+		p := load(t, folders)
+		if _, err := p.Home(context.Background(), plugin.PageParams{}); !errors.Is(err, plugin.ErrSetup) {
+			t.Fatalf("home with folders %q = %v", folders, err)
+		}
+	}
+}
+
+// TestSystemVideosFolder lists the system's videos folder until the
+// settings name others.
+func TestSystemVideosFolder(t *testing.T) {
+	videos, other := folder(t), folder(t)
+	for folders, want := range map[string]string{"": videos, other: other} {
+		home, err := loadWith(t, videos, folders).Home(context.Background(), plugin.PageParams{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(home.Sections) != 1 || home.Sections[0].Title != filepath.Base(want) {
+			t.Fatalf("home with folders %q: %+v", folders, home)
+		}
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/nsgo-dev/nsgo/core"
+	"github.com/nsgo-dev/nsgo/desktop"
 	"github.com/nsgo-dev/nsgo/i18n"
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
@@ -102,7 +103,9 @@ func (a App) Render(cx *core.Scope) core.Node {
 	sh.gitHub = &gitHub{api: api, client: &http.Client{Timeout: 60 * time.Second}}
 	builtin := a.Builtin
 	if builtin == nil {
-		builtin = []Builtin{local.Load}
+		// No videos folder, as on phones, leaves the folders to the settings.
+		videos, _ := desktop.UserDir(cx, desktop.VideosDir)
+		builtin = []Builtin{local.Loader(videos)}
 	}
 	sh.library = &library{
 		builtin:  builtin,

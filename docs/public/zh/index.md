@@ -11,14 +11,28 @@ NSGo Player 可以从存储库的检出目录运行，还没有发布版本。
 
 ## 运行
 
-在检出目录里，装好 Go 和 NSGo 的工具后：
+在 macOS、Windows 或 Linux 的检出目录里，装好 Go 后：
 
 ```sh
 cd app
 go tool nsgo dev
 ```
 
-播放需要 FFmpeg 库，它们从哪里加载见 [FFmpeg 库](core/ffmpeg/#加载位置)。
+它会下载播放需要的 FFmpeg 库并放在应用旁边，它们从哪里加载见 [FFmpeg 库](core/ffmpeg/#加载位置)。Linux 上还需要 GTK 4、libva 和 PulseAudio 的客户端库（或 PipeWire 的 PulseAudio 服务），桌面发行版都会装好。
+
+## 安装
+
+在 `app/` 里运行 `go tool nsgo build`，会在 `app/dist/releases` 里生成各个桌面系统的安装包，都带着 FFmpeg 库：
+
+| 系统 | 安装包 | 安装方法 |
+| --- | --- | --- |
+| macOS | `nsgo-player-…-macos-arm64.dmg` 或 `…-macos-x64.dmg` | 打开后把 NSGo Player 拖进“应用程序” |
+| Windows | `nsgo-player-…-windows-x64-setup.exe` | 运行它；生成它需要 NSIS 的 `makensis` |
+| Debian、Ubuntu | `nsgo-player-…-linux-x64.deb` | `sudo apt install ./nsgo-player-…-linux-x64.deb` |
+| Arch | `nsgo-player-…-linux-x64.pkg.tar.gz` | `sudo pacman -U nsgo-player-…-linux-x64.pkg.tar.gz` |
+| 任意 Linux | `nsgo-player-…-linux-x64.AppImage` | 加上可执行权限后运行 |
+
+用 `-target` 只生成一个系统的，如 `go tool nsgo build -target linux_x64`。页面和下面的快捷键在各个系统上都一样。
 
 ## 播放视频
 

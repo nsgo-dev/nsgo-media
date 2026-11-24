@@ -368,10 +368,15 @@ func (p *Player) Seek(t time.Duration, mode SeekMode) {
 		p.pendSeek = &pendingSeek{t, mode}
 		return
 	}
+	// A player that ended stays paused where it seeks to.
+	ended := p.state.GetUntracked() == Ended
+	if ended {
+		p.pl.SetPaused(true)
+	}
 	p.pl.Seek(t, mode == Exact)
 	p.position.Set(p.pl.Position())
 	p.updateCues()
-	if p.state.GetUntracked() == Ended {
+	if ended {
 		p.state.Set(Paused)
 	}
 }

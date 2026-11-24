@@ -4,7 +4,7 @@ NSGo Player, in `app/`, is NSGo Media's first-party desktop app and its fullest 
 
 ## Scope
 
-It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Linux x64. Its first version is on macOS, and Windows and Linux follow it; no release is published.
+It runs from a checkout, and installs from the packages `nsgo build` writes, on macOS (arm64 and x64), Windows x64 and Linux x64; no release is published.
 
 | Area | Built |
 | --- | --- |
@@ -16,6 +16,7 @@ It builds and runs from a checkout on macOS (arm64 and x64), Windows x64 and Lin
 | Plugin management | Listing, enabling and disabling plugins, installing one from the latest release of a GitHub repository, a folder or a zip, or using one where its folder is picked, each after approving its hosts; checking the repositories of those from GitHub for a newer release and updating one when the viewer agrees, keeping its data; each plugin's page with its account, settings and hosts, and removing it with its data; listing those refused until removed |
 | Look | Every page and state of the designs in `design/` but the following page and following a show, which wait for a plugin export of their own |
 | Languages | Simplified Chinese and English, for the app and for plugins' own text |
+| Systems | The same pages, keys and plugins on every desktop, the player's controls Liquid Glass where macOS draws it and a tinted blur elsewhere, the local files plugin listing the folder the system names for videos: a disk image on macOS, an NSIS installer on Windows, and a Debian package, an Arch package and an AppImage on Linux, each with the FFmpeg libraries; the Linux packages depend on libva and PulseAudio's client libraries, which the libraries and the core load |
 
 Out of scope: danmaku, comments and posting to a site; downloading, casting, live streams and DRM; a catalog of plugins; the app updating itself; publishing releases; playlists; mobile targets. No plugin for a particular site ships in this repository.
 
@@ -57,4 +58,4 @@ The installed app counts its use in the website's Umami (`internal/stats`): a pa
 
 ## Verification
 
-From `app/`, `go tool nsgo check` and `go tool nsgo test` cover its packages. Plugin tests load the demo plugin and check permissions, limits, errors and every host function, and native plugins' file URLs. A local server stands in for GitHub's API and downloads in the tests of installing and updating from GitHub: a repository missing, without a release or a plugin zip, a pre-release, a limited or unreachable API, a newer `minAppVersion`, added hosts, data kept and a failed update rolled back. The local files plugin's tests browse, search and stream a folder made for them, and the app's play a clip of the core's `testdata/` from it. The player page's tests play the core's clips, headless and in a real window with `-target`.
+From `app/`, `go tool nsgo check` and `go tool nsgo test` cover its packages. Plugin tests load the demo plugin and check permissions, limits, errors and every host function, and native plugins' file URLs. A local server stands in for GitHub's API and downloads in the tests of installing and updating from GitHub: a repository missing, without a release or a plugin zip, a pre-release, a limited or unreachable API, a newer `minAppVersion`, added hosts, data kept and a failed update rolled back. The local files plugin's tests browse, search and stream a folder made for them, and the app's play a clip of the core's `testdata/` from it. The player page's tests play the core's clips, headless and in a real window with `-target`. On Linux (Omarchy, Hyprland on Wayland, PipeWire) and Windows 11 (2026-11-24) the app's tests passed in real windows, a plugin used from its folder played a DASH stream with separate audio and headers in one, and the AppImage and the NSIS installer `nsgo build` wrote, the latter installing for the user under `%LOCALAPPDATA%\Programs`, played a local file with their own FFmpeg libraries, not the system's. Headless on Windows, which has no FFmpeg of its own, `NSGO_MEDIA_FFMPEG` names the libraries. Installing a plugin from a real GitHub release is untried on either.

@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -22,20 +21,23 @@ import (
 //go:embed plugin.yaml locales
 var FS embed.FS
 
-// Exports are the plugin's exports.
-var Exports = plugin.Native{
-	plugin.ExportHome:    home,
-	plugin.ExportBrowse:  browse,
-	plugin.ExportSearch:  search,
-	plugin.ExportResolve: resolve,
-	plugin.ExportVideo:   video,
-	plugin.ExportStream:  stream,
+// Loader loads the plugin, which lists videos, the system's videos
+// folder, while its settings name no folder; "" lists none then.
+func Loader(videos string) func(plugin.Options) (*plugin.Plugin, error) {
+	l := folders{videos: videos}
+	exports := plugin.Native{
+		plugin.ExportHome:    l.home,
+		plugin.ExportBrowse:  browse,
+		plugin.ExportSearch:  l.search,
+		plugin.ExportResolve: resolve,
+		plugin.ExportVideo:   video,
+		plugin.ExportStream:  stream,
+	}
+	return func(opts plugin.Options) (*plugin.Plugin, error) { return plugin.LoadNative(FS, exports, opts) }
 }
 
-// Load loads the plugin.
-func Load(opts plugin.Options) (*plugin.Plugin, error) {
-	return plugin.LoadNative(FS, Exports, opts)
-}
+// folders finds the viewer's video folders.
+type folders struct{ videos string }
 
 const (
 	// homeItems bounds a folder's section on the home page, whose rest
@@ -67,10 +69,10 @@ func fail(p *plugin.Plugin, code, message string) error {
 	return &plugin.Error{Code: code, Message: p.Translate(message)}
 }
 
-// folders are the viewer's video folders that exist: the setting's,
-// separated by semicolons or the system's list separator, else the
-// system's videos folder.
-func folders(p *plugin.Plugin) ([]string, error) {
+// of are the viewer's video folders that exist: the setting's, separated
+// by semicolons or the system's list separator, else the system's videos
+// folder.
+func (l folders) of(p *plugin.Plugin) ([]string, error) {
 	v, _ := p.Setting("folders")
 	text, _ := v.(string)
 	var dirs []string
@@ -79,14 +81,8 @@ func folders(p *plugin.Plugin) ([]string, error) {
 			dirs = append(dirs, d)
 		}
 	}
-	if len(dirs) == 0 {
-		if home, err := os.UserHomeDir(); err == nil {
-			name := "Videos"
-			if runtime.GOOS == "darwin" {
-				name = "Movies"
-			}
-			dirs = append(dirs, filepath.Join(home, name))
-		}
+	if len(dirs) == 0 && l.videos != "" {
+		dirs = append(dirs, l.videos)
 	}
 	var found []string
 	for _, d := range dirs {
@@ -150,8 +146,8 @@ func decode[T any](raw json.RawMessage) (T, error) {
 }
 
 // home is a section of each folder.
-func home(_ context.Context, p *plugin.Plugin, _ json.RawMessage) (any, error) {
-	dirs, err := folders(p)
+func (l folders) home(_ context.Context, p *plugin.Plugin, _ json.RawMessage) (any, error) {
+	dirs, err := l.of(p)
 	if err != nil {
 		return nil, err
 	}
@@ -192,12 +188,12 @@ func browse(_ context.Context, p *plugin.Plugin, raw json.RawMessage) (any, erro
 
 // search finds the folders and videos whose names hold the query, in
 // every folder and those within.
-func search(ctx context.Context, p *plugin.Plugin, raw json.RawMessage) (any, error) {
+func (l folders) search(ctx context.Context, p *plugin.Plugin, raw json.RawMessage) (any, error) {
 	params, err := decode[plugin.SearchParams](raw)
 	if err != nil {
 		return nil, err
 	}
-	dirs, err := folders(p)
+	dirs, err := l.of(p)
 	if err != nil {
 		return nil, err
 	}

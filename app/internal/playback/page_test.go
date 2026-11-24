@@ -211,3 +211,24 @@ func TestPageTitlesAPart(t *testing.T) {
 		t.Fatalf("asked for part %d", asked)
 	}
 }
+
+// TestControlsBlurWithoutSystemGlass draws the controls as Liquid Glass
+// only where the system draws it, and elsewhere a tinted blur.
+func TestControlsBlurWithoutSystemGlass(t *testing.T) {
+	if nsgotest.Target() != "" {
+		t.Skip("the system is the target's")
+	}
+	for os, glass := range map[core.OS]bool{core.OSMacOS: true, core.OSWindows: false, core.OSLinux: false} {
+		positions, _ := store.OpenPositions(filepath.Join(t.TempDir(), "positions.json"))
+		src := Source{URL: clip(t, "av.mkv")}
+		app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+			return core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{
+				Page{Source: func() Source { return src }, Positions: positions, OnClose: func() {}},
+			}}
+		}, nsgotest.Size(800, 500), nsgotest.Environment(core.Environment{Locale: "en-US", OS: os}))
+		st := app.Find("id:controls").Style
+		if (st.Glass != core.GlassNone) != glass || (st.Background == core.RGBA(0xffffff, 0.1)) == glass {
+			t.Errorf("controls on %v: glass %v, background %v", os, st.Glass, st.Background)
+		}
+	}
+}
