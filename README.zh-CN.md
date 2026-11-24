@@ -18,7 +18,7 @@
 
 ## 状态
 
-开发中：播放、声音、定位、字幕和硬件解码已在 macOS、Windows、Linux 和 iOS 上可供本地使用，还没有发布版本。[NSGo Player](docs/app.md) 的首个版本可在 macOS 上从检出目录运行，接下来支持 Windows 和 Linux，内核为它的需要服务；[需求](docs/requirements.md)记录内核做什么，[路线图](https://github.com/oneo-me/nsgo-media/issues/2)安排接下来的工作。
+开发中：播放、声音、定位、字幕和硬件解码已在 macOS、Windows、Linux 和 iOS 上可供本地使用，还没有发布版本。[NSGo Player](docs/app.md) 可在 macOS、Windows 和 Linux 上从检出目录运行，也能用 `nsgo build` 生成的安装包安装，内核为它的需要服务；[需求](docs/requirements.md)记录内核做什么，[路线图](https://github.com/oneo-me/nsgo-media/issues/2)安排接下来的工作。
 
 ## 用法
 

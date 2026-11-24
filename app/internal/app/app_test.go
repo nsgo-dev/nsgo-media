@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -21,7 +20,6 @@ import (
 
 	"github.com/oneo-me/nsgo-media/app/internal/plugin"
 	"github.com/oneo-me/nsgo-media/app/internal/store"
-	"github.com/oneo-me/nsgo-media/app/plugins/local"
 )
 
 // TestMain gives the platform the main thread under nsgo test -target,
@@ -104,7 +102,10 @@ func TestOpeningAURLShowsThePlayer(t *testing.T) {
 	app := nsgotest.Start(t, Root, nsgotest.Size(1100, 700))
 	app.Type("id:url", "https://example.invalid/movie.mp4")
 	app.Submit("id:url")
-	app.Find("id:player >> text:movie.mp4")
+	// The error's detail may name the URL too, once the lookup fails.
+	if got := title(app); got != "movie.mp4" {
+		t.Fatalf("title = %q, want movie.mp4", got)
+	}
 	app.Press("id:back")
 	app.WaitForGone("id:player", time.Second)
 }
@@ -279,8 +280,10 @@ func TestPlayerCoversTheWindowOverALongPage(t *testing.T) {
 	app.Press("id:item-video-v1")
 	app.WaitFor("id:play-video", wait)
 	app.Press("id:play-video")
-	if h := app.WaitFor("id:player", wait).Frame.Size.Height; h != 300 {
-		t.Errorf("player is %vpt high in a 300pt window", h)
+	// Windows' window may be taller than asked, under its title bar.
+	window := app.Find("id:shell").Frame.Size.Height
+	if h := app.WaitFor("id:player", wait).Frame.Size.Height; h != window {
+		t.Errorf("player is %vpt high in a %vpt window", h, window)
 	}
 }
 
@@ -445,23 +448,14 @@ func TestStatsSwitch(t *testing.T) {
 }
 
 // TestLocalFilesPlay plays a clip of NSGo Media's testdata from the
-// local files plugin's home.
+// local files plugin's home, listing the system's videos folder.
 func TestLocalFilesPlay(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
 	clips := filepath.Join(filepath.Dir(file), "../../../testdata")
-	data := t.TempDir()
-	p, err := local.Load(plugin.Options{AppVersion: Version, DataDir: filepath.Join(data, "plugin-data")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.SetSetting(context.Background(), "folders", clips); err != nil {
-		t.Fatal(err)
-	}
-	p.Close()
-
 	var pl *player
-	a := App{Builtin: []Builtin{local.Load}, DataDir: data, Client: &http.Client{Transport: offline{}}, started: func(p *player) { pl = p }}
-	app := nsgotest.Start(t, a.Render, nsgotest.Size(1100, 700), nsgotest.Environment(core.Environment{Locale: "en-US"}))
+	a := App{DataDir: t.TempDir(), Client: &http.Client{Transport: offline{}}, started: func(p *player) { pl = p }}
+	app := nsgotest.Start(t, a.Render, nsgotest.Size(1100, 700), nsgotest.Environment(core.Environment{Locale: "en-US"}),
+		nsgotest.UserDirs(map[core.StandardDir]string{core.VideosDir: clips}))
 	app.Press("id:nav-local-home")
 	video := filepath.Join(clips, "av.mkv")
 	app.WaitFor("id:item-video-"+video, wait)

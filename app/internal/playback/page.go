@@ -344,11 +344,14 @@ func placeTrafficLights(cx *core.Scope) {
 }
 
 // glass is Liquid Glass, untinted, where the system draws it, and
-// elsewhere a translucent white fill and rim over a blur of the picture.
+// elsewhere a translucent white fill and rim over a blur of the picture,
+// not NSGo's glass shader on Windows, which leaves clear glass unblurred.
 func glass(cx *core.Scope, effect core.GlassEffect, rim bool) func() core.Style {
 	return func() core.Style {
-		st := core.Style{BackdropFilters: []core.Filter{core.Blur(40), core.Saturate(1.5)}, GlassEffect: effect}
-		if !systemGlass(cx) {
+		st := core.Style{BackdropFilters: []core.Filter{core.Blur(40), core.Saturate(1.5)}}
+		if systemGlass(cx) {
+			st.GlassEffect = effect
+		} else {
 			st.Background = core.RGBA(0xffffff, 0.1)
 			if rim {
 				st.BorderWidth, st.BorderColor = 1, core.RGBA(0xffffff, 0.25)
@@ -822,8 +825,10 @@ func menus(cx *core.Scope, p *player.Player, src func() Source, menu *core.Signa
 // where the system draws no Liquid Glass.
 func menuGlass(cx *core.Scope, place func() core.Style) func() core.Style {
 	return func() core.Style {
-		st := core.Style{BackdropFilters: []core.Filter{core.Blur(40), core.Saturate(1.5)}, GlassEffect: core.GlassRegular}
-		if !systemGlass(cx) {
+		st := core.Style{BackdropFilters: []core.Filter{core.Blur(40), core.Saturate(1.5)}}
+		if systemGlass(cx) {
+			st.GlassEffect = core.GlassRegular
+		} else {
 			st.Background = core.RGBA(0x18181b, 0.5)
 			st.BorderWidth, st.BorderColor = 1, core.RGBA(0xffffff, 0.2)
 		}

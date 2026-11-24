@@ -83,6 +83,18 @@ func TestPlayerPlaysAndShowsFrames(t *testing.T) {
 	if p.Position() < 1900*time.Millisecond {
 		t.Errorf("ended at %v", p.Position())
 	}
+	// Seeking after the end stays paused, at each seek, until it plays.
+	p.Seek(time.Second, Exact)
+	p.Seek(500*time.Millisecond, Exact)
+	for range 30 {
+		app.Advance(16 * time.Millisecond)
+		time.Sleep(8 * time.Millisecond)
+	}
+	if p.State() != Paused || p.Position() != 500*time.Millisecond {
+		t.Fatalf("after seeking from the end: %v in %v", p.Position(), p.State())
+	}
+	p.Play()
+	play(t, app, 3*time.Second, func() bool { return p.Position() > 700*time.Millisecond })
 	p.Close()
 	if p.State() != Idle || p.frame.GetUntracked().img != nil {
 		t.Errorf("after Close: %v", p.State())

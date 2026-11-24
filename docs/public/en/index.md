@@ -11,14 +11,28 @@ NSGo Player runs from a checkout of the repository. It has no published release 
 
 ## Run it
 
-From a checkout, with Go and NSGo's tools:
+From a checkout, with Go, on macOS, Windows or Linux:
 
 ```sh
 cd app
 go tool nsgo dev
 ```
 
-Playback needs the FFmpeg libraries; [FFmpeg libraries](core/ffmpeg/#where-they-load-from) says where they load from.
+It downloads the FFmpeg libraries playback needs and puts them beside the app; [FFmpeg libraries](core/ffmpeg/#where-they-load-from) says where they load from. On Linux it needs GTK 4, libva and PulseAudio's client libraries, or PipeWire's PulseAudio server, which desktop distributions install.
+
+## Install it
+
+`go tool nsgo build` in `app/` writes the packages for every desktop into `app/dist/releases`, each holding the FFmpeg libraries:
+
+| System | Package | Install |
+| --- | --- | --- |
+| macOS | `nsgo-player-…-macos-arm64.dmg` or `…-macos-x64.dmg` | Open it and drag NSGo Player to Applications |
+| Windows | `nsgo-player-…-windows-x64-setup.exe` | Run it; building it needs NSIS's `makensis` |
+| Debian, Ubuntu | `nsgo-player-…-linux-x64.deb` | `sudo apt install ./nsgo-player-…-linux-x64.deb` |
+| Arch | `nsgo-player-…-linux-x64.pkg.tar.gz` | `sudo pacman -U nsgo-player-…-linux-x64.pkg.tar.gz` |
+| Any Linux | `nsgo-player-…-linux-x64.AppImage` | Make it executable and run it |
+
+`-target` builds one system's, as `go tool nsgo build -target linux_x64`. The pages and the keys below are the same on every system.
 
 ## Playing a video
 
