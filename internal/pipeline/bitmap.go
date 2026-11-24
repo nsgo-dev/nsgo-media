@@ -110,7 +110,7 @@ func openBitmapFiles(path string, offset time.Duration) ([]*bitmapFile, []Track,
 		if par.Type() != ffmpeg.MediaSubtitle || !bitmapSubtitles[par.CodecName()] {
 			continue
 		}
-		dec, err := ffmpeg.NewDecoder(par, s.TimeBase(), 1, "")
+		dec, err := ffmpeg.NewDecoder(par, s.TimeBase(), 1, "", 0)
 		if err != nil {
 			continue
 		}

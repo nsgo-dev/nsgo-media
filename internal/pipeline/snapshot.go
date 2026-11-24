@@ -27,9 +27,19 @@ func (p *Pipeline) Snapshot(w, h int) (*image.RGBA, error) {
 		scale = math.Min(scale, float64(h)/dh)
 	}
 	ow, oh := max(int(math.Round(dw*scale)), 1), max(int(math.Round(dh*scale)), 1)
+	src := f.src
+	if src.Hardware() {
+		// A picture on the GPU is copied to memory for its snapshot.
+		m := ffmpeg.NewFrame()
+		defer m.Free()
+		if err := src.TransferTo(m); err != nil {
+			return nil, err
+		}
+		src = m
+	}
 	var s ffmpeg.Scaler
 	defer s.Close()
-	mem, err := p.paint(&s, f.src, ow, oh)
+	mem, err := p.paint(&s, src, ow, oh)
 	if err != nil {
 		return nil, err
 	}

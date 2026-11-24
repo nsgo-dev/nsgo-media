@@ -1,6 +1,6 @@
 # Performance
 
-Measured playback of the pipeline, and where the time goes. Read this before changing the presenter, the frame conversion or anything else on the per-frame path.
+Measured playback of the pipeline, and where the time goes. Read this before changing the presenter, the frame conversion, the views' drawing or anything else on the per-frame path.
 
 ## Measuring
 
@@ -22,7 +22,22 @@ CPU is a percentage of one core. Copying hardware frames to memory and convertin
 
 ## The app's share
 
-The pipeline's frames then go through NSGo's pixel buffers: the engine copies each new version and the platform uploads it. In the demo on macOS, a 4K60 HEVC clip in a window about 2500×1400 pixels used about 140% CPU in all, against the pipeline's 25%, as each frame is converted to the view's size and then copied twice more. Zero-copy rendering of hardware frames is a [later goal](https://github.com/oneo-me/nsgo-media/issues/15).
+The pipeline's frames in memory then go through NSGo's pixel buffers: the engine copies each new version and the platform uploads it. In the demo on macOS, a 4K60 HEVC clip in a window about 2500×1400 pixels used about 140% CPU in all, against the pipeline's 25%, as each frame is converted to the view's size and then copied twice more. Zero-copy rendering on macOS and iOS is a [later goal](https://github.com/oneo-me/nsgo-media/issues/40).
+
+On Windows and Linux, hardware pictures stay on the GPU and a `gpu` view draws them, with no conversion or copy through memory. A player filling a 1920×1080-point window played the clips above, looped, in a process of its own; the CPU is over 20 s after 6 s of playing, the memory the most private bytes (Windows) or resident set (Linux) in that time, before and after (2026-11-25):
+
+| Machine | Clip | Before | After |
+| --- | --- | --- | --- |
+| Windows 11 PC (Core Ultra 9 285K, RTX 5080), D3D11VA | 1080p60 H.264 | 59% CPU, 533 MiB | 9%, 402 MiB |
+| | 4K60 H.264 | 104%, 1187 MiB | 16%, 1037 MiB |
+| | 4K60 HEVC | 97%, 1193 MiB | 9%, 1054 MiB |
+| | 4K60 HEVC 10-bit | 115%, 1783 MiB | 9%, 1628 MiB |
+| Ryzen 9 6900HX, Radeon 680M, Omarchy, VAAPI | 1080p60 H.264 | 55%, 495 MiB | 5%, 251 MiB |
+| | 4K60 H.264 | 87%, 1405 MiB | 5%, 486 MiB |
+| | 4K60 HEVC | 104%, 1537 MiB | 6%, 407 MiB |
+| | 4K60 HEVC 10-bit | 134%, 2757 MiB | 6%, 401 MiB |
+
+Most of the Windows process's private bytes are the graphics driver's in both. Each frame on the GPU holds its decoder surface, so a hardware decoder's pool keeps 7 more; on Windows each frame also has a texture of its own, which D3D11VA's slice is copied into on the GPU, as the views cannot import one slice of its texture array.
 
 ## Presentation
 

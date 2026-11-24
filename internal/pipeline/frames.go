@@ -9,21 +9,30 @@ import (
 	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
 )
 
-// Frame is a decoded picture in RGBA, premultiplied as it is opaque. Its
-// pixels are memory FFmpeg's converter writes; they stay valid until the
-// pipeline is closed or the frame goes back to the pool.
+// Frame is a decoded picture in RGBA, premultiplied as it is opaque, or
+// on the GPU. Its pixels are memory FFmpeg's converter writes; they stay
+// valid until the pipeline is closed or the frame goes back to the pool.
 type Frame struct {
+	// Image is the picture in memory, nil for one on the GPU.
 	Image *image.RGBA
-	PTS   time.Duration
-	gen   uint64
-	mem   unsafe.Pointer
-	size  int
+	// GPU is the picture on the GPU, nil for one in memory.
+	GPU  *GPUPicture
+	PTS  time.Duration
+	gen  uint64
+	mem  unsafe.Pointer
+	size int
 	// src is the decoded picture, in memory, the frame was converted
 	// from, which snapshots convert again at the source's size.
 	src *ffmpeg.Frame
 	// loose is a frame outside the pool, which the presenter converted
 	// from the history; releasing it frees it.
 	loose bool
+	// gpu is what the platform made for a picture on the GPU.
+	gpu gpuState
+	// holds counts the views drawing the picture; a frame given back
+	// while held is parked, and goes back as the last hold ends.
+	holds  int
+	parked bool
 }
 
 // freeSource drops the decoded picture the frame holds.
@@ -32,6 +41,16 @@ func (f *Frame) freeSource() {
 		f.src.Free()
 		f.src = nil
 	}
+	f.gpu.unmap()
+}
+
+// discard frees a frame leaving the pool.
+func (f *Frame) discard() {
+	if f.mem != nil {
+		ffmpeg.Free(f.mem)
+		f.mem = nil
+	}
+	f.gpu.free()
 }
 
 // framePool bounds the frames of a player: those queued for display,
@@ -51,8 +70,8 @@ func newFramePool(limit int) *framePool {
 	return p
 }
 
-// get returns a frame of w×h, or nil once closed or when abort reports
-// true while it waits.
+// get returns a frame of w×h, or one for a picture on the GPU when both
+// are 0, or nil once closed or when abort reports true while it waits.
 func (p *framePool) get(w, h int, abort func() bool) *Frame {
 	size := w * h * 4
 	p.mu.Lock()
@@ -65,16 +84,22 @@ func (p *framePool) get(w, h int, abort func() bool) *Frame {
 			if f.size == size {
 				p.free = append(p.free[:i], p.free[i+1:]...)
 				p.out++
-				f.Image.Rect = image.Rect(0, 0, w, h)
-				f.Image.Stride = w * 4
+				if f.Image != nil {
+					f.Image.Rect = image.Rect(0, 0, w, h)
+					f.Image.Stride = w * 4
+				}
 				return f
 			}
 		}
 		if p.out+len(p.free) < p.limit || len(p.free) > 0 {
 			// A free frame of another size is given up for this one.
 			if len(p.free) > 0 {
-				ffmpeg.Free(p.free[0].mem)
+				p.free[0].discard()
 				p.free = p.free[1:]
+			}
+			if size == 0 {
+				p.out++
+				return &Frame{GPU: &GPUPicture{}}
 			}
 			mem := ffmpeg.Alloc(size)
 			if mem == nil {
@@ -93,16 +118,52 @@ func (p *framePool) put(f *Frame) {
 	if f == nil {
 		return
 	}
+	p.mu.Lock()
+	if f.holds > 0 {
+		f.parked = true
+		p.mu.Unlock()
+		return
+	}
+	p.mu.Unlock()
 	f.freeSource()
 	p.mu.Lock()
 	p.out--
 	if p.closed {
-		ffmpeg.Free(f.mem)
+		f.discard()
 	} else {
 		p.free = append(p.free, f)
 	}
 	p.cond.Broadcast()
 	p.mu.Unlock()
+}
+
+// Hold keeps f, a frame shown, out of the pool until release runs: a view
+// drawing its picture on the GPU holds it until the GPU is done with it.
+// It runs on the engine's goroutine.
+func (p *Pipeline) Hold(f *Frame) (release func()) {
+	if f == nil || f.loose {
+		return func() {}
+	}
+	p.pool.mu.Lock()
+	f.holds++
+	p.pool.mu.Unlock()
+	done := false
+	return func() {
+		if done {
+			return
+		}
+		done = true
+		p.pool.mu.Lock()
+		f.holds--
+		back := f.holds == 0 && f.parked
+		if back {
+			f.parked = false
+		}
+		p.pool.mu.Unlock()
+		if back {
+			p.pool.put(f)
+		}
+	}
 }
 
 // wakeAll wakes waiting gets so they check their abort.
@@ -118,7 +179,7 @@ func (p *framePool) close() {
 	p.mu.Lock()
 	p.closed = true
 	for _, f := range p.free {
-		ffmpeg.Free(f.mem)
+		f.discard()
 	}
 	p.free = nil
 	p.cond.Broadcast()
