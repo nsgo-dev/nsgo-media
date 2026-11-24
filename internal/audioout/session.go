@@ -27,3 +27,8 @@ const (
 // of the system's, so fn must return quickly. Systems that post none never
 // call it.
 func Watch(fn func(Event)) (stop func()) { return watch(fn) }
+
+// BackgroundAudio reports the app declaring iOS's audio background mode
+// (UIBackgroundModes' audio), under which the system lets it play on in
+// the background. Other systems report false.
+func BackgroundAudio() bool { return backgroundAudio() }

@@ -102,6 +102,7 @@ type Pipeline struct {
 	vp          atomic.Pointer[videoParams]
 	hwDevice    atomic.Value // string
 	reopenVideo atomic.Bool
+	audioOnly   atomic.Bool // the picture is not decoded (SetAudioOnly)
 
 	genA atomic.Uint64 // gen, for workers to read without the lock
 	rate atomic.Uint64 // float64 bits
@@ -527,6 +528,22 @@ func (p *Pipeline) SetPaused(paused bool) {
 	p.wall.setRunning(!paused && p.running, p.Rate())
 	p.ring.setPaused(paused)
 	p.setPausedOutput(paused)
+}
+
+// SetAudioOnly stops decoding the picture, as nothing shows it while the
+// app plays in the background, or decodes it again, seeking exactly to the
+// position so the picture there shows. The sound and the clock go on as
+// they were; a source without sound plays nothing while it is on.
+func (p *Pipeline) SetAudioOnly(on bool) {
+	if p.audioOnly.Swap(on) == on || on || !p.opened.Load() {
+		return
+	}
+	p.mu.Lock()
+	again := p.videoStream >= 0 && !p.ended
+	p.mu.Unlock()
+	if again {
+		p.seek(p.Position(), true)
+	}
 }
 
 // Paused reports whether playback is paused.

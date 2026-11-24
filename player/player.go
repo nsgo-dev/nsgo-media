@@ -6,10 +6,12 @@
 // goroutine: call its methods from components, effects and event handlers.
 // It decodes on its own goroutines and closes when its scope is disposed.
 //
-// On iOS a player pauses as an interruption, such as a call or Siri,
-// begins, and plays again as it ends if the system allows it; it pauses for
-// good as headphones are unplugged or the app goes to the background,
-// since it does not play there.
+// On iOS a player holds the audio session at Playback while it plays, so
+// the Ring/Silent switch does not silence it. It pauses as an
+// interruption, such as a call or Siri, begins, and plays again as it ends
+// if the system allows it; it pauses for good as headphones are unplugged.
+// It plays on in the background, its sound alone, when the app declares
+// the audio background mode, and pauses there otherwise.
 package player
 
 import (
@@ -19,6 +21,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/nsgo-dev/nsgo/audio"
 	"github.com/nsgo-dev/nsgo/core"
 
 	"github.com/oneo-me/nsgo-media/internal/audioout"
@@ -43,14 +46,23 @@ type Player struct {
 	// interrupted is a pause an iOS interruption made, which its end may
 	// undo.
 	interrupted bool
-	pendSeek    *pendingSeek
-	rateV       float64
-	volumeV     float64
-	mutedV      bool
-	loopV       bool
-	passV       Passthrough
-	pendSubs    []string
-	subtitleID  int
+	// releaseSession lets go of the audio session held while the app
+	// wants the player playing, nil when none is held.
+	releaseSession func()
+	// backgroundAudio is the app's audio background mode, under which the
+	// player plays on in the background; background is the app being
+	// there, where stopTick stops the timer standing in for display frames.
+	backgroundAudio bool
+	background      bool
+	stopTick        func() bool
+	pendSeek        *pendingSeek
+	rateV           float64
+	volumeV         float64
+	mutedV          bool
+	loopV           bool
+	passV           Passthrough
+	pendSubs        []string
+	subtitleID      int
 
 	state      *core.Signal[State]
 	err        *core.Signal[error]
@@ -115,6 +127,8 @@ func New(cx *core.Scope, opts ...Option) *Player {
 		hardware:   core.NewSignal(cx, ""),
 		pass:       core.NewSignal(cx, Passthrough(0)),
 		output:     core.NewSignalFunc(cx, AudioOutput{}, sameOutput),
+
+		backgroundAudio: audioout.BackgroundAudio(),
 	}
 	for _, o := range opts {
 		o(p)
@@ -122,23 +136,87 @@ func New(cx *core.Scope, opts ...Option) *Player {
 	cx.Cleanup(audioout.Watch(func(e audioout.Event) { cx.Post(func() { p.system(e) }) }))
 	if runtime.GOOS == "ios" {
 		// The app may start in the background, before its scene shows:
-		// only going there pauses.
+		// only going there and coming back count.
 		was, seen := core.LifecycleActive, false
 		cx.Effect(func() {
 			now := cx.Env().Lifecycle()
 			left := seen && now == core.LifecycleBackground && was != core.LifecycleBackground
+			back := seen && now != core.LifecycleBackground && was == core.LifecycleBackground
 			was, seen = now, true
-			if left {
-				cx.Post(func() {
-					if p.wantPlay {
-						p.Pause()
-					}
-				})
+			if left || back {
+				cx.Post(func() { p.setBackground(left) })
 			}
 		})
 	}
 	cx.Cleanup(p.Close)
 	return p
+}
+
+// backgroundTick is how often the presenter runs in the background, where
+// no display frames come: often enough to notice buffering and the end.
+const backgroundTick = 100 * time.Millisecond
+
+// setBackground follows the app going to the background and coming back.
+// With the audio background mode, a player with sound plays on there
+// without its picture, the presenter running on a timer, and decodes the
+// picture again on its return; otherwise it pauses.
+func (p *Player) setBackground(on bool) {
+	if on && (!p.backgroundAudio || p.ready() && p.pl.AudioTrack() < 0) {
+		if p.wantPlay {
+			p.Pause()
+		}
+		return
+	}
+	if on == p.background {
+		return
+	}
+	p.background = on
+	if p.pl != nil {
+		p.pl.SetAudioOnly(on)
+	}
+	if !on {
+		if p.stopTick != nil {
+			p.stopTick()
+			p.stopTick = nil
+		}
+		return
+	}
+	// A tick that already fired as the timer stopped arms no other.
+	stopped, stop := false, func() bool { return false }
+	var tick func()
+	tick = func() {
+		if stopped {
+			return
+		}
+		p.tick()
+		stop = p.cx.AfterFunc(backgroundTick, tick)
+	}
+	stop = p.cx.AfterFunc(backgroundTick, tick)
+	p.stopTick = func() bool {
+		stopped = true
+		return stop()
+	}
+}
+
+// holdSession holds iOS's audio session at Playback while the app wants
+// the player playing, and lets it go otherwise. Elsewhere it holds
+// nothing.
+func (p *Player) holdSession() {
+	want := p.wantPlay && p.state.GetUntracked() != Failed
+	switch {
+	case want && p.releaseSession == nil:
+		// A session that cannot be set leaves the sound under the
+		// category it has.
+		release, _ := audio.HoldSession(core.AudioSessionPlayback)
+		p.releaseSession = func() {
+			if release != nil {
+				release()
+			}
+		}
+	case !want && p.releaseSession != nil:
+		p.releaseSession()
+		p.releaseSession = nil
+	}
 }
 
 // system follows what iOS did to the audio output: an interruption pauses
@@ -222,6 +300,8 @@ func (p *Player) Open(source string, opts ...OpenOption) {
 	})
 	// The rate decides whether the audio passes through as it opens.
 	pl.SetRate(p.rateV)
+	pl.SetAudioOnly(p.background)
+	p.holdSession()
 	go func() {
 		info, err := pl.OpenSources(pipeline.Source{Location: source, Header: cfg.header}, cfg.audio)
 		p.cx.Post(func() {
@@ -271,6 +351,7 @@ func (p *Player) ready() bool { return p.pl != nil && p.info.GetUntracked() != n
 func (p *Player) fail(err error) {
 	p.err.Set(err)
 	p.state.Set(Failed)
+	p.holdSession()
 }
 
 func (p *Player) event(seq uint64, e pipeline.Event) {
@@ -325,6 +406,7 @@ func (p *Player) tick() {
 	case st.Ended:
 		p.wantPlay = false
 		p.state.Set(Ended)
+		p.holdSession()
 	case p.pl.Paused():
 		p.state.Set(Paused)
 	case st.Buffering:
@@ -338,6 +420,8 @@ func (p *Player) tick() {
 func (p *Player) Play() {
 	p.wantPlay = true
 	p.interrupted = false
+	// The session is set before the output starts under it.
+	p.holdSession()
 	if p.ready() {
 		p.pl.SetPaused(false)
 		p.tick()
@@ -352,6 +436,7 @@ func (p *Player) Pause() {
 		p.pl.SetPaused(true)
 		p.tick()
 	}
+	p.holdSession()
 }
 
 // Stop pauses at the start.
@@ -569,6 +654,7 @@ func (p *Player) Close() {
 	p.seq++
 	p.closePipeline()
 	p.wantPlay = false
+	p.holdSession()
 	p.info.Set(nil)
 	p.output.Set(AudioOutput{})
 	p.state.Set(Idle)

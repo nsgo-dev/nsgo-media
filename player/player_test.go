@@ -174,6 +174,83 @@ func TestPlayerExternalAudioWithHeaders(t *testing.T) {
 	play(t, app, 3*time.Second, func() bool { return p.State() == Ended })
 }
 
+// The session is held while the app wants the player playing.
+func TestPlayerHoldsTheSessionWhilePlaying(t *testing.T) {
+	var p *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.Open(fixture(t, "av.mkv"))
+		return View{Player: p}
+	})
+	if p.releaseSession != nil {
+		t.Fatal("held before playing")
+	}
+	p.Play()
+	if p.releaseSession == nil {
+		t.Fatal("not held as it plays")
+	}
+	play(t, app, 3*time.Second, func() bool { return p.State() == Playing })
+	p.Pause()
+	if p.releaseSession != nil {
+		t.Fatal("held while paused")
+	}
+	p.Seek(1700*time.Millisecond, Exact)
+	p.Play()
+	play(t, app, 3*time.Second, func() bool { return p.State() == Ended })
+	if p.releaseSession != nil {
+		t.Fatal("held after the end")
+	}
+	p.Play()
+	p.Close()
+	if p.releaseSession != nil {
+		t.Fatal("held after Close")
+	}
+}
+
+// With the audio background mode the sound plays on in the background,
+// without the picture, which comes back with the app; without it the
+// player pauses.
+func TestPlayerInTheBackground(t *testing.T) {
+	var p *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.Open(fixture(t, "av.mkv"))
+		p.Play()
+		return View{Player: p}
+	})
+	play(t, app, 3*time.Second, func() bool { return p.Position() > 200*time.Millisecond })
+	p.setBackground(true)
+	if p.State() != Paused || p.background {
+		t.Fatalf("without the background mode: %v, background %v", p.State(), p.background)
+	}
+	p.setBackground(false)
+
+	p.backgroundAudio = true
+	p.Play()
+	p.setBackground(true)
+	if !p.background || p.stopTick == nil {
+		t.Fatal("not playing in the background")
+	}
+	// No display frames come there: the timer runs the presenter.
+	deadline := time.Now().Add(3 * time.Second)
+	for p.Position() < 1200*time.Millisecond {
+		if time.Now().After(deadline) || p.State() != Playing {
+			t.Fatalf("at %v in %v", p.Position(), p.State())
+		}
+		app.Advance(backgroundTick)
+		time.Sleep(50 * time.Millisecond)
+	}
+	version := p.frame.GetUntracked().version
+	p.setBackground(false)
+	if p.stopTick != nil {
+		t.Fatal("the timer runs in the foreground")
+	}
+	play(t, app, 2*time.Second, func() bool { return p.frame.GetUntracked().version != version })
+	play(t, app, 3*time.Second, func() bool { return p.State() == Ended })
+}
+
 func TestPlayerFailsOnMissingFile(t *testing.T) {
 	var p *Player
 	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
