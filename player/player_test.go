@@ -1,12 +1,17 @@
 package player
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"image"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -262,6 +267,84 @@ func TestPlayerFailsOnMissingFile(t *testing.T) {
 	if p.Err() == nil {
 		t.Fatal("no error")
 	}
+}
+
+func TestPlayerHoldsPositionOnMidPlaybackError(t *testing.T) {
+	data, err := os.ReadFile(fixture(t, "bitmap.mkv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := len(data) / 2
+	gate := make(chan struct{})
+	var failMid atomic.Bool
+	failMid.Store(true)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var off int
+		if rng, ok := strings.CutPrefix(r.Header.Get("Range"), "bytes="); ok {
+			start, _, _ := strings.Cut(rng, "-")
+			off, _ = strconv.Atoi(start)
+		}
+		if !failMid.Load() || off >= cut {
+			http.ServeContent(w, r, "bitmap.mkv", time.Time{}, bytes.NewReader(data))
+			return
+		}
+		w.Header().Set("Accept-Ranges", "bytes")
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", off, len(data)-1, len(data)))
+		w.Header().Set("Content-Length", strconv.Itoa(len(data)-off))
+		w.WriteHeader(http.StatusPartialContent)
+		w.Write(data[off:cut])
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		select {
+		case <-gate:
+			if h, ok := w.(http.Hijacker); ok {
+				if conn, _, err := h.Hijack(); err == nil {
+					conn.Close()
+				}
+			}
+		case <-r.Context().Done():
+		}
+	}))
+	defer srv.Close()
+
+	var p *Player
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		p = New(cx)
+		p.openOutput = silent
+		p.Open(srv.URL + "/bitmap.mkv")
+		p.Play()
+		return View{Player: p}
+	})
+	play(t, app, 5*time.Second, func() bool { return p.Position() >= time.Second })
+	close(gate)
+	play(t, app, 5*time.Second, func() bool { return p.State() == Failed })
+	if p.Err() == nil {
+		t.Fatal("no error")
+	}
+	at := p.Position()
+	if at < time.Second {
+		t.Fatalf("failed at %v, want >= 1s", at)
+	}
+	// Failure stops playback and holds the position where it stopped.
+	for range 20 {
+		app.Advance(16 * time.Millisecond)
+		time.Sleep(8 * time.Millisecond)
+	}
+	if got := p.Position(); got != at {
+		t.Fatalf("position moved after failure: %v -> %v", at, got)
+	}
+
+	// Reopening at the saved position continues from there.
+	failMid.Store(false)
+	p.Open(srv.URL + "/bitmap.mkv")
+	p.Play()
+	p.Seek(at, Exact)
+	play(t, app, 5*time.Second, func() bool { return p.State() == Playing })
+	if got := p.Position(); got < at-100*time.Millisecond {
+		t.Fatalf("reopened at %v, want around %v", got, at)
+	}
+	play(t, app, 5*time.Second, func() bool { return p.Position() >= at+300*time.Millisecond })
 }
 
 func TestFitRect(t *testing.T) {

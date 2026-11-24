@@ -157,7 +157,13 @@ func (pg Page) Render(cx *core.Scope) core.Node {
 		s := pg.Source()
 		cx.Untrack(func() { open(s) })
 	})
-	retry := func() { open(*current.GetUntracked()) }
+	retry := func() {
+		s := *current.GetUntracked()
+		if pos > 0 {
+			s.Start = pos
+		}
+		open(s)
+	}
 	cx.Effect(func() {
 		at, state := p.Position(), p.State()
 		cx.Untrack(func() {
@@ -168,7 +174,7 @@ func (pg Page) Render(cx *core.Scope) core.Node {
 			if state == player.Ended {
 				pos = dur
 			}
-			if state == player.Paused || state == player.Ended || (pos-saved).Abs() >= saveEvery {
+			if state == player.Paused || state == player.Ended || state == player.Failed || (pos-saved).Abs() >= saveEvery {
 				save()
 			}
 			if state == player.Ended && !ended {
