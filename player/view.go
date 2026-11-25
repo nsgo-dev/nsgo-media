@@ -90,25 +90,41 @@ func (v View) Render(cx *core.Scope) core.Node {
 	}
 	children := []core.Node{picture}
 	if gpuTarget(cx.Env()) {
-		g := &gpuPicture{p: p, cx: cx, size: size}
-		size.gpu = g
-		children = []core.Node{gpu.View(cx, gpu.ViewProps{
-			StyleFunc: place,
-			OnReady: func(dev *gpu.Device) {
-				size.kind = g.ready(dev)
-				p.updateGPU()
-			},
-			OnDeviceLost: func(gpu.DeviceLostEvent) {
-				g.lost()
-				size.kind = pipeline.GPUNone
-				p.updateGPU()
-			},
-			OnError: func(gpu.Error) {
-				// An import the backend refused: pictures go through memory.
-				g.kind, size.kind = pipeline.GPUNone, pipeline.GPUNone
-				p.updateGPU()
-			},
-		}), picture}
+		mountGPU := func(gx *core.Scope, cs gpu.ColorSpace) core.Node {
+			g := &gpuPicture{p: p, cx: gx, size: size}
+			size.gpu = g
+			gx.Cleanup(func() {
+				g.drop()
+				if size.gpu == g {
+					size.gpu = nil
+					size.kind = pipeline.GPUNone
+					p.updateGPU()
+				}
+			})
+			return gpu.View(gx, gpu.ViewProps{
+				ColorSpace: cs,
+				StyleFunc:  place,
+				OnReady: func(dev *gpu.Device) {
+					size.kind = g.ready(dev)
+					p.updateGPU()
+				},
+				OnDeviceLost: func(gpu.DeviceLostEvent) {
+					g.lost()
+					size.kind = pipeline.GPUNone
+					p.updateGPU()
+				},
+				OnError: func(gpu.Error) {
+					// An import the backend refused: pictures go through memory.
+					g.kind, size.kind = pipeline.GPUNone, pipeline.GPUNone
+					p.updateGPU()
+				},
+			})
+		}
+		children = []core.Node{core.Show{
+			When: func() bool { return cx.Env().Display().HDR },
+			Then: func(gx *core.Scope) core.Node { return mountGPU(gx, gpu.ColorSpaceExtendedLinearSRGB) },
+			Else: func(gx *core.Scope) core.Node { return mountGPU(gx, gpu.ColorSpaceDefault) },
+		}, picture}
 	}
 	return core.View{
 		Class:    v.Class,
