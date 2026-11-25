@@ -18,7 +18,7 @@ import (
 
 // FS holds the plugin's folder: its manifest and locales.
 //
-//go:embed plugin.yaml locales
+//go:embed plugin.yaml icon.svg locales
 var FS embed.FS
 
 // Loader loads the plugin, which lists videos, the system's videos

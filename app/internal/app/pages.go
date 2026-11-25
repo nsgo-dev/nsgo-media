@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/icons/lucide"
@@ -12,9 +14,6 @@ import (
 	"github.com/oneo-me/nsgo-media/app/internal/plugin"
 	"github.com/oneo-me/nsgo-media/app/locales"
 )
-
-// loader loads a page of sections at a cursor, "" for the first.
-type loader func(ctx context.Context, cursor string) (*plugin.Page, error)
 
 // pageKind is what a page of sections is, for its loading and empty
 // states.
@@ -26,129 +25,130 @@ const (
 	pageSearch
 )
 
-// sectionsPage shows the sections load answers, with the pages after it
-// on request or once scrolled to the end, again after the viewer signs in
-// or out.
-func (sh *shell) sectionsPage(cx *core.Scope, p *plugin.Plugin, kind pageKind, load loader) core.Node {
-	pages := core.NewSignalFunc[[]*plugin.Page](cx, nil, nil)
-	loading := core.NewSignal(cx, false)
-	failed := core.NewSignalFunc[error](cx, nil, nil)
-	ctx := cx.Context()
-	gen := 0
-	fetch := func(cursor string) {
-		gen++
-		n := gen
-		loading.Set(true)
-		failed.Set(nil)
-		call(cx, ctx, func(ctx context.Context) (*plugin.Page, error) { return load(ctx, cursor) }, func(pg *plugin.Page, err error) {
-			if n != gen {
-				return
-			}
-			loading.Set(false)
-			if err != nil {
-				failed.Set(err)
-				return
-			}
-			if len(pages.GetUntracked()) == 0 && kind != pageSearch {
-				sh.retitle(pg.Title)
-			}
-			pages.Update(func(ps []*plugin.Page) []*plugin.Page { return append(ps[:len(ps):len(ps)], pg) })
-		})
+// sources are the enabled plugins that export export.
+func (sh *shell) sources(export string) []*plugin.Plugin {
+	var ps []*plugin.Plugin
+	for _, p := range sh.active() {
+		if p.Has(export) {
+			ps = append(ps, p)
+		}
 	}
-	epoch := sh.account(p).epoch
-	cx.Effect(func() {
-		epoch.Get()
-		cx.Untrack(func() {
-			pages.Set(nil)
-			fetch("")
-		})
+	return ps
+}
+
+// homePage is the home pages of every enabled plugin together, or of the
+// one the filter chose, after the videos the viewer may continue.
+func (sh *shell) homePage(cx *core.Scope) core.Node {
+	sources := func() []*plugin.Plugin { return sh.sources(plugin.ExportHome) }
+	return core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
+		sh.filterBar(cx, sources),
+		core.Dynamic(func(cx *core.Scope) core.Node {
+			shown := sh.shown(sources())
+			return sh.sectionsPage(cx, shown, pageHome, func(p *plugin.Plugin, ctx context.Context, cursor string) (*plugin.Page, error) {
+				return p.Home(ctx, plugin.PageParams{Cursor: cursor})
+			}, func(cx *core.Scope) []section { return sh.continuing(cx, shown) }, func(cx *core.Scope) core.Node {
+				msg := locales.HomeEmptyAll(cx)
+				if len(shown) == 1 {
+					msg = locales.HomeEmpty(cx, shown[0].Name())
+				}
+				return state(stateQuiet, lucide.Inbox, locales.NothingHere(cx), msg)
+			})
+		}),
+	}}
+}
+
+// maxContinuing bounds the videos the home page offers to continue.
+const maxContinuing = 10
+
+// continuing is the videos of plugins played last that were left
+// partway, as a section, while the plugins they came from show.
+func (sh *shell) continuing(cx *core.Scope, shown []*plugin.Plugin) []section {
+	sh.played.Get()
+	if sh.recent == nil {
+		return nil
+	}
+	byID := map[string]*plugin.Plugin{}
+	for _, p := range shown {
+		byID[p.Manifest.ID] = p
+	}
+	s := section{title: locales.ContinueWatching(cx)}
+	for _, r := range sh.recent.List() {
+		p := byID[r.Plugin]
+		if p == nil || len(s.items) == maxContinuing {
+			continue
+		}
+		if _, _, ok := sh.positions.Latest(videoKey(p, r.Video)); !ok {
+			continue
+		}
+		var it plugin.Item
+		if json.Unmarshal(r.Item, &it) == nil && it.ID == r.Video {
+			s.items = append(s.items, entry{p: p, it: it})
+		}
+	}
+	if len(s.items) == 0 {
+		return nil
+	}
+	return []section{s}
+}
+
+// discoverPage is the first page of each enabled plugin's own together,
+// or, of the one the filter chose, the page its tabs choose.
+func (sh *shell) discoverPage(cx *core.Scope) core.Node {
+	sources := func() []*plugin.Plugin {
+		var ps []*plugin.Plugin
+		for _, p := range sh.sources(plugin.ExportBrowse) {
+			if len(p.Manifest.Navigation) > 0 {
+				ps = append(ps, p)
+			}
+		}
+		return ps
+	}
+	entry := core.NewSignal(cx, "")
+	tabs := core.Dynamic(func(cx *core.Scope) core.Node {
+		shown := sh.shown(sources())
+		if len(shown) != 1 || len(shown[0].Manifest.Navigation) < 2 {
+			return nil
+		}
+		p := shown[0]
+		var options []ui.Option[string]
+		for _, e := range p.Manifest.Navigation {
+			options = append(options, ui.Option[string]{Value: e.ID, Label: p.Translate(e.Label), TestID: "entry-" + e.ID})
+		}
+		return ui.Tabs[string]{
+			TestID: "entries", Label: locales.Discover(cx), Size: ui.SizeSmall, Options: options,
+			Value: func() string {
+				if id := entry.Get(); slices.ContainsFunc(p.Manifest.Navigation, func(e plugin.Entry) bool { return e.ID == id }) {
+					return id
+				}
+				return p.Manifest.Navigation[0].ID
+			},
+			OnChange: entry.Set,
+		}
 	})
-	next := func() string {
-		ps := pages.Get()
-		if len(ps) == 0 {
-			return ""
-		}
-		return ps[len(ps)-1].Next
-	}
-	more := func() {
-		if !loading.GetUntracked() && failed.GetUntracked() == nil {
-			if c := core.Untracked(cx, next); c != "" {
-				fetch(c)
-			}
-		}
-	}
-	started := func() bool { return len(pages.Get()) > 0 }
-	empty := func() bool {
-		for _, pg := range pages.Get() {
-			for _, s := range pg.Sections {
-				if len(s.Items) > 0 {
-					return false
+	return core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
+		sh.filterBar(cx, sources, tabs),
+		core.Dynamic(func(cx *core.Scope) core.Node {
+			shown := sh.shown(sources())
+			chosen := entry.Get()
+			return sh.sectionsPage(cx, shown, pageBrowse, func(p *plugin.Plugin, ctx context.Context, cursor string) (*plugin.Page, error) {
+				id := p.Manifest.Navigation[0].ID
+				if len(shown) == 1 && slices.ContainsFunc(p.Manifest.Navigation, func(e plugin.Entry) bool { return e.ID == chosen }) {
+					id = chosen
 				}
-			}
-		}
-		return true
-	}
-	return core.Dynamic(func(cx *core.Scope) core.Node {
-		switch {
-		case !started() && failed.Get() != nil:
-			return sh.failure(cx, p, failed.Get(), func() { fetch("") })
-		case !started():
-			return pageLoading(kind)
-		case empty():
-			if kind == pageSearch {
-				return nil
-			}
-			msg := locales.PageEmpty(cx)
-			if kind == pageHome {
-				msg = locales.HomeEmpty(cx, p.Name())
-			}
-			return state(stateQuiet, lucide.Inbox, locales.NothingHere(cx), msg)
-		}
-		return ui.ScrollView{
-			TestID:       "sections",
-			Style:        core.Style{FlexGrow: 1, FlexShrink: 1},
-			ContentStyle: core.Style{Padding: core.Symmetric(24, 28), Gap: 32},
-			OnScroll: func(e core.ScrollEvent) {
-				if e.Offset.Y+e.Size.Height >= e.ContentSize.Height-240 {
-					more()
-				}
-			},
-			Children: []core.Node{
-				core.Dynamic(func(cx *core.Scope) core.Node {
-					var nodes []core.Node
-					for _, pg := range pages.Get() {
-						for _, s := range pg.Sections {
-							if len(s.Items) > 0 {
-								nodes = append(nodes, sh.section(cx, p, s))
-							}
-						}
-					}
-					return core.View{Class: "gap-8", Children: nodes}
-				}),
-				core.Show{
-					When: loading.Get,
-					Then: func(*core.Scope) core.Node { return skeletonCards(4) },
-				},
-				core.Show{
-					When: func() bool { return failed.Get() != nil },
-					Then: func(cx *core.Scope) core.Node {
-						return core.View{TestID: "more-failed", Class: "flex-row items-center justify-center gap-3 rounded-xl bg-error-soft px-4 py-3", Children: []core.Node{
-							core.Icon{SVG: lucide.CircleAlert(), Class: "size-4 text-error-icon"},
-							core.Text{Content: locales.CouldNotAnswerShort(cx, p.Name()), Class: "text-[13px] text-error-ink", Style: core.Style{FlexShrink: 1}},
-							retryButton(cx, func() { fetch(core.Untracked(cx, next)) }),
-						}}
-					},
-				},
-				core.Show{
-					When: func() bool { return !loading.Get() && failed.Get() == nil && next() != "" },
-					Then: func(cx *core.Scope) core.Node {
-						return core.View{Class: "items-center pt-2", Children: []core.Node{
-							ui.Button{TestID: "load-more", Text: locales.LoadMore(cx), Variant: ui.ButtonOutline, OnPress: more},
-						}}
-					},
-				},
-			},
-		}
+				return p.Browse(ctx, plugin.BrowseParams{ID: id, Cursor: cursor})
+			}, nil, func(cx *core.Scope) core.Node {
+				return state(stateQuiet, lucide.Compass, locales.NothingHere(cx), locales.DiscoverEmpty(cx))
+			})
+		}),
+	}}
+}
+
+// browsePage is a page of p's own, opened by its id.
+func (sh *shell) browsePage(cx *core.Scope, p *plugin.Plugin, id string) core.Node {
+	return sh.sectionsPage(cx, []*plugin.Plugin{p}, pageBrowse, func(p *plugin.Plugin, ctx context.Context, cursor string) (*plugin.Page, error) {
+		return p.Browse(ctx, plugin.BrowseParams{ID: id, Cursor: cursor})
+	}, nil, func(cx *core.Scope) core.Node {
+		return state(stateQuiet, lucide.Inbox, locales.NothingHere(cx), locales.PageEmpty(cx))
 	})
 }
 
@@ -182,25 +182,6 @@ func (sh *shell) retitle(title string) {
 		s[len(s)-1].title = title
 		return s
 	})
-}
-
-// section is a titled row of cards, with More for the rest of them; a
-// section without a title shows its cards alone.
-func (sh *shell) section(cx *core.Scope, p *plugin.Plugin, s plugin.Section) core.Node {
-	var children []core.Node
-	if s.Title != "" || s.More != "" {
-		var more func()
-		if s.More != "" {
-			more = func() { sh.open(route{kind: routeBrowse, plugin: p, id: s.More, title: s.Title}) }
-		}
-		children = append(children, sectionHeader(cx, s.Title, "more-"+s.More, more))
-	}
-	var cards []core.Node
-	for _, it := range s.Items {
-		cards = append(cards, sh.card(cx, p, it))
-	}
-	children = append(children, core.View{Class: cardRow, Children: cards})
-	return core.View{Class: "gap-3", Children: children}
 }
 
 // errorText is what the viewer reads of a plugin's error: the plugin's

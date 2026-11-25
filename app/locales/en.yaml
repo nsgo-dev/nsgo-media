@@ -342,3 +342,67 @@ couldNotUnfollow: Could not unfollow
 couldNotChangeStatus:
   message: Could not change the status
   description: Says changing the status of a followed show failed.
+showTimeLeft:
+  message: Show Time Left
+  description: Switches the player's duration to the time left, and back.
+pinned:
+  message: Pinned
+  description: Shown on the player window's pin button while it stays above other windows.
+pinOnTop: Keep on Top
+unpin: Stop Keeping on Top
+danmaku:
+  message: Danmaku
+  description: Comments that fly over the video as it plays.
+showDanmaku: Show Danmaku
+hideDanmaku: Hide Danmaku
+danmakuSettings: Danmaku Settings
+opacity: Opacity
+danmakuKinds: Display types
+danmakuScroll:
+  message: Scroll
+  description: Danmaku that scroll across the picture.
+danmakuTop:
+  message: Top
+  description: Danmaku fixed at the picture's top.
+danmakuBottom:
+  message: Bottom
+  description: Danmaku fixed at the picture's bottom.
+danmakuColor:
+  message: Color
+  description: Danmaku in colors other than white.
+danmakuArea: Display area
+danmakuFull:
+  message: Full
+  description: Danmaku may fill the whole picture.
+danmakuSize: Font size
+sizeSmall:
+  message: S
+  description: The small danmaku size, in one letter.
+sizeMedium:
+  message: M
+  description: The medium danmaku size, in one letter.
+sizeLarge:
+  message: L
+  description: The large danmaku size, in one letter.
+speedSlow:
+  message: Slow
+  description: Danmaku scrolling slowly.
+speedFast:
+  message: Fast
+  description: Danmaku scrolling fast.
+discover:
+  message: Discover
+  description: The toolbar's page of each plugin's own pages together, such as what is popular.
+searchAll: Search all sources…
+searchAllTitle: Search all sources
+searchPlaceholderAll: Search across all sources, or paste a link
+allSources:
+  message: All Sources
+  description: Shows the videos of every enabled plugin together.
+sources:
+  message: Sources
+  description: The label of the choice of which plugin's videos a page shows.
+continueWatching: Continue watching
+homeEmptyAll: None of your enabled sources have videos to show yet.
+discoverEmpty: None of your enabled sources have pages to discover yet.
+followingEmptyAll: Follow a show from any plugin, and its new episodes show up here.

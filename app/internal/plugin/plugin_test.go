@@ -98,6 +98,14 @@ func TestDemoExports(t *testing.T) {
 		}
 	}
 
+	if p.Manifest.Color != "#e8553a" || !strings.Contains(string(p.Icon), "<svg") {
+		t.Fatalf("icon %q, color %q", p.Icon, p.Manifest.Color)
+	}
+	dm := must[[]Danmaku](t)(p.Danmaku(ctx, DanmakuParams{Video: "v1", Part: "1", From: 0, To: 10}))
+	if len(dm) != 20 || dm[0].Mode != DanmakuTop || dm[0].Color != "#66ccff" || dm[1].Text == "" {
+		t.Fatalf("danmaku = %+v", dm)
+	}
+
 	if a := must[*Account](t)(p.Account(ctx)); a != nil {
 		t.Fatalf("account before signing in = %+v", a)
 	}
@@ -479,7 +487,8 @@ export function video({ id }) {
   if (id === "show") return { id, title: "T", parts: [{ id: "1", title: "P1" }], show: { id: "s", status: "watching" } }
   return id ? { id, title: "T", parts: [{ id: "1", title: "P1" }], part: "2" } : "not a video"
 }
-export function following() { return { shows: [{ id: "s", title: "S", video: "v", status: "dropped" }] } }`)
+export function following() { return { shows: [{ id: "s", title: "S", video: "v", status: "dropped" }] } }
+export function danmaku({ part }) { return part ? [{ time: 1, text: "a", mode: "side" }] : [{ time: -1, text: "", color: "red" }] }`)
 	ctx := context.Background()
 	var inv *InvalidError
 	if _, err := p.Home(ctx, PageParams{}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "id is empty") {
@@ -505,6 +514,12 @@ export function following() { return { shows: [{ id: "s", title: "S", video: "v"
 	}
 	if _, err := p.Video(ctx, VideoParams{ID: "show"}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "none of the manifest's statuses") {
 		t.Fatalf("video of a show with a status the manifest lacks = %v", err)
+	}
+	if _, err := p.Danmaku(ctx, DanmakuParams{}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "time is negative") || !strings.Contains(err.Error(), "text is empty") || !strings.Contains(err.Error(), "not a color") {
+		t.Fatalf("danmaku without text, at a negative time, of a named color = %v", err)
+	}
+	if _, err := p.Danmaku(ctx, DanmakuParams{Part: "1"}); !errors.As(err, &inv) || !strings.Contains(err.Error(), "none of scroll") {
+		t.Fatalf("danmaku of an unknown mode = %v", err)
 	}
 	if _, err := p.Search(ctx, SearchParams{}); !errors.Is(err, ErrNotExported) || p.Has(ExportSearch) {
 		t.Fatalf("search, not exported = %v", err)
@@ -553,6 +568,9 @@ func TestManifests(t *testing.T) {
 		`{` + base + `,"minAppVersion":"0.1.0","navigation":[{"id":"a","label":"A"},{"id":"a","label":"B"}]}`,
 		`{` + base + `,"minAppVersion":"0.1.0","statuses":[{"id":"w","label":"W"},{"id":"w","label":"X"}]}`,
 		`{` + base + `,"minAppVersion":"0.1.0","statuses":[{"id":"w","label":""}]}`,
+		`{` + base + `,"minAppVersion":"0.1.0","icon":"icon.png"}`,
+		`{` + base + `,"minAppVersion":"0.1.0","icon":"../icon.svg"}`,
+		`{` + base + `,"minAppVersion":"0.1.0","color":"orange"}`,
 	} {
 		if _, err := ParseManifest([]byte(bad), "0.1.0"); err == nil {
 			t.Errorf("manifest %s was accepted", bad)

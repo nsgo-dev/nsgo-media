@@ -170,6 +170,13 @@ func (p *Plugin) Unfollow(ctx context.Context, params UnfollowParams) error {
 	return p.do(ctx, ExportUnfollow, params, nil, nil)
 }
 
+// Danmaku is the comments of a span of a part, in no particular order.
+func (p *Plugin) Danmaku(ctx context.Context, params DanmakuParams) ([]Danmaku, error) {
+	var list []Danmaku
+	err := p.do(ctx, ExportDanmaku, params, &list, func(c *checker) { checkDanmaku(list, c) })
+	return list, err
+}
+
 // Setting is the viewer's value of a setting, or its default.
 func (p *Plugin) Setting(key string) (any, error) {
 	s, ok := p.Manifest.Setting(key)

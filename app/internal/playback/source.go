@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nsgo-dev/nsgo/core"
 	"github.com/oneo-me/nsgo-media/player"
 )
 
@@ -45,6 +46,12 @@ type Source struct {
 	// its index among them; the page's parts menu shows them.
 	Parts []Part
 	Part  int
+	// Badge marks where the source comes from, before its title; nil for
+	// none.
+	Badge core.Node
+	// Danmaku loads the comments shown over the picture; nil has none,
+	// which leaves out the danmaku button.
+	Danmaku DanmakuLoader
 }
 
 // Part is a part of a video under its number's label and its title.
@@ -118,6 +125,15 @@ func (s Source) key() string {
 		return s.Key
 	}
 	return s.URL
+}
+
+// partTitle is the part's title, which a pinned window shows, else the
+// title.
+func (s Source) partTitle() string {
+	if len(s.Parts) > 1 && s.Part < len(s.Parts) {
+		return s.Parts[s.Part].Title
+	}
+	return s.title()
 }
 
 // title is what the page's header shows: the title, else the file's name.

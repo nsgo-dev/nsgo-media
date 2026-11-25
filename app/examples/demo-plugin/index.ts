@@ -340,3 +340,28 @@ export function setSetting({ key, value }: { key: string; value: unknown }): voi
   console.log("setting changed", key);
   host.storage.set("changed", { key, value });
 }
+
+interface Danmaku {
+  time: number;
+  mode?: "scroll" | "top" | "bottom";
+  color?: string;
+  text: string;
+}
+
+const lines = ["What a view", "First!", "The light here", "Again tomorrow", "So calm", "Where is this?"];
+
+// danmaku answers made-up comments of a span of a part: two a second
+// scrolling across, and now and then one fixed at the top or the bottom,
+// some of them coloured.
+export function danmaku({ from, to }: { video: string; part: string; from: number; to: number }): Danmaku[] {
+  const list: Danmaku[] = [];
+  for (let t = Math.ceil(from * 2) / 2; t < to; t += 0.5) {
+    const n = Math.round(t * 2);
+    const d: Danmaku = { time: t, text: lines[n % lines.length] };
+    if (n % 15 === 0) d.mode = "top";
+    else if (n % 23 === 0) d.mode = "bottom";
+    if (n % 7 === 0) d.color = "#66ccff";
+    list.push(d);
+  }
+  return list;
+}

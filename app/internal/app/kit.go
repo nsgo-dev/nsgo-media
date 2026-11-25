@@ -122,7 +122,10 @@ func (sh *shell) card(cx *core.Scope, p *plugin.Plugin, it plugin.Item) core.Nod
 	switch it.Kind {
 	case plugin.KindUploader:
 		children := []core.Node{
-			sh.cover(cx, it.Image, "size-[88px] rounded-full border border-black/5 bg-well shadow-sm"),
+			core.View{Class: "size-[88px]", Children: []core.Node{
+				sh.cover(cx, it.Image, "size-[88px] rounded-full border border-black/5 bg-well shadow-sm"),
+				core.View{Class: "absolute right-0 bottom-0", Children: []core.Node{sh.badge(p, badgeRound)}},
+			}},
 			core.Text{Content: it.Title, MaxLines: 1, Class: "text-center text-[13px] font-medium text-foreground"},
 		}
 		if it.Subtitle != "" {
@@ -140,7 +143,10 @@ func (sh *shell) card(cx *core.Scope, p *plugin.Plugin, it plugin.Item) core.Nod
 			},
 		}
 	}
-	thumb := []core.Node{sh.cover(cx, it.Image, "size-full")}
+	thumb := []core.Node{
+		sh.cover(cx, it.Image, "size-full"),
+		core.View{Class: "absolute top-1.5 left-1.5", Children: []core.Node{sh.badge(p, badgeCover)}},
+	}
 	if it.Duration > 0 {
 		thumb = append(thumb, core.Text{
 			Content: clock(it.Duration),

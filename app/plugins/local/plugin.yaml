@@ -3,6 +3,8 @@ name: Local Files
 version: 0.1.0
 minAppVersion: 0.1.0
 media: video
+icon: icon.svg
+color: "#16a88e"
 settings:
   - key: folders
     label: Video folders

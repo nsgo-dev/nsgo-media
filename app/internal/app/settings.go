@@ -322,7 +322,7 @@ func (sh *shell) closePages(p *plugin.Plugin, all bool) {
 		})
 		if len(kept) == 0 {
 			sh.opened++
-			kept = []route{{n: sh.opened, kind: routeOpen}}
+			kept = []route{{n: sh.opened, kind: routeHome}}
 		}
 		return kept
 	})

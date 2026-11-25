@@ -22,46 +22,47 @@ func pick(app *nsgotest.App, trigger, id, label string) {
 	}
 }
 
-func signOutOfDemo(app *nsgotest.App) {
-	pick(app, "account-demo", "sign-out-demo", "Sign Out")
-	app.WaitFor("id:sign-in-demo", wait)
+func signOutOfDemo(app *nsgotest.App, pl *player) {
+	p := pl.sh.plugins.GetUntracked()[0]
+	app.Post(func() { pl.sh.signOut(p) })
+	app.WaitUntil(wait, func() bool { return pl.sh.account(p).who.GetUntracked() == nil })
 }
 
 func TestFollowing(t *testing.T) {
-	app, _ := startDemo(t, "")
+	app, pl := startDemo(t, "")
 
 	// Following lives on the account: signed out, it asks to sign in.
-	app.Press("id:nav-demo:following")
-	waitText(app, "page-title", "Following")
+	app.Press("id:nav-following")
 	app.WaitFor("text:Sign in to see the shows you follow", wait)
 	app.Press("id:error-sign-in")
 	app.WaitFor("text:You're not following anything yet", wait)
 	app.Find("text:Follow a show from its page on Demo, and its new episodes show up here.")
 
 	// A show's video follows it, and goes on after the episode watched.
-	app.Press("id:nav-demo-home")
+	app.Press("id:nav-home")
 	app.WaitFor("id:item-video-v4", wait)
 	app.Press("id:item-video-v4")
 	app.WaitFor("id:play-video >> text:Watch EP 3", wait)
 	app.Find("text:Episodes")
 	app.Find("id:part-1 >> text:EP 1")
-	if app.Exists("id:following-badge-demo") {
+	if app.Exists("id:following-badge") {
 		t.Fatal("a badge before following anything")
 	}
 	app.Press("id:follow")
 	app.WaitFor("id:follow-menu", wait)
 	app.WaitFor("id:follow-menu >> text:Watching", wait)
-	app.WaitFor("id:following-badge-demo >> text:1", wait)
+	app.WaitFor("id:following-badge >> text:1", wait)
 
 	pick(app, "follow-menu", "status-completed", "Completed")
 	app.WaitFor("id:follow-menu >> text:Completed", wait)
 
 	// The following page shows it with its new episodes, and by status.
-	app.Press("id:nav-demo:following")
+	app.Press("id:nav-following")
 	app.WaitFor("id:shows-new >> id:show-s1", wait)
 	app.Find("id:show-s1 >> text:Watched EP 2")
 	app.Find("id:show-s1 >> text:Updated to EP 4")
 	app.Find("id:show-s1 >> id:new")
+	app.Find("id:show-s1 >> id:source-demo")
 	app.Press("id:status-planned")
 	app.WaitFor("text:Nothing here", wait)
 	app.Press("id:status-completed")
@@ -73,17 +74,16 @@ func TestFollowing(t *testing.T) {
 	app.Press("id:show-s1")
 	app.WaitFor("id:play-video >> text:Watch EP 3", wait)
 	app.Press("id:play-video")
-	app.WaitUntil(wait, func() bool { return app.Exists("id:player") && title(app) == "Night market stories – Last orders" })
-	app.Press("id:back")
-	app.WaitForGone("id:player", wait)
+	app.WaitUntil(wait, func() bool { return title(app, pl) == "Night market stories – Last orders" })
+	closePlayer(app, pl)
 
 	// Unfollowing goes back to Follow, and the badge goes.
 	pick(app, "follow-menu", "unfollow", "Unfollow")
 	app.WaitFor("id:follow", wait)
-	app.WaitForGone("id:following-badge-demo", wait)
+	app.WaitForGone("id:following-badge", wait)
 
 	// A follow that fails goes back and says why, offering to sign in.
-	signOutOfDemo(app)
+	signOutOfDemo(app, pl)
 	app.WaitFor("id:follow", wait)
 	app.Press("id:follow")
 	app.WaitFor("text:Could not follow", wait)
@@ -101,7 +101,7 @@ func TestFollowingLoadsAndFails(t *testing.T) {
 	flaky := fstest.MapFS{
 		"plugin.yaml": {Data: []byte("id: flaky\nname: Flaky\nversion: 1.0.0\nminAppVersion: 0.1.0\nmain: index.js\nmedia: video\n" +
 			"statuses:\n  - { id: watching, label: Watching }\n")},
-		// The sidebar's badge asks first, then the page; both fail.
+		// The toolbar's badge asks first, then the page; both fail.
 		"index.js": {Data: []byte(`let calls = 0;
 export async function following() {
   await new Promise((resolve) => setTimeout(resolve, 300));
@@ -113,7 +113,7 @@ export async function following() {
 		t.Fatal(err)
 	}
 	app, _ := start(t, data)
-	app.Press("id:nav-flaky:following")
+	app.Press("id:nav-following")
 	app.WaitFor("id:page-loading", wait)
 	app.WaitFor("text:The site is down", wait)
 	waitText(app, "state-title", "Flaky could not answer")

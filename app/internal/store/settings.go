@@ -33,6 +33,51 @@ type settings struct {
 	Releases map[string]Release `json:"releases,omitempty"`
 	// NoStats turns the usage statistics off.
 	NoStats bool `json:"noStats,omitempty"`
+	// Danmaku is how the player shows comments over the picture.
+	Danmaku Danmaku `json:"danmaku,omitzero"`
+}
+
+// Danmaku is how the player shows comments over the picture. Its zero
+// value is the defaults: on, every kind, 85% opaque over the upper half,
+// at the medium size and speed.
+type Danmaku struct {
+	Off bool `json:"off,omitempty"`
+	// Hide hides the comments of each kind.
+	HideScroll bool `json:"hideScroll,omitempty"`
+	HideTop    bool `json:"hideTop,omitempty"`
+	HideBottom bool `json:"hideBottom,omitempty"`
+	HideColor  bool `json:"hideColor,omitempty"`
+	// Transparency is 1 less the opacity, from 0 to 0.9; nil is 0.15.
+	Transparency *float64 `json:"transparency,omitempty"`
+	// Area is the quarters of the picture from its top that comments
+	// fill, 1 to 4; 0 is 2.
+	Area int `json:"area,omitempty"`
+	// Size and Speed are -1, 0 or 1: small, medium or large, and slow,
+	// normal or fast.
+	Size  int `json:"size,omitempty"`
+	Speed int `json:"speed,omitempty"`
+}
+
+// Opacity is the comments' opacity.
+func (d Danmaku) Opacity() float64 {
+	if d.Transparency == nil {
+		return 0.85
+	}
+	return 1 - min(max(*d.Transparency, 0), 0.9)
+}
+
+// SetOpacity sets the comments' opacity, from 0.1 to 1.
+func (d *Danmaku) SetOpacity(o float64) {
+	t := 1 - min(max(o, 0.1), 1)
+	d.Transparency = &t
+}
+
+// Quarters is the quarters of the picture comments fill.
+func (d Danmaku) Quarters() int {
+	if d.Area < 1 || d.Area > 4 {
+		return 2
+	}
+	return d.Area
 }
 
 // Release is the GitHub release a plugin was installed from, whose
@@ -154,6 +199,21 @@ func (s *Settings) SetStats(on bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.v.NoStats = !on
+	return s.write()
+}
+
+// Danmaku is how the player shows comments.
+func (s *Settings) Danmaku() Danmaku {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.v.Danmaku
+}
+
+// SetDanmaku keeps how the player shows comments.
+func (s *Settings) SetDanmaku(d Danmaku) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.v.Danmaku = d
 	return s.write()
 }
 

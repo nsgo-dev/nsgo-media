@@ -80,39 +80,6 @@ func (sh *shell) signOut(p *plugin.Plugin) {
 	})
 }
 
-// accountMenu ends p's sidebar title: the account's avatar, whose menu
-// signs out, or signing in.
-func (sh *shell) accountMenu(cx *core.Scope, p *plugin.Plugin) core.Node {
-	if !p.Has(plugin.ExportSignIn) && !p.Has(plugin.ExportAccount) {
-		return nil
-	}
-	a := sh.account(p)
-	id := p.Manifest.ID
-	return core.Dynamic(func(cx *core.Scope) core.Node {
-		acc := a.who.Get()
-		if acc == nil {
-			if !p.Has(plugin.ExportSignIn) {
-				return nil
-			}
-			return ui.IconButton{
-				TestID: "sign-in-" + id, Icon: lucide.LogIn, Label: locales.SignIn(cx), Variant: ui.IconButtonGhost, Size: 20, IconSize: 12,
-				Disabled: a.busy.Get, OnPress: func() { sh.signIn(p) },
-			}
-		}
-		items := []core.Node{ui.MenuLabel{Text: acc.Name}}
-		if p.Has(plugin.ExportSignOut) {
-			items = append(items, ui.MenuItem{TestID: "sign-out-" + id, Text: locales.SignOut(cx), Icon: lucide.LogOut, OnSelect: func() { sh.signOut(p) }})
-		}
-		return ui.Menu{
-			TestID:   "account-" + id,
-			Label:    acc.Name,
-			Trigger:  ui.Button{Label: acc.Name, Variant: ui.ButtonGhost, Size: ui.SizeSmall},
-			Face:     sh.avatar(cx, acc, "size-5"),
-			Children: items,
-		}
-	})
-}
-
 // avatar is the account's picture in a circle of size, its initial
 // while there is none.
 func (sh *shell) avatar(cx *core.Scope, acc *plugin.Account, size string) core.Node {

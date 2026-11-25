@@ -348,7 +348,7 @@ func TestInstallAndUpdateFromGitHub(t *testing.T) {
 	app.Press("id:check-updates")
 	app.WaitFor("id:update-demo >> text:Update to 1.1.0", wait)
 	waitText(app, "checked", "Checked just now")
-	app.Find("id:updates-badge >> text:1")
+	app.Find("id:updates-badge")
 	app.Press("id:update-demo")
 	app.WaitFor("id:update-error >> text:It needs NSGo Player 9.0.0 or later. Update the app to install it.", wait)
 	if app.Exists("id:confirm-update") {
@@ -408,6 +408,6 @@ func TestInstallAndUpdateFromGitHub(t *testing.T) {
 	g.mu.Unlock()
 	app.Press("id:check-updates")
 	app.WaitFor("id:check-failed >> text:Could not check for updates: example/demo: GitHub limits requests now. Try again later.", wait)
-	app.Find("id:nav-demo-home")
+	app.Find("id:plugin-row-demo")
 	app.Screenshot("check-failed")
 }

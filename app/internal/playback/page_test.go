@@ -2,6 +2,7 @@ package playback
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -66,11 +67,11 @@ func TestPagePlaysAndSeeks(t *testing.T) {
 	app := start(t, Source{URL: clip(t, "av.mkv")}, nil)
 	app.Find("text:av.mkv")
 	text := func(id string) string { return app.Find("id:" + id).Text }
-	// The time left shows the duration once pressed.
-	play(t, app, 5*time.Second, func() bool { return strings.HasPrefix(text("duration"), "−0:0") && text("position") != "0:00" })
-	app.Press("id:duration")
-	if d := text("duration"); d != "0:02" {
-		t.Fatalf("duration %q", d)
+	// The duration shows the time left once pressed.
+	play(t, app, 5*time.Second, func() bool { return text("duration") == "0:02" && text("position") != "0:00" })
+	app.Press("id:time")
+	if d := text("duration"); !strings.HasPrefix(d, "−0:0") {
+		t.Fatalf("time left %q", d)
 	}
 
 	// Space pauses, and the arrow keys seek back to the start.
@@ -194,7 +195,7 @@ func TestPageFullScreenShortcuts(t *testing.T) {
 	play(t, app, 3*time.Second, func() bool { return time.Now().After(until) })
 	app.Key("escape")
 	app.WaitFor("label:/^Full Screen$/", 5*time.Second)
-	app.Find("id:back")
+	app.Find("id:close")
 }
 
 // startWith shows a page playing src with handlers.
@@ -272,11 +273,8 @@ func TestPageTitlesAPart(t *testing.T) {
 		Parts: []Part{{Label: "P1", Title: "Dawn"}, {Label: "P2", Title: "Ridge"}}}
 	var asked = -1
 	app := startWith(t, Page{Source: func() Source { return src }, OnPart: func(i int) { asked = i }})
-	if got := app.Find("id:title").Text; got != "Ridge" {
+	if got := app.Find("id:title").Text; got != "Lake – Ridge" {
 		t.Fatalf("title %q", got)
-	}
-	if got := app.Find("id:subtitle").Text; got != "P2 · Lake" {
-		t.Fatalf("subtitle %q", got)
 	}
 	// The last part has no next one; the menu over the parts plays another.
 	if app.Exists("id:next") {
@@ -304,8 +302,97 @@ func TestControlsBlurWithoutSystemGlass(t *testing.T) {
 			}}
 		}, nsgotest.Size(800, 500), nsgotest.Environment(core.Environment{Locale: "en-US", OS: os}))
 		st := app.Find("id:controls").Style
-		if (st.Glass != core.GlassNone) != glass || (st.Background == core.RGBA(0xffffff, 0.1)) == glass {
+		if (st.Glass != core.GlassNone) != glass || (st.Background == core.RGBA(0x000000, 0.4)) == glass {
 			t.Errorf("controls on %v: glass %v, background %v", os, st.Glass, st.Background)
 		}
 	}
+}
+
+// TestBarsHideWhenThePointerRestsOrLeaves hides the bars and the pointer
+// once it rests or leaves the page, and shows them as it moves again.
+func TestBarsHideWhenThePointerRestsOrLeaves(t *testing.T) {
+	if nsgotest.Target() != "" {
+		t.Skip("the pointer is the target's")
+	}
+	positions, _ := store.OpenPositions(filepath.Join(t.TempDir(), "positions.json"))
+	src := Source{URL: clip(t, "av.mkv")}
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		return core.View{Class: "flex-1 flex-row", Children: []core.Node{
+			core.View{TestID: "outside", Style: core.Style{Width: core.Pt(40)}},
+			core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{
+				Page{Source: func() Source { return src }, Positions: positions, OnClose: func() {}},
+			}},
+		}}
+	}, nsgotest.Size(800, 500), nsgotest.Environment(core.Environment{Locale: "en-US"}))
+	hidden := func() bool { return app.Find("id:player").Style.Cursor == core.CursorNone }
+	// Before anything played, the bars stay.
+	app.Hover("id:video")
+	if hidden() {
+		t.Fatal("the bars hid before the source played")
+	}
+	play(t, app, 5*time.Second, func() bool { return app.Find("id:position").Text != "0:00" || hidden() })
+	app.Hover("id:video")
+	app.FastForward(stillFor + 100*time.Millisecond)
+	if !hidden() {
+		t.Fatal("the bars stayed while the pointer rested")
+	}
+	app.Hover("id:title")
+	if hidden() {
+		t.Fatal("the bars stayed hidden as the pointer moved")
+	}
+	app.Hover("id:outside")
+	if !hidden() {
+		t.Fatal("the bars stayed as the pointer left")
+	}
+}
+
+// TestPinnedWindowKeepsFewControls pins a window of its own, which shows
+// it pinned and leaves the mini controls.
+func TestPinnedWindowKeepsFewControls(t *testing.T) {
+	src := Source{URL: clip(t, "av.mkv"), Quality: "hd", Qualities: []Quality{{"hd", "HD"}, {"sd", "SD"}}}
+	app := startWith(t, Page{Source: func() Source { return src }, Window: true, OnQuality: func(string, time.Duration) {}})
+	app.Find("id:quality")
+	app.Press("id:pin")
+	app.Find("text:Pinned")
+	if app.Exists("id:quality") || app.Exists("id:rate") {
+		t.Fatal("a pinned window keeps the full controls")
+	}
+	app.Key("p")
+	app.WaitForGone("text:Pinned", time.Second)
+	app.Find("id:rate")
+}
+
+// TestDanmakuShowsAndHides lays out the comments due, scrolling and
+// fixed, and hides them by kind and with D.
+func TestDanmakuShowsAndHides(t *testing.T) {
+	var asked []time.Duration
+	load := func(_ context.Context, from, to time.Duration) ([]Comment, error) {
+		asked = append(asked, from)
+		return []Comment{
+			{At: 0, Text: "first"},
+			{At: 0, Mode: Top, Text: "pinned top"},
+			{At: 0, Mode: Bottom, Text: "pinned bottom", Colored: true, Color: core.RGB(0x66ccff)},
+		}, nil
+	}
+	settings, _ := store.OpenSettings(filepath.Join(t.TempDir(), "settings.json"))
+	src := Source{URL: clip(t, "av.mkv"), Danmaku: load}
+	app := startWith(t, Page{Source: func() Source { return src }, Settings: settings})
+	play(t, app, 5*time.Second, func() bool {
+		return app.Exists("text:first") && app.Exists("text:pinned top") && app.Exists("text:pinned bottom")
+	})
+	if len(asked) != 1 || asked[0] != 0 {
+		t.Fatalf("asked for %v", asked)
+	}
+	app.Hover("id:danmaku-toggle")
+	app.Press("id:danmaku-settings")
+	app.Screenshot("danmaku-settings")
+	app.Press("id:danmaku-color")
+	app.WaitForGone("text:pinned bottom", time.Second)
+	if !settings.Danmaku().HideColor {
+		app.WaitUntil(time.Second, func() bool { return settings.Danmaku().HideColor })
+	}
+	app.Key("escape")
+	app.Key("d")
+	app.WaitForGone("text:first", time.Second)
+	app.Find("label:Show Danmaku")
 }

@@ -27,13 +27,14 @@ const (
 	ExportFollowing  = "following"
 	ExportFollow     = "follow"
 	ExportUnfollow   = "unfollow"
+	ExportDanmaku    = "danmaku"
 )
 
 // Exports lists every export of the contract.
 var Exports = []string{
 	ExportAccount, ExportSignIn, ExportSignOut, ExportHome, ExportBrowse, ExportSearch,
 	ExportSuggest, ExportResolve, ExportVideo, ExportStream, ExportProgress, ExportSetSetting,
-	ExportFollowing, ExportFollow, ExportUnfollow,
+	ExportFollowing, ExportFollow, ExportUnfollow, ExportDanmaku,
 }
 
 // ItemKind is what an item opens: a video opens video, the others browse.
@@ -173,6 +174,30 @@ type Subtitle struct {
 	Source
 }
 
+// Danmaku is a comment shown over the picture as its time plays: one
+// that scrolls across, or one fixed at the top or the bottom.
+type Danmaku struct {
+	// Time is when it shows, in seconds from the part's start.
+	Time float64     `json:"time"`
+	Mode DanmakuMode `json:"mode,omitempty"`
+	// Color is #rrggbb, "" for white.
+	Color string `json:"color,omitempty"`
+	Text  string `json:"text"`
+}
+
+// DanmakuMode is where a comment shows; "" scrolls.
+type DanmakuMode string
+
+// The danmaku modes.
+const (
+	DanmakuScroll DanmakuMode = "scroll"
+	DanmakuTop    DanmakuMode = "top"
+	DanmakuBottom DanmakuMode = "bottom"
+)
+
+// MaxDanmaku bounds the comments of one answer of danmaku.
+const MaxDanmaku = 20000
+
 // The parameters of the exports.
 type (
 	PageParams struct {
@@ -223,6 +248,14 @@ type (
 	}
 	UnfollowParams struct {
 		ID string `json:"id"`
+	}
+	DanmakuParams struct {
+		Video string `json:"video"`
+		Part  string `json:"part"`
+		// From and To are the span of the part, in seconds, whose
+		// comments the app asks for.
+		From float64 `json:"from"`
+		To   float64 `json:"to"`
 	}
 )
 
@@ -414,6 +447,28 @@ func (f *Following) check(c *checker) {
 		c.status(at, s.Status, false)
 		if s.Watched < 0 || s.Episodes < 0 {
 			c.fail(at, "watched or episodes is negative")
+		}
+	}
+}
+
+func checkDanmaku(list []Danmaku, c *checker) {
+	if len(list) > MaxDanmaku {
+		c.fail("danmaku", "has %d comments, more than %d", len(list), MaxDanmaku)
+		return
+	}
+	for i, d := range list {
+		at := fmt.Sprintf("danmaku[%d]", i)
+		c.need(at, "text", d.Text)
+		if d.Time < 0 {
+			c.fail(at, "time is negative")
+		}
+		switch d.Mode {
+		case "", DanmakuScroll, DanmakuTop, DanmakuBottom:
+		default:
+			c.fail(at, "mode %q is none of scroll, top and bottom", d.Mode)
+		}
+		if d.Color != "" && !colorPattern.MatchString(d.Color) {
+			c.fail(at, "color %q is not a color such as #ffffff", d.Color)
 		}
 	}
 }

@@ -28,6 +28,8 @@ version: 1.0.0
 minAppVersion: 0.1.0
 main: index.ts
 media: video
+icon: icon.svg
+color: "#e8553a"
 permissions:
   network: [demo.example.com, "*.cdn.example.com"]
 settings:
@@ -47,7 +49,8 @@ statuses:
 
 - `permissions.network` 列出 `fetch` 能访问的全部主机，应用也只从这些主机获取你给出的图片、流和字幕。`*.example.com` 匹配它的子域名。
 - `settings` 显示在应用的设置里，代码用 `host.settings.get` 读取。
-- `navigation` 添加侧栏入口，每个入口用它的 `id` 打开 `browse`。
+- `icon` 是文件夹里的一个 SVG 文件，以白色画在 `color` 上，在其他插件的内容中标出你的视频、作者和剧集；不填时按 `id` 选一个。
+- `navigation` 列出你自己的页面，每个用它的 `id` 打开 `browse`：**发现** 显示第一个，只看你的视频时还会列出其他的。
 - `statuses` 是关注的剧集可以有的状态；导出 `follow` 的插件至少要列一个。
 - 不认识的字段会被拒绝。`minAppVersion` 比应用新时也会拒绝，并提示更新应用。
 
@@ -63,7 +66,7 @@ Default quality: 默认清晰度
 
 ## 导出函数
 
-导出你支持的函数，没导出的应用就不显示。没有 `search` 的插件就没有搜索框。
+导出你支持的函数，没导出的应用就不显示。没有 `search` 的插件不参与搜索。
 
 | 导出 | 返回 |
 | --- | --- |
@@ -75,6 +78,7 @@ Default quality: 默认清晰度
 | `account`、`signIn`、`signOut` | 已登录的账号，或 `null` |
 | `following` | 账号关注的剧集，最近更新的在前：每部带打开它的视频、状态、已看（`watched`）和已出的集数，以及是否有新剧集（`new`） |
 | `follow`、`unfollow` | 不返回；在账号上按某个状态关注剧集、更改状态或取消关注 |
+| `danmaku` | 某个分 P 一段时间内的弹幕，最多 20,000 条：每条带时间 `time`（秒）、`mode`（`scroll`、`top` 或 `bottom`）、可选的 `#rrggbb` 颜色 `color` 和文本 `text` |
 | `setSetting` | 不返回；告诉你某项设置变了 |
 
 ```ts
