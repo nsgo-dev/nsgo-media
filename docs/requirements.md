@@ -10,6 +10,7 @@ NSGo's `core.Video` hands a source to each platform's own player. Formats differ
 
 - [NSGo Player](app.md), the first-party app in `app/`: whatever it needs from playback, the core provides first, and its first version on macOS sets the core's next goals.
 - Developers of NSGo apps who embed playback and want their own controls, overlays and subtitles.
+- Other NSGo apps (such as remote desktop clients and servers) that share NSGo Media's bundled FFmpeg for low-latency video encoding and decoding through the `codec` package.
 - The developer's end users only indirectly: they see the picture, hear the sound and use the app's controls.
 
 ## Built
@@ -27,7 +28,8 @@ Targets: macOS (arm64 and x64), Windows x64 and Linux x64, and iOS as its row sa
 | State | Playing, paused, buffering, ended and error states, position, buffered range and the chosen tracks, as NSGo signals the app's views read |
 | Decoding | Hardware decoding through FFmpeg where the platform offers it, falling back to software decoding on failure |
 | Players | Several players at once, each with its own view |
-| Distribution | FFmpeg shared libraries this repository builds, LGPL components only. The desktop ones are published as a release of it, with their licenses, source diff and source, and declared for NSGo's tool, so `nsgo build` puts them into a desktop app's packages and installers, signed and notarized with it; `bundle` puts the iOS frameworks into an iOS app |
+| Distribution | FFmpeg shared libraries this repository builds, LGPL components only, including LGPL-compatible hardware and software video encoders on desktops. The desktop ones are published as a release of it, with their licenses, source diff and source, and declared for NSGo's tool, so `nsgo build` puts them into a desktop app's packages and installers, signed and notarized with it; `bundle` puts the iOS frameworks into an iOS app |
+| Codec | A public `codec` package for other NSGo apps: low-latency H.264 encoding from BGRA or NV12 frames (no B-frames, on-demand keyframes, dynamic bit rate) with desktop hardware encoders and software fallback, low-latency decoding into RGBA frames for NSGo views (hardware first with software fallback), and probing of the machine's available encoders and decoders |
 | Adaptive streams | HLS and DASH over HTTP(S), on demand and live: a live stream reports no duration and, keeping only a sliding window, no seeking. The variant follows the measured bandwidth unless the app lists the variants and chooses one. HLS segments encrypted with AES-128 |
 | Audio passthrough | AC-3, E-AC-3 and DTS' core sent undecoded, in IEC 61937 bursts, to a receiver on HDMI or S/PDIF, and DTS-HD (High Resolution and Master Audio, whole) and TrueHD (as its stream is, Atmos and all, in MAT frames) on HDMI's high bit rate carrier, 8 channels at 192 kHz, for the codecs the app turns it on for, off by default: WASAPI in exclusive mode on Windows, a hogged CoreAudio device with an encoded format on macOS, a PulseAudio or PipeWire sink with passthrough formats on Linux. Where the device takes no high bit rate, DTS-HD passes its core if DTS passes. PCM plays instead where the device takes no such stream, refuses or fails to start it, at rates other than 1×, and for enhanced DTS that does not pass, such as DTS-ES or DTS-HD without its switch, and the state tells which plays, the device stream's rate and channels and why. Volume does not change passed-through sound and muting sends pause bursts; it stays the clock through seeking and changing the track |
 | iOS | iOS 15 or later on devices (arm64) and the arm64 simulator, with everything above but passthrough, which iOS offers no app: FFmpeg as frameworks in the app, VideoToolbox decoding and an AudioQueue on the system's output. A playing player holds the audio session at Playback, so the Ring/Silent switch does not silence it, and it pauses other apps' audio. A call, Siri or another interruption pauses the player, which plays again as it ends where the system allows it; headphones unplugged pause it until the app plays. With the app's `audio` background mode, a source with sound plays on in the background and with the screen locked, its picture decoded again as the app returns; without it, going to the background pauses the player. No lock-screen or Control Center controls |
@@ -44,7 +46,7 @@ In the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
 
 - Any control UI: play buttons, progress bars, menus, gestures and keyboard shortcuts belong to the app.
 - Media libraries, playlists, history and remote sources such as SMB, WebDAV or media servers.
-- Recording, capture, transcoding and encoding.
+- Recording, capture or transcoding in the player (encoding is exposed only as a low-level capability in `codec` for other NSGo apps).
 - DRM, disc images and protocol receivers such as DLNA or AirPlay.
 - Rendering subtitles into the picture, and ASS styling beyond text.
 - Android, set aside for now.

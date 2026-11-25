@@ -66,6 +66,30 @@ func (s *Scaler) Scale(f *Frame, dst unsafe.Pointer, stride, w, h int) error {
 	return nil
 }
 
+// Convert scales and converts src into dst, both already configured with
+// their geometry, pixel format and plane buffers.
+func (s *Scaler) Convert(dst, src *Frame) error {
+	if s.ctx == nil {
+		s.ctx = swsAllocContext()
+		if s.ctx == nil {
+			return errors.New("ffmpeg: out of memory")
+		}
+		avOptSetInt(s.ctx, "threads", int64(min(runtime.NumCPU(), 8)), 0)
+	}
+	if dst.Width() != s.w || dst.Height() != s.h {
+		flags := int64(swsBilinear)
+		if dst.Width() == src.Width() && dst.Height() == src.Height() {
+			flags = swsFastBilinear
+		}
+		avOptSetInt(s.ctx, "sws_flags", flags, 0)
+		s.w, s.h = dst.Width(), dst.Height()
+	}
+	if err := check(swsScaleFrame(s.ctx, dst, src)); err != nil {
+		return errors.New("ffmpeg: cannot convert " + PixelFormatName(src.Format()) + " to " + PixelFormatName(dst.Format()) + ": " + err.Error())
+	}
+	return nil
+}
+
 // Close frees the context.
 func (s *Scaler) Close() {
 	if s.ctx != nil {

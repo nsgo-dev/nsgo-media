@@ -13,18 +13,19 @@ go run ./tools/ffmpeg -natives internal/ffmpeg/library   # the release's files a
 
 It runs on macOS with Xcode and Go alone. Every download is pinned with its SHA-256 in `tools/ffmpeg/pinned.go` and kept in the work directory (`-work`, by default the user cache's `nsgo-media/ffmpeg`).
 
-| Target | Compiler | Hardware decoding | Run-time needs |
-| --- | --- | --- | --- |
-| `macos_arm64`, `macos_x64` | Xcode's clang | VideoToolbox | macOS 11 |
-| `ios` (devices), `ios_simulator` (arm64) | Xcode's clang | VideoToolbox | iOS 15 |
-| `windows_x64` | Zig, MinGW with the UCRT | D3D11VA, DXVA2 | Windows 10 |
-| `linux_x64` | Zig, glibc 2.34 | VAAPI | glibc 2.34 and `libva.so.2`, `libva-drm.so.2` |
+| Target | Compiler | Hardware decoding | Video encoders | Run-time needs |
+| --- | --- | --- | --- | --- |
+| `macos_arm64`, `macos_x64` | Xcode's clang | VideoToolbox | `h264_videotoolbox` | macOS 11 |
+| `ios` (devices), `ios_simulator` (arm64) | Xcode's clang | VideoToolbox | `h264_videotoolbox` | iOS 15 |
+| `windows_x64` | Zig, MinGW with the UCRT | D3D11VA, DXVA2 | `h264_nvenc`, `h264_qsv`, `h264_amf`, `h264_mf` | Windows 10 |
+| `linux_x64` | Zig, glibc 2.34 | VAAPI | `h264_vaapi`, `libopenh264` | glibc 2.34 and `libva.so.2`, `libva-drm.so.2` |
 
-- The tool runs itself as the compiler, archiver and `pkg-config` configure calls (`-as`), so it adapts MinGW's linker flags to Zig's and answers only for libva, whose headers and link libraries come from Debian 12's packages. Nothing on the build host is detected (`--disable-autodetect`).
-- Only LGPL 2.1 parts are configured: every demuxer, parser and decoder, the file protocol, the audio filters rate changes use, and the spdif muxer, which wraps passthrough audio in IEC 61937 bursts. There are no encoders, other muxers, devices or network protocols; HTTP(S) is read in Go through a custom `AVIOContext`, so no TLS library is linked. zlib is linked statically on Windows and Linux.
+- The tool runs itself as the compiler, archiver and `pkg-config` configure calls (`-as`), so it adapts MinGW's linker flags to Zig's and answers only for the pinned dependencies (`libva` from Debian 12's packages, `libxml2`, `ffnvcodec`, `libvpl`, `openh264`). Nothing on the build host is detected (`--disable-autodetect`).
+- Only LGPL 2.1 parts are configured: every demuxer, parser and decoder, the H.264 encoders listed above, the file protocol, the audio filters rate changes use, and the spdif muxer, which wraps passthrough audio in IEC 61937 bursts. There are no other encoders (and never GPL encoders such as x264), other muxers, devices or network protocols; HTTP(S) is read in Go through a custom `AVIOContext`, so no TLS library is linked. zlib is linked statically on Windows and Linux.
+- On Windows, `nv-codec-headers` (MIT) and `AMF` headers (MIT) are header-only and load the vendor drivers at run time; Intel's `libvpl` dispatcher (MIT) is linked statically into `libavcodec` and loads the system's VPL runtime; `h264_mf` uses Windows Media Foundation and encodes even without a GPU. On Linux, Cisco's `openh264` (BSD 2-Clause) is linked statically into `libavcodec` as the software fallback when VAAPI is unavailable.
 - libxml2 (MIT), which the DASH demuxer parses manifests with, is built in its smallest configuration and linked statically into libavformat on every target, adding about 1 MB. Its `xmlCleanupParser` is made a no-op: the DASH demuxer calls it after each manifest, and it would free the library's state under another player parsing.
 - One line of FFmpeg is patched (`ffmpegPatches` in `build.go`): an interrupted `dash_read_packet` returns `AVERROR_EXIT`, where it returned 0 with no packet and `av_read_frame` called it again without end, so a seek or `Close` during a DASH read hung.
-- Each archive, `ffmpeg-<version>-<target>.zip`, holds the six libraries under their run-time names (`libavutil.61.dylib`, `avutil-61.dll`, `libavutil.so.61`) and the notices the licenses ask to ship with them: `COPYING.LGPLv2.1`, `COPYING.libxml2`, `ffmpeg.patch` (the patch as a unified diff, headed by who changed the file, when and why) and `BUILD.txt` with the sources, the changes and the configure line. `dist/ffmpeg/source` gets FFmpeg's release tarball and `ffmpeg.patch`, the libraries' complete source.
+- Each archive, `ffmpeg-<version>-<target>.zip`, holds the six libraries under their run-time names (`libavutil.61.dylib`, `avutil-61.dll`, `libavutil.so.61`) and the notices the licenses ask to ship with them: `COPYING.LGPLv2.1`, `COPYING.libxml2`, `COPYING.libvpl` (Windows), `COPYING.openh264` (Linux), `ffmpeg.patch` (the patch as a unified diff, headed by who changed the file, when and why) and `BUILD.txt` with the sources, the changes and the configure line. `dist/ffmpeg/source` gets FFmpeg's release tarball and `ffmpeg.patch`, the libraries' complete source.
 - macOS libraries have `@rpath` install names and an `@loader_path` run path; Linux ones a `$ORIGIN` run path, so each finds its siblings wherever they are.
 - iOS loads native code only from frameworks, so an iOS archive holds six frameworks instead, `libavutil.framework/libavutil` and so on, each with an `Info.plist` for its platform: install names `@rpath/libavutil.framework/libavutil`, the libraries they link renamed to match, and an `@loader_path/..` run path. They are unsigned, as the app's signing signs them. Their host tools, such as swscale's assembly generator, build for the Mac, so `SDKROOT` is not set for iOS.
 
@@ -34,13 +35,13 @@ The HLS and DASH demuxers open playlists, segments and keys themselves, and only
 
 ## Publishing
 
-The desktop libraries are published as a release of this repository, whose tag is `releaseTag` in `tools/ffmpeg/natives.go` (`ffmpeg-9.0.2-1`), and declared in `internal/ffmpeg/library/nsgo-natives.yaml` for NSGo's tool ([native libraries](https://github.com/nsgo-dev/nsgo/blob/main/docs/public/en/native-libraries.md)). After building every target, `-natives` writes from the archives in `dist/ffmpeg`:
+The desktop libraries are published as a release of this repository, whose tag is `releaseTag` in `tools/ffmpeg/natives.go` (`ffmpeg-9.0.2-2`), and declared in `internal/ffmpeg/library/nsgo-natives.yaml` for NSGo's tool ([native libraries](https://github.com/nsgo-dev/nsgo/blob/main/docs/public/en/native-libraries.md)). After building every target, `-natives` writes from the archives in `dist/ffmpeg`:
 
 - `dist/ffmpeg/release`, the release's assets: each desktop target's six libraries as `<target>-<file>`, as NSGo's tool downloads libraries rather than archives, every archive, iOS' included, and FFmpeg's release tarball with `ffmpeg.patch`, the libraries' complete source.
-- The manifest, giving each library of `macos_arm64`, `macos_x64`, `windows_x64` and `linux_x64` its URL in the release, its SHA-256 and its notices, which it copies from the archives into `internal/ffmpeg/library/notices`: `COPYING.LGPLv2.1` and the target's `NOTICE-BUILD.txt` for every library, and `COPYING.libxml2` and `NOTICE-ffmpeg.patch` for libavformat, which links libxml2 and holds the change. NSGo's tool takes a file named `COPYING` for a license it must recognize and one named `NOTICE` for a notice beside it. `windows_arm64` and `linux_arm64` declare none.
+- The manifest, giving each library of `macos_arm64`, `macos_x64`, `windows_x64` and `linux_x64` its URL in the release, its SHA-256 and its notices, which it copies from the archives into `internal/ffmpeg/library/notices`: `COPYING.LGPLv2.1` and the target's `NOTICE-BUILD.txt` for every library, `COPYING.libxml2` and `NOTICE-ffmpeg.patch` for libavformat, `COPYING.libvpl` for Windows' libavcodec, and `COPYING.openh264` for Linux' libavcodec. NSGo's tool takes a file named `COPYING` for a license it must recognize and one named `NOTICE` for a notice beside it. `windows_arm64` and `linux_arm64` declare none.
 
 ```sh
-gh release create ffmpeg-9.0.2-1 dist/ffmpeg/release/* --latest=false --title "FFmpeg 9.0.2 libraries (1)"
+gh release create ffmpeg-9.0.2-2 dist/ffmpeg/release/* --latest=false --title "FFmpeg 9.0.2 libraries (2)"
 ```
 
 A release's assets never change: libraries built again, for a new version, flag or patch, go out under the next tag, and the manifest is written again and committed with it. A test checks that the manifest declares the libraries of `releaseTag`.

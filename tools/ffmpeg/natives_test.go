@@ -21,6 +21,12 @@ func TestWriteNatives(t *testing.T) {
 		files := map[string]string{
 			"COPYING.LGPLv2.1": "lgpl", "COPYING.libxml2": "mit", patchName: "diff", "BUILD.txt": "build " + tg.name,
 		}
+		switch tg.name {
+		case "windows_x64":
+			files["COPYING.libvpl"] = "vpl-mit"
+		case "linux_x64":
+			files["COPYING.openh264"] = "openh264-bsd"
+		}
 		for _, lib := range libraries {
 			files[map[string]string{
 				"darwin": "lib" + lib + ".61.dylib", "windows": lib + "-61.dll", "linux": "lib" + lib + ".so.61",
@@ -58,6 +64,8 @@ func TestWriteNatives(t *testing.T) {
 	}
 	for name, want := range map[string]string{
 		"notices/COPYING.LGPLv2.1":             "lgpl",
+		"notices/COPYING.libvpl":               "vpl-mit",
+		"notices/COPYING.openh264":             "openh264-bsd",
 		"notices/NOTICE-ffmpeg.patch":          "diff",
 		"notices/macos_arm64/NOTICE-BUILD.txt": "build macos_arm64",
 	} {

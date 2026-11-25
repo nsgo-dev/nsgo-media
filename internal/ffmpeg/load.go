@@ -159,12 +159,16 @@ var (
 	avFrameMoveRef         func(dst, src *Frame)
 	avFrameClone           func(f *Frame) *Frame
 	avFrameGetBuffer       func(f *Frame, align int32) int32
+	avFrameMakeWritable    func(f *Frame) int32
 	avGetPixFmt            func(name string) int32
 	avGetPixFmtName        func(f int32) string
 	avGetSampleFmt         func(name string) int32
 	avGetBytesPerSample    func(f int32) int32
 	avHwdeviceFindType     func(name string) int32
 	avHwdeviceCtxCreate    func(ref *ptr, typ int32, device ptr, opts ptr, flags int32) int32
+	avHwframeCtxAlloc      func(deviceCtx ptr) ptr
+	avHwframeCtxInit       func(ref ptr) int32
+	avHwframeGetBuffer     func(hwframeCtx ptr, f *Frame, flags int32) int32
 	avHwframeTransferData  func(dst, src *Frame, flags int32) int32
 	avBufferUnref          func(ref *ptr)
 	avBufferRef            func(ref ptr) ptr
@@ -188,12 +192,16 @@ var (
 
 	avcodecVersion          func() uint32
 	avcodecFindDecoder      func(id int32) *Codec
+	avcodecFindDecoderByNm  func(name string) *Codec
+	avcodecFindEncoderByNm  func(name string) *Codec
 	avcodecAllocContext3    func(c *Codec) *CodecContext
 	avcodecFreeContext      func(c **CodecContext)
 	avcodecParametersToCtx  func(c *CodecContext, par *CodecParameters) int32
 	avcodecOpen2            func(c *CodecContext, codec *Codec, opts *ptr) int32
 	avcodecSendPacket       func(c *CodecContext, p *Packet) int32
 	avcodecReceiveFrame     func(c *CodecContext, f *Frame) int32
+	avcodecSendFrame        func(c *CodecContext, f *Frame) int32
+	avcodecReceivePacket    func(c *CodecContext, p *Packet) int32
 	avcodecFlushBuffers     func(c *CodecContext)
 	avcodecGetName          func(id int32) string
 	avcodecGetHWConfig      func(c *Codec, i int32) ptr
@@ -202,6 +210,7 @@ var (
 	avPacketAlloc           func() *Packet
 	avPacketFree            func(p **Packet)
 	avPacketUnref           func(p *Packet)
+	avNewPacket             func(p *Packet, size int32) int32
 	avPacketSideDataGet     func(sd ptr, nb int32, typ int32) ptr
 	avcodecDescriptorByID   func(id int32) ptr
 	avcodecParametersCopy   func(dst, src *CodecParameters) int32
@@ -252,12 +261,16 @@ var symbols = []sym{
 	{"avutil", "av_frame_move_ref", &avFrameMoveRef},
 	{"avutil", "av_frame_clone", &avFrameClone},
 	{"avutil", "av_frame_get_buffer", &avFrameGetBuffer},
+	{"avutil", "av_frame_make_writable", &avFrameMakeWritable},
 	{"avutil", "av_get_pix_fmt", &avGetPixFmt},
 	{"avutil", "av_get_pix_fmt_name", &avGetPixFmtName},
 	{"avutil", "av_get_sample_fmt", &avGetSampleFmt},
 	{"avutil", "av_get_bytes_per_sample", &avGetBytesPerSample},
 	{"avutil", "av_hwdevice_find_type_by_name", &avHwdeviceFindType},
 	{"avutil", "av_hwdevice_ctx_create", &avHwdeviceCtxCreate},
+	{"avutil", "av_hwframe_ctx_alloc", &avHwframeCtxAlloc},
+	{"avutil", "av_hwframe_ctx_init", &avHwframeCtxInit},
+	{"avutil", "av_hwframe_get_buffer", &avHwframeGetBuffer},
 	{"avutil", "av_hwframe_transfer_data", &avHwframeTransferData},
 	{"avutil", "av_buffer_unref", &avBufferUnref},
 	{"avutil", "av_buffer_ref", &avBufferRef},
@@ -281,12 +294,16 @@ var symbols = []sym{
 
 	{"avcodec", "avcodec_version", &avcodecVersion},
 	{"avcodec", "avcodec_find_decoder", &avcodecFindDecoder},
+	{"avcodec", "avcodec_find_decoder_by_name", &avcodecFindDecoderByNm},
+	{"avcodec", "avcodec_find_encoder_by_name", &avcodecFindEncoderByNm},
 	{"avcodec", "avcodec_alloc_context3", &avcodecAllocContext3},
 	{"avcodec", "avcodec_free_context", &avcodecFreeContext},
 	{"avcodec", "avcodec_parameters_to_context", &avcodecParametersToCtx},
 	{"avcodec", "avcodec_open2", &avcodecOpen2},
 	{"avcodec", "avcodec_send_packet", &avcodecSendPacket},
 	{"avcodec", "avcodec_receive_frame", &avcodecReceiveFrame},
+	{"avcodec", "avcodec_send_frame", &avcodecSendFrame},
+	{"avcodec", "avcodec_receive_packet", &avcodecReceivePacket},
 	{"avcodec", "avcodec_flush_buffers", &avcodecFlushBuffers},
 	{"avcodec", "avcodec_get_name", &avcodecGetName},
 	{"avcodec", "avcodec_get_hw_config", &avcodecGetHWConfig},
@@ -295,6 +312,7 @@ var symbols = []sym{
 	{"avcodec", "av_packet_alloc", &avPacketAlloc},
 	{"avcodec", "av_packet_free", &avPacketFree},
 	{"avcodec", "av_packet_unref", &avPacketUnref},
+	{"avcodec", "av_new_packet", &avNewPacket},
 	{"avcodec", "av_packet_side_data_get", &avPacketSideDataGet},
 	{"avcodec", "avcodec_descriptor_get", &avcodecDescriptorByID},
 	{"avcodec", "avcodec_parameters_copy", &avcodecParametersCopy},

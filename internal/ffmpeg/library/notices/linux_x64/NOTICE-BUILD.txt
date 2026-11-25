@@ -33,6 +33,9 @@ Configured with:
   --enable-pthreads
   --enable-vaapi
   --enable-zlib
+  --enable-encoder=h264_vaapi
+  --enable-libopenh264
+  --enable-encoder=libopenh264
   --pkg-config=$WORK/host/bin/nsgo-media-ffmpeg -as pkg-config
   --x86asmexe=$WORK/host/bin/nasm
   --nm=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm
@@ -47,3 +50,7 @@ Configured with:
 libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.
 Source: https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz
 SHA-256: 98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821
+
+libavcodec links OpenH264 statically, under the BSD 2-Clause license in COPYING.openh264.
+Source: https://github.com/cisco/openh264/archive/refs/tags/v2.7.0.tar.gz
+SHA-256: 5178775c8b440073e70920e97d195efff721c0e56d0a78cc82c919e95d54924d
