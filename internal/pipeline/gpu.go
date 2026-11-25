@@ -30,10 +30,13 @@ type GPUPicture struct {
 	// Deep pictures have 16-bit planes holding 10 bits (P010); others 8
 	// (NV12).
 	Deep bool
-	// ColorSpace is FFmpeg's AVColorSpace; FullRange says the samples use
-	// every code value.
-	ColorSpace int32
-	FullRange  bool
+	// ColorSpace, ColorTrc and ColorPrimaries are FFmpeg's AVColorSpace,
+	// AVColorTransferCharacteristic and AVColorPrimaries; FullRange says
+	// the samples use every code value.
+	ColorSpace     int32
+	ColorTrc       int32
+	ColorPrimaries int32
+	FullRange      bool
 	// Rotation is how far the picture turns clockwise to show, in degrees.
 	Rotation int
 
@@ -100,7 +103,8 @@ func (p *Pipeline) toGPU(frame *ffmpeg.Frame, device string, pts time.Duration, 
 	frame.MoveTo(src)
 	*out.GPU = GPUPicture{
 		Kind: kind, Width: src.Width(), Height: src.Height(), Deep: deep,
-		ColorSpace: src.ColorSpace(), FullRange: src.FullRange(), Rotation: p.vp.Load().rot,
+		ColorSpace: src.ColorSpace(), ColorTrc: src.ColorTrc(), ColorPrimaries: src.ColorPrimaries(),
+		FullRange: src.FullRange(), Rotation: p.vp.Load().rot,
 	}
 	if err := out.gpu.export(src, out.GPU); err != nil {
 		// The views get pictures in memory from here on.

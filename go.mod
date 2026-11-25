@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/ebitengine/purego v0.11.3
-	github.com/nsgo-dev/nsgo v0.3.1-0.20261124182849-a34e7e7f5738
+	github.com/nsgo-dev/nsgo v0.3.3-0.20261125111955-8d716d9b939c
 )
 
 require (

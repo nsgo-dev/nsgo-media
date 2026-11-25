@@ -364,3 +364,60 @@ func TestCloseDuringOpen(t *testing.T) {
 		t.Fatal("Open did not return after Close")
 	}
 }
+
+func TestHDRToneMappingAndSnapshot(t *testing.T) {
+	for _, clip := range []string{"hdr10.mkv", "hlg.mkv"} {
+		for _, sw := range []bool{false, true} {
+			mode := "auto"
+			if sw {
+				mode = "software"
+			}
+			t.Run(clip+"/"+mode, func(t *testing.T) {
+				p := New(Options{OpenOutput: silent, Software: sw})
+				if _, err := p.Open(fixture(t, clip)); err != nil {
+					t.Fatal(err)
+				}
+				defer p.Close()
+				st := run(t, p, 3*time.Second, func(s Status) bool { return s.Frame != nil })
+				if img := st.Frame.Image; img != nil {
+					w := img.RGBAAt(40, 22)
+					pk := img.RGBAAt(120, 22)
+					bk := img.RGBAAt(40, 67)
+					rd := img.RGBAAt(140, 67)
+					if w.R < 210 || w.G < 210 || w.B < 210 {
+						t.Errorf("frame ref white = %+v, want >= 210", w)
+					}
+					if pk.R < 245 || pk.R <= w.R {
+						t.Errorf("frame peak = %+v, want >= 245 and > ref white (%d)", pk, w.R)
+					}
+					if bk.R > 10 || bk.G > 10 || bk.B > 10 {
+						t.Errorf("frame black = %+v, want <= 10", bk)
+					}
+					if rd.R < 200 || rd.G > 40 || rd.B > 40 {
+						t.Errorf("frame red = %+v, want R>=200, G<=40, B<=40", rd)
+					}
+				}
+				snap, err := p.Snapshot(0, 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				w := snap.RGBAAt(40, 22)
+				pk := snap.RGBAAt(120, 22)
+				bk := snap.RGBAAt(40, 67)
+				rd := snap.RGBAAt(140, 67)
+				if w.R < 210 || w.G < 210 || w.B < 210 {
+					t.Errorf("snapshot ref white = %+v, want >= 210", w)
+				}
+				if pk.R < 245 || pk.R <= w.R {
+					t.Errorf("snapshot peak = %+v, want >= 245 and > ref white (%d)", pk, w.R)
+				}
+				if bk.R > 10 || bk.G > 10 || bk.B > 10 {
+					t.Errorf("snapshot black = %+v, want <= 10", bk)
+				}
+				if rd.R < 200 || rd.G > 40 || rd.B > 40 {
+					t.Errorf("snapshot red = %+v, want R>=200, G<=40, B<=40", rd)
+				}
+			})
+		}
+	}
+}

@@ -73,6 +73,15 @@ const (
 
 	codecFlagLowDelay = 1 << 19
 	threadTypeSlice   = 2
+
+	ColorPrimariesBT709       = 1
+	ColorPrimariesUnspecified = 2
+	ColorPrimariesBT2020      = 9
+
+	ColorTrcBT709       = 1
+	ColorTrcUnspecified = 2
+	ColorTrcSMPTE2084   = 16 // PQ (HDR10)
+	ColorTrcARIBSTDB67  = 18 // HLG
 )
 
 // Rational is AVRational.
@@ -381,6 +390,15 @@ func (f *Frame) DurationTS() int64          { return i64(f.p(), offAVFrameDurati
 func (f *Frame) Key() bool                  { return i32(f.p(), offAVFrameFlags)&frameFlagKey != 0 }
 func (f *Frame) FullRange() bool            { return i32(f.p(), offAVFrameColorRange) == colorRangeJPEG }
 func (f *Frame) ColorSpace() int32          { return i32(f.p(), offAVFrameColorspace) }
+func (f *Frame) ColorTrc() int32            { return i32(f.p(), offAVFrameColorTrc) }
+func (f *Frame) ColorPrimaries() int32      { return i32(f.p(), offAVFrameColorPrimaries) }
+
+// HDR reports a picture with a high dynamic range transfer characteristic
+// (PQ / HDR10 or HLG).
+func (f *Frame) HDR() bool {
+	t := f.ColorTrc()
+	return t == ColorTrcSMPTE2084 || t == ColorTrcARIBSTDB67
+}
 
 // Hardware reports a frame in a hardware surface, which Transfer copies
 // into memory.
@@ -451,6 +469,8 @@ func (f *Frame) TransferTo(dst *Frame) error {
 	*(*int64)(at(dst.p(), offAVFrameBestEffortTimestamp)) = f.BestEffortTimestamp()
 	*(*int32)(at(dst.p(), offAVFrameColorRange)) = i32(f.p(), offAVFrameColorRange)
 	*(*int32)(at(dst.p(), offAVFrameColorspace)) = f.ColorSpace()
+	*(*int32)(at(dst.p(), offAVFrameColorTrc)) = f.ColorTrc()
+	*(*int32)(at(dst.p(), offAVFrameColorPrimaries)) = f.ColorPrimaries()
 	return nil
 }
 

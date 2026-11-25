@@ -23,7 +23,7 @@ Targets: macOS (arm64 and x64), Windows x64 and Linux x64, and iOS as its row sa
 | Information | Duration, tracks (video, audio, subtitle) with their codecs and languages, picture size and rotation, container metadata, chapters |
 | Playback | Play, pause, stop; seek to a time, fast to a keyframe or exact to a frame; step one frame forward or backward while paused; a snapshot of the frame showing; rate from 0.25× to 4× with the pitch kept; loop |
 | Sound | Volume, mute, choosing the audio track; output on the system's default device |
-| Picture | A view that draws the current frame with contain, cover or fill, follows the stream's rotation, and lets app views draw above it |
+| Picture | A view that draws the current frame with contain, cover or fill, follows the stream's rotation, outputs native HDR (HDR10 and HLG) on Windows and Linux HDR displays when supported and tone-maps HDR10 and HLG to SDR on SDR displays, software decoding and snapshots while leaving SDR unchanged, and lets app views draw above it |
 | Subtitles | Text subtitle tracks of the source and external SRT, WebVTT and ASS files in UTF-8 or UTF-16, delivered to the app as timed text cues; the app draws them |
 | State | Playing, paused, buffering, ended and error states, position, buffered range and the chosen tracks, as NSGo signals the app's views read |
 | Decoding | Hardware decoding through FFmpeg where the platform offers it, falling back to software decoding on failure |
@@ -40,7 +40,7 @@ Targets: macOS (arm64 and x64), Windows x64 and Linux x64, and iOS as its row sa
 In the [roadmap](https://github.com/oneo-me/nsgo-media/issues/2)'s order:
 
 - What NSGo Player needs.
-- Zero-copy GPU rendering of hardware-decoded frames on macOS and iOS (Windows and Linux have it), then HDR output and tone mapping.
+- Zero-copy GPU rendering and HDR output of hardware-decoded frames on macOS and iOS (Windows and Linux have both).
 
 ## Out of scope
 
