@@ -3,6 +3,7 @@ package pipeline
 import (
 	"errors"
 	"time"
+	"unsafe"
 
 	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
 )
@@ -19,6 +20,10 @@ const (
 	GPUD3D11
 	// GPUDMABuf exports DMA-BUF planes (Linux, VAAPI).
 	GPUDMABuf
+	// GPUUpload hands the views HDR pictures' planes in memory, which
+	// they upload each frame (macOS, until it imports VideoToolbox's
+	// surfaces); SDR pictures convert to RGBA as with GPUNone.
+	GPUUpload
 )
 
 // GPUPicture is a decoded picture on the GPU: a luma plane and a chroma
@@ -44,17 +49,21 @@ type GPUPicture struct {
 	// apart the textures one handle value names over time.
 	Handle uintptr
 	ID     uint64
-	// Planes are the luma and chroma planes' DMA-BUFs (GPUDMABuf).
+	// Planes are the luma and chroma planes' DMA-BUFs (GPUDMABuf), or
+	// their memory (GPUUpload).
 	Planes [2]GPUPlane
 }
 
-// GPUPlane is one plane of a picture exported as DMA-BUF.
+// GPUPlane is one plane of a picture exported as DMA-BUF, or in memory.
 type GPUPlane struct {
 	FD       int
 	Offset   uint32
 	Pitch    uint32
 	FourCC   uint32
 	Modifier uint64
+	// Data is the plane's rows, Pitch bytes apart (GPUUpload). It stays
+	// valid while the frame is held or showing.
+	Data []byte
 }
 
 var errNoGPU = errors.New("pipeline: pictures cannot go to the GPU here")
@@ -82,7 +91,7 @@ func gpuKindOf(device string) GPUKind {
 // dropped, as the pipeline closed or a seek made it stale.
 func (p *Pipeline) toGPU(frame *ffmpeg.Frame, device string, pts time.Duration, gen uint64) (*Frame, bool) {
 	kind := GPUKind(p.gpuKind.Load())
-	if kind == GPUNone || kind != gpuKindOf(device) || !frame.Hardware() {
+	if kind == GPUNone || kind == GPUUpload || kind != gpuKindOf(device) || !frame.Hardware() {
 		return nil, false
 	}
 	deep := false
@@ -115,5 +124,59 @@ func (p *Pipeline) toGPU(frame *ffmpeg.Frame, device string, pts time.Duration, 
 		return nil, false
 	}
 	out.PTS, out.gen, out.src = pts, gen, src
+	return out, true
+}
+
+// toUpload queues src, a decoded picture in memory, for the views to
+// upload when they take GPUUpload and it is HDR: its planes as NV12 or
+// P010, converted to P010 from other formats. It reports false, leaving
+// src as it is, when src is to be converted to RGBA instead; a nil frame
+// with true means it was dropped and src freed.
+func (p *Pipeline) toUpload(s *ffmpeg.Scaler, src *ffmpeg.Frame, pts time.Duration, gen uint64) (*Frame, bool) {
+	if GPUKind(p.gpuKind.Load()) != GPUUpload || !src.HDR() {
+		return nil, false
+	}
+	planar := src
+	deep := true
+	switch ffmpeg.PixelFormatName(src.Format()) {
+	case "nv12":
+		deep = false
+	case "p010le":
+	default:
+		planar = ffmpeg.NewFrame()
+		if planar.AllocBuffer(src.Width(), src.Height(), ffmpeg.PixelFormat("p010le")) != nil {
+			planar.Free()
+			return nil, false
+		}
+		planar.CopyColor(src)
+		if s.Convert(planar, src) != nil {
+			planar.Free()
+			return nil, false
+		}
+	}
+	stale := func() bool { return p.genA.Load() != gen || p.stopped() }
+	out := p.pool.get(0, 0, stale)
+	if out == nil {
+		if planar != src {
+			planar.Free()
+		}
+		src.Free()
+		return nil, true
+	}
+	if planar != src {
+		src.Free()
+	}
+	w, h := planar.Width(), planar.Height()
+	*out.GPU = GPUPicture{
+		Kind: GPUUpload, Width: w, Height: h, Deep: deep,
+		ColorSpace: planar.ColorSpace(), ColorTrc: planar.ColorTrc(), ColorPrimaries: planar.ColorPrimaries(),
+		FullRange: planar.FullRange(), Rotation: p.vp.Load().rot,
+	}
+	for i, rows := range []int{h, (h + 1) / 2} {
+		data, pitch := planar.Plane(i)
+		out.GPU.Planes[i] = GPUPlane{Pitch: uint32(pitch), Data: unsafe.Slice((*byte)(data), pitch*rows)}
+	}
+	// Snapshots convert the planes again.
+	out.PTS, out.gen, out.src = pts, gen, planar
 	return out, true
 }

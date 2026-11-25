@@ -91,6 +91,13 @@ func TestShaderParams(t *testing.T) {
 	if hlg[12] != 2 || hlg[13] != 1 || hlg[14] != 1 {
 		t.Fatalf("HLG/HDR hdr flags = (%v, %v, %v), want (2, 1, 1)", hlg[12], hlg[13], hlg[14])
 	}
+	if pq[15] != 0 || hlg[15] != 0 {
+		t.Fatalf("imported 16-bit planes flagged as byte pairs")
+	}
+	up := shaderParams(&pipeline.GPUPicture{Kind: pipeline.GPUUpload, Height: 2160, Deep: true, ColorSpace: 9, ColorTrc: 16, ColorPrimaries: 9}, gpu.ColorSpaceExtendedLinearSRGB)
+	if up[12] != 1 || up[14] != 1 || up[15] != 1 {
+		t.Fatalf("uploaded PQ/HDR flags = (%v, %v, %v), want (1, 1, 1)", up[12], up[14], up[15])
+	}
 }
 
 // renderYUV runs yuvWGSL on a 4x4 software GPU surface with uniform
@@ -152,6 +159,10 @@ func renderYUV(t *testing.T, pic *pipeline.GPUPicture, yVal, cbVal, crVal uint16
 	var lumaBPR, chromaBPR uint32
 	if pic.Deep {
 		lumaFmt, chromaFmt = gpu.FormatR16Unorm, gpu.FormatRG16Unorm
+		if pic.Kind == pipeline.GPUUpload {
+			// The same bytes, uploaded as byte pairs.
+			lumaFmt, chromaFmt = gpu.FormatRG8Unorm, gpu.FormatRGBA8Unorm
+		}
 		lumaBPR, chromaBPR = 4*2, 2*4
 		lumaBytes = make([]byte, 4*4*2)
 		for i := 0; i < len(lumaBytes); i += 2 {
@@ -269,6 +280,27 @@ func TestYUVShaderToneMapping(t *testing.T) {
 	hlgRed := renderYUV(t, hlg, 59, 105, 212)
 	if hlgRed[0] < 200 || hlgRed[1] > 20 || hlgRed[2] > 20 {
 		t.Errorf("HLG BT.2020 red = %v, want R>=200, G<=20, B<=20", hlgRed)
+	}
+}
+
+func TestYUVShaderUploadedDeepPlanes(t *testing.T) {
+	// 10-bit samples uploaded as byte pairs convert as the same samples
+	// at 8 bits do: limited-range white, black and a BT.2020 red, SDR and
+	// PQ.
+	for _, c := range []struct{ y, cb, cr uint16 }{{940, 512, 512}, {64, 512, 512}, {252, 424, 752}} {
+		for _, trc := range []int32{1, 16} {
+			nv12 := &pipeline.GPUPicture{Height: 2160, ColorSpace: 9, ColorTrc: trc, ColorPrimaries: 9}
+			p010 := *nv12
+			p010.Kind, p010.Deep = pipeline.GPUUpload, true
+			want := renderYUV(t, nv12, c.y/4, c.cb/4, c.cr/4)
+			got := renderYUV(t, &p010, c.y, c.cb, c.cr)
+			for i := range got {
+				if d := int(got[i]) - int(want[i]); d < -2 || d > 2 {
+					t.Errorf("YCbCr %v, transfer %d uploaded = %v, want %v", c, trc, got, want)
+					break
+				}
+			}
+		}
 	}
 }
 

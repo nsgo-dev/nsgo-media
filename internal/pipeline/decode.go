@@ -26,8 +26,9 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder, stream int) {
 	}
 	frame := ffmpeg.NewFrame()
 	defer frame.Free()
-	var scaler ffmpeg.Scaler
+	var scaler, planar ffmpeg.Scaler
 	defer scaler.Close()
+	defer planar.Close()
 	gen := p.genA.Load()
 	vdrop := time.Duration(-1)
 	var back *backFill
@@ -110,6 +111,14 @@ func (p *Pipeline) decodeVideo(dec *ffmpeg.Decoder, stream int) {
 			src, err := take()
 			if err != nil {
 				return err
+			}
+			if out, ok := p.toUpload(&planar, src, pts, gen); ok {
+				if out == nil {
+					return nil // closed, or a seek made the frame stale
+				}
+				failures = 0
+				p.frames.push(out)
+				continue
 			}
 			out := p.convert(&scaler, src, pts, gen)
 			if out == nil {

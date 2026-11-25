@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"encoding/binary"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -419,5 +420,61 @@ func TestHDRToneMappingAndSnapshot(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestUploadHDRPlanes(t *testing.T) {
+	for _, clip := range []string{"hdr10.mkv", "hlg.mkv"} {
+		for _, sw := range []bool{false, true} {
+			mode := "auto"
+			if sw {
+				mode = "software"
+			}
+			t.Run(clip+"/"+mode, func(t *testing.T) {
+				p := New(Options{OpenOutput: silent, Software: sw})
+				p.SetGPU(GPUUpload)
+				if _, err := p.Open(fixture(t, clip)); err != nil {
+					t.Fatal(err)
+				}
+				defer p.Close()
+				st := run(t, p, 3*time.Second, func(s Status) bool { return s.Frame != nil })
+				pic := st.Frame.GPU
+				if st.Frame.Image != nil || pic == nil || pic.Kind != GPUUpload || !pic.Deep {
+					t.Fatalf("frame = %+v, want P010 planes to upload", st.Frame)
+				}
+				if pic.Width != 160 || pic.Height != 90 || pic.ColorTrc != st.Frame.src.ColorTrc() {
+					t.Fatalf("picture = %+v", pic)
+				}
+				// A 10-bit sample at the top of 16 bits.
+				luma := func(x, y int) int {
+					pl := pic.Planes[0]
+					o := y*int(pl.Pitch) + x*2
+					return int(binary.LittleEndian.Uint16(pl.Data[o:])) >> 6
+				}
+				if w, b := luma(40, 22), luma(40, 67); w < 400 || b > 100 {
+					t.Errorf("luma of white %d and black %d", w, b)
+				}
+				if len(pic.Planes[1].Data) < int(pic.Planes[1].Pitch)*45 {
+					t.Errorf("chroma holds %d bytes", len(pic.Planes[1].Data))
+				}
+				snap, err := p.Snapshot(0, 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if w := snap.RGBAAt(40, 22); w.R < 210 || w.G < 210 || w.B < 210 {
+					t.Errorf("snapshot ref white = %+v, want >= 210", w)
+				}
+			})
+		}
+	}
+	// SDR pictures still convert to RGBA.
+	p := New(Options{OpenOutput: silent})
+	p.SetGPU(GPUUpload)
+	if _, err := p.Open(fixture(t, "av.mkv")); err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	if st := run(t, p, 3*time.Second, func(s Status) bool { return s.Frame != nil }); st.Frame.Image == nil || st.Frame.GPU != nil {
+		t.Fatalf("SDR frame = %+v, want RGBA", st.Frame)
 	}
 }

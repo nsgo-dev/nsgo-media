@@ -12,11 +12,11 @@ import (
 	"github.com/oneo-me/nsgo-media/internal/pipeline"
 )
 
-// gpuTarget reports a target whose hardware pictures a view imports on
-// the GPU: Windows' D3D11VA and Linux' VAAPI. Others convert them to
-// RGBA in memory.
+// gpuTarget reports a target whose views draw pictures on the GPU:
+// Windows' D3D11VA and Linux' VAAPI pictures imported, and macOS' HDR
+// pictures uploaded from memory. Others convert them to RGBA in memory.
 func gpuTarget(env *core.Env) bool {
-	return (runtime.GOOS == "windows" || runtime.GOOS == "linux") && env.SupportsGPU()
+	return (runtime.GOOS == "windows" || runtime.GOOS == "linux" || runtime.GOOS == "darwin") && env.SupportsGPU()
 }
 
 // yuvWGSL converts a picture's luma and chroma planes to RGB with the
@@ -26,7 +26,9 @@ func gpuTarget(env *core.Env) bool {
 // conversion to sRGB. On an extended linear sRGB / scRGB HDR surface
 // (params.hdr.z == 1), SDR pictures are linearized to [0, 1] and HDR
 // pictures output unclamped linear light (1.0 = 203-nit SDR white) in
-// Rec. 709 primaries.
+// Rec. 709 primaries. Planes uploaded with 16-bit samples
+// (params.hdr.w == 1) hold each sample as its low and high bytes, which
+// filter linearly as the sample would.
 const yuvWGSL = `
 struct Params {
 	r: vec4<f32>,
@@ -114,8 +116,13 @@ fn srgb_eotf_s(v: f32) -> f32 {
 
 @fragment
 fn fs_main(in: VOut) -> @location(0) vec4<f32> {
-	let c = textureSample(chroma, samp, in.uv).rg;
-	let yuv = vec4<f32>(textureSample(luma, samp, in.uv).r, c.x, c.y, 1.0);
+	let l = textureSample(luma, samp, in.uv);
+	let c = textureSample(chroma, samp, in.uv);
+	var yuv = vec4<f32>(l.r, c.r, c.g, 1.0);
+	if (params.hdr.w > 0.5) {
+		let k = vec2<f32>(255.0, 65280.0) / 65535.0;
+		yuv = vec4<f32>(dot(l.rg, k), dot(c.rg, k), dot(c.ba, k), 1.0);
+	}
 	let rgb = vec3<f32>(dot(params.r, yuv), dot(params.g, yuv), dot(params.b, yuv));
 	let c0 = clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0));
 	if (params.hdr.x < 0.5) {
@@ -157,7 +164,8 @@ fn fs_main(in: VOut) -> @location(0) vec4<f32> {
 `
 
 // gpuPicture draws a player's pictures on the GPU into a gpu.View, each
-// imported from the decoder's surface. It runs on the engine's goroutine.
+// imported from the decoder's surface or uploaded from memory. It runs on
+// the engine's goroutine.
 type gpuPicture struct {
 	p         *Player
 	cx        *core.Scope
@@ -174,6 +182,8 @@ type gpuPicture struct {
 	paramsData [16]float32
 	paramsSet  bool
 
+	up *uploaded // the textures pictures in memory upload into
+
 	cur      *imported   // the picture showing
 	retiring []*imported // pictures shown before, until the GPU is done
 	drawnW   int         // the surface size cur was drawn at
@@ -181,18 +191,38 @@ type gpuPicture struct {
 	cleared  bool // the surface shows no picture
 }
 
-// imported is a frame's picture opened on the view's device.
+// imported is a frame's picture opened on the view's device: imported
+// planes it owns, or the upload textures it was written into.
 type imported struct {
 	frame         *pipeline.Frame
 	release       func()
 	luma, chroma  *gpu.Texture
 	group         *gpu.BindGroup
+	shared        bool            // luma, chroma and group are the view's upload textures
 	fence         *gpu.FrameFence // of the last frame that sampled it
 	width, height int
 }
 
+// uploaded is the planes' textures pictures in memory are written into,
+// kept while their size and depth stay. Writes and draws run in order on
+// the GPU's queue, so one set serves every frame.
+type uploaded struct {
+	luma, chroma *gpu.Texture
+	group        *gpu.BindGroup
+	w, h         int
+	deep         bool
+}
+
+func (u *uploaded) close() {
+	for _, c := range []interface{ Close() error }{u.group, u.luma, u.chroma} {
+		if c != nil {
+			c.Close()
+		}
+	}
+}
+
 // ready sets the view up on dev and reports the kind of picture it
-// imports, GPUNone when it imports none.
+// draws, GPUNone when it draws none.
 func (g *gpuPicture) ready(dev *gpu.Device) pipeline.GPUKind {
 	g.drop()
 	g.dev, g.kind, g.surfaceCS, g.cleared = dev, pipeline.GPUNone, dev.SurfaceColorSpace(), false
@@ -202,6 +232,9 @@ func (g *gpuPicture) ready(dev *gpu.Device) pipeline.GPUKind {
 		kind = pipeline.GPUD3D11
 	case runtime.GOOS == "linux" && dev.SupportsExternalTexture(gpu.ExternalDMABuf):
 		kind = pipeline.GPUDMABuf
+	case runtime.GOOS == "darwin":
+		// Until the view imports VideoToolbox's surfaces (#40).
+		kind = pipeline.GPUUpload
 	default:
 		return pipeline.GPUNone
 	}
@@ -264,12 +297,18 @@ func (g *gpuPicture) drop() {
 		im.close()
 	}
 	g.retiring = nil
+	if g.up != nil {
+		g.up.close()
+		g.up = nil
+	}
 }
 
 func (im *imported) close() {
-	for _, c := range []interface{ Close() error }{im.group, im.luma, im.chroma} {
-		if c != nil {
-			c.Close()
+	if !im.shared {
+		for _, c := range []interface{ Close() error }{im.group, im.luma, im.chroma} {
+			if c != nil {
+				c.Close()
+			}
 		}
 	}
 	im.release()
@@ -329,9 +368,13 @@ func (g *gpuPicture) draw(f *pipeline.Frame) {
 	g.cleared = false
 }
 
-// open imports f's planes, holding f until the GPU is done with them.
+// open imports f's planes, holding f until the GPU is done with them, or
+// uploads them from memory.
 func (g *gpuPicture) open(f *pipeline.Frame) *imported {
 	pic := f.GPU
+	if pic.Kind == pipeline.GPUUpload {
+		return g.upload(f)
+	}
 	cw, ch := (pic.Width+1)/2, (pic.Height+1)/2
 	lumaFormat, chromaFormat := gpu.FormatR8Unorm, gpu.FormatRG8Unorm
 	if pic.Deep {
@@ -367,6 +410,57 @@ func (g *gpuPicture) open(f *pipeline.Frame) *imported {
 		return nil
 	}
 	return im
+}
+
+// upload writes f's planes in memory into the upload textures, made
+// again when its size or depth changed. The writes copy the planes, so f
+// need not be held.
+func (g *gpuPicture) upload(f *pipeline.Frame) *imported {
+	pic := f.GPU
+	u := g.up
+	if u == nil || u.w != pic.Width || u.h != pic.Height || u.deep != pic.Deep {
+		if u != nil {
+			u.close()
+			g.up = nil
+		}
+		// 16-bit samples upload as byte pairs: the backends create no
+		// 16-bit textures.
+		lumaFormat, chromaFormat := gpu.FormatR8Unorm, gpu.FormatRG8Unorm
+		if pic.Deep {
+			lumaFormat, chromaFormat = gpu.FormatRG8Unorm, gpu.FormatRGBA8Unorm
+		}
+		u = &uploaded{w: pic.Width, h: pic.Height, deep: pic.Deep}
+		tex := func(w, h int, format gpu.TextureFormat) (*gpu.Texture, error) {
+			return g.dev.CreateTexture(g.cx, gpu.TextureDesc{
+				Label: "nsgo-media plane", Width: uint32(w), Height: uint32(h), Format: format,
+				Usage: gpu.TextureSampled | gpu.TextureCopyDst,
+			})
+		}
+		var err error
+		if u.luma, err = tex(pic.Width, pic.Height, lumaFormat); err == nil {
+			if u.chroma, err = tex((pic.Width+1)/2, (pic.Height+1)/2, chromaFormat); err == nil {
+				u.group, err = g.dev.CreateBindGroup(g.cx, g.layout, []gpu.BindGroupEntry{
+					{Binding: 0, Texture: u.luma},
+					{Binding: 1, Texture: u.chroma},
+					{Binding: 2, Sampler: g.sampler},
+					{Binding: 3, Buffer: g.params},
+				})
+			}
+		}
+		if err != nil {
+			u.close()
+			return nil
+		}
+		g.up = u
+	}
+	for i, t := range []*gpu.Texture{u.luma, u.chroma} {
+		pl := pic.Planes[i]
+		g.dev.WriteTexture(t, gpu.TextureCopy{Texture: t}, pl.Data, gpu.DataLayout{BytesPerRow: pl.Pitch})
+	}
+	return &imported{
+		frame: f, release: func() {}, luma: u.luma, chroma: u.chroma, group: u.group, shared: true,
+		width: pic.Width, height: pic.Height,
+	}
 }
 
 // submit draws a frame: the picture of group turned by quad, or nothing.
@@ -405,7 +499,7 @@ func (g *gpuPicture) setMatrix(pic *pipeline.GPUPicture) {
 // shader's 16-float uniform block: hdr.x is the input transfer (0 SDR,
 // 1 PQ, 2 HLG), hdr.y is 1 for BT.2020-to-BT.709 gamut conversion, and
 // hdr.z is 1 when outputting linear extended-range sRGB (scRGB) to an
-// HDR surface.
+// HDR surface, and hdr.w is 1 for 16-bit samples uploaded as byte pairs.
 func shaderParams(pic *pipeline.GPUPicture, surfaceCS gpu.ColorSpace) [16]float32 {
 	m := yuvMatrix(pic)
 	var out [16]float32
@@ -421,6 +515,9 @@ func shaderParams(pic *pipeline.GPUPicture, surfaceCS gpu.ColorSpace) [16]float3
 	}
 	if surfaceCS == gpu.ColorSpaceExtendedLinearSRGB {
 		out[14] = 1
+	}
+	if pic.Kind == pipeline.GPUUpload && pic.Deep {
+		out[15] = 1
 	}
 	return out
 }
