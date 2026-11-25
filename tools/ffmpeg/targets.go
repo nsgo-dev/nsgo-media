@@ -23,10 +23,16 @@ var targets = []target{
 	{name: "ios_simulator", os: "darwin", arch: "arm64", sdk: "iphonesimulator", flags: macFlags},
 	{name: "windows_x64", os: "windows", arch: "x86_64", zig: "x86_64-windows-gnu", flags: []string{
 		"--target-os=mingw32", "--enable-w32threads", "--enable-d3d11va", "--enable-dxva2", "--enable-zlib",
+		"--enable-ffnvcodec", "--enable-nvenc", "--enable-encoder=h264_nvenc",
+		"--enable-libvpl", "--enable-encoder=h264_qsv",
+		"--enable-amf", "--enable-encoder=h264_amf",
+		"--enable-mediafoundation", "--enable-encoder=h264_mf",
 	}},
 	// glibc 2.34 is Ubuntu 22.04's, Debian 12's and RHEL 9's floor.
 	{name: "linux_x64", os: "linux", arch: "x86_64", zig: "x86_64-linux-gnu.2.34", flags: []string{
 		"--target-os=linux", "--enable-pthreads", "--enable-vaapi", "--enable-zlib",
+		"--enable-encoder=h264_vaapi",
+		"--enable-libopenh264", "--enable-encoder=libopenh264",
 	}},
 }
 
@@ -79,6 +85,7 @@ func (t target) platform() string {
 
 var macFlags = []string{
 	"--target-os=darwin", "--enable-pthreads", "--enable-videotoolbox", "--enable-zlib",
+	"--enable-encoder=h264_videotoolbox",
 	"--install-name-dir=@rpath",
 }
 

@@ -42,3 +42,13 @@ Most of the Windows process's private bytes are the graphics driver's in both. E
 ## Presentation
 
 Frames show a little before their time (`lead`, half a frame at most 8 ms). When a 60 Hz display meets 60 fps video in phase, jitter would make two frames due in one display frame and none in the next; each such skip moves the lead by 3 ms around a frame until the phases part. Before this, 1080p60 dropped 4–10% of frames at 10% CPU.
+
+## Low-latency encoding (`codec`)
+
+`TestMeasureEncodeLatency` in `codec` encodes 60 pre-generated 1920×1080 NV12 frames (after 10 warm-up frames) at 60 fps and 12 Mbps with no B-frames and low-delay settings (2026-11-25):
+
+| Machine | Encoder | Mean | p50 | p95 | Min – Max |
+| --- | --- | --- | --- | --- | --- |
+| MacBook (Apple M1 Max), macOS | `h264_videotoolbox` (hw) | 6.29 ms | 6.28 ms | 6.43 ms | 6.02 – 6.44 ms |
+| Windows 11 PC (Core Ultra 9 285K, RTX 5080) | `h264_nvenc` (hw) | 1.82 ms | 1.73 ms | 2.34 ms | 0.52 – 3.82 ms |
+| Ryzen 9 6900HX, Radeon 680M, Omarchy | `h264_vaapi` (hw) | 6.52 ms | 6.36 ms | 7.84 ms | 4.52 – 9.80 ms |

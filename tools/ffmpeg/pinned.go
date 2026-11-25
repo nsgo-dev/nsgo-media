@@ -59,6 +59,34 @@ var (
 			sha256: "dc0a0cadbdc001df3d89855d8054aacb332a731f98c7741ce580492b0e01e605",
 		},
 	}
+	// nv-codec-headers are FFmpeg's MIT headers for dynamically loading
+	// NVIDIA's NVENC driver on Windows.
+	nvCodecHeadersSource = download{
+		name:   "nv-codec-headers-12.1.14.1.tar.gz",
+		url:    "https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n12.1.14.1.tar.gz",
+		sha256: "f40c8a27417eb2688412da32985e382e811196311c4d103d1fcaafad2876cfc1",
+	}
+	// AMF headers (MIT) let FFmpeg dynamically load AMD's AMF runtime on
+	// Windows.
+	amfHeadersSource = download{
+		name:   "AMF-headers-v1.5.3.tar.gz",
+		url:    "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/releases/download/v1.5.3/AMF-headers-v1.5.3.tar.gz",
+		sha256: "0f521ad98041f8001147cded4a660127f18b1c27a801a5cd691bda1fa48381be",
+	}
+	// libvpl (MIT) is Intel's dispatcher for QSV, linked statically into
+	// Windows' libavcodec; at run time it loads the system's VPL runtime.
+	libvplSource = download{
+		name:   "libvpl-2.17.0.tar.gz",
+		url:    "https://github.com/intel/libvpl/archive/refs/tags/v2.17.0.tar.gz",
+		sha256: "4de3e2faf1e8307fb282e4a43f443191810f6a6b0a484fffa7995ba1c814c6ec",
+	}
+	// openh264 (BSD-2-Clause) is linked statically into Linux' libavcodec
+	// as the software H.264 encoder when VAAPI is unavailable.
+	openh264Source = download{
+		name:   "openh264-2.7.0.tar.gz",
+		url:    "https://github.com/cisco/openh264/archive/refs/tags/v2.7.0.tar.gz",
+		sha256: "5178775c8b440073e70920e97d195efff721c0e56d0a78cc82c919e95d54924d",
+	}
 )
 
 const zigVersion = "0.17.1"

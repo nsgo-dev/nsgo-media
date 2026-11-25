@@ -62,10 +62,17 @@ const (
 	seekSize          = 0x10000 // AVSEEK_SIZE
 	seekForce         = 0x20000 // AVSEEK_FORCE
 
+	colorRangeMPEG      = 1
 	colorRangeJPEG      = 2
 	ColorSpaceBT709     = 1
 	ColorSpaceBT2020NCL = 9
 	ColorSpaceBT2020CL  = 10
+
+	PictTypeNone int32 = 0
+	PictTypeI    int32 = 1
+
+	codecFlagLowDelay = 1 << 19
+	threadTypeSlice   = 2
 )
 
 // Rational is AVRational.
@@ -331,6 +338,16 @@ func (p *Packet) Data() []byte {
 	return unsafe.Slice((*byte)(d), p.Size())
 }
 
+// SetData replaces the packet's payload with a copy of b.
+func (p *Packet) SetData(b []byte) error {
+	p.Unref()
+	if err := check(avNewPacket(p, int32(len(b)))); err != nil {
+		return err
+	}
+	copy(p.Data(), b)
+	return nil
+}
+
 // Frame
 
 // NewFrame allocates an empty frame.
@@ -371,6 +388,49 @@ func (f *Frame) Hardware() bool { return pp(f.p(), offAVFrameHwFramesCtx) != nil
 
 // SetPTS sets the frame's timestamp.
 func (f *Frame) SetPTS(ts int64) { *(*int64)(at(f.p(), offAVFramePts)) = ts }
+
+// SetPictType sets the frame's picture type (PictTypeNone or PictTypeI).
+func (f *Frame) SetPictType(t int32) { *(*int32)(at(f.p(), offAVFramePictType)) = t }
+
+// AllocBuffer allocates buffers for a software video frame of w×h pixels
+// in pixFmt.
+func (f *Frame) AllocBuffer(w, h int, pixFmt int32) error {
+	f.Unref()
+	p := f.p()
+	*(*int32)(at(p, offAVFrameWidth)) = int32(w)
+	*(*int32)(at(p, offAVFrameHeight)) = int32(h)
+	*(*int32)(at(p, offAVFrameFormat)) = pixFmt
+	return check(avFrameGetBuffer(f, 0))
+}
+
+// MakeWritable ensures the frame's buffers can be written in place.
+func (f *Frame) MakeWritable() error { return check(avFrameMakeWritable(f)) }
+
+// SetColor sets the frame's color space and range.
+func (f *Frame) SetColor(colorspace int32, fullRange bool) {
+	p := f.p()
+	*(*int32)(at(p, offAVFrameColorspace)) = colorspace
+	if fullRange {
+		*(*int32)(at(p, offAVFrameColorRange)) = colorRangeJPEG
+	} else {
+		*(*int32)(at(p, offAVFrameColorRange)) = colorRangeMPEG
+	}
+}
+
+// SetPlane sets the i-th plane pointer and line size directly, for
+// wrapping caller-owned buffers without copying. Clear it before freeing.
+func (f *Frame) SetPlane(i int, data unsafe.Pointer, stride int) {
+	*(*unsafe.Pointer)(at(f.p(), offAVFrameData+uintptr(i)*8)) = data
+	*(*int32)(at(f.p(), offAVFrameLinesize+uintptr(i)*4)) = int32(stride)
+}
+
+// SetGeometry sets a wrapper frame's width, height and pixel format.
+func (f *Frame) SetGeometry(w, h int, pixFmt int32) {
+	p := f.p()
+	*(*int32)(at(p, offAVFrameWidth)) = int32(w)
+	*(*int32)(at(p, offAVFrameHeight)) = int32(h)
+	*(*int32)(at(p, offAVFrameFormat)) = pixFmt
+}
 
 // Plane is the frame's i-th data pointer and its line size.
 func (f *Frame) Plane(i int) (unsafe.Pointer, int) {

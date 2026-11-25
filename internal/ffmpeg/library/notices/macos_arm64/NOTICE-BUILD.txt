@@ -33,6 +33,7 @@ Configured with:
   --enable-pthreads
   --enable-videotoolbox
   --enable-zlib
+  --enable-encoder=h264_videotoolbox
   --install-name-dir=@rpath
   --pkg-config=$WORK/host/bin/nsgo-media-ffmpeg -as pkg-config
   --nm=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm

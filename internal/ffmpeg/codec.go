@@ -59,6 +59,45 @@ func NewDecoder(par *CodecParameters, tb Rational, threads int, hwDevice string,
 	return d, nil
 }
 
+// NewRawDecoder opens a low-latency decoder by codec name (such as "h264")
+// without container parameters, for raw access-unit streams. When hwDevice
+// names a hardware device type ("videotoolbox", "d3d11va", "vaapi"), it
+// opens on that device.
+func NewRawDecoder(codecName string, threads int, hwDevice string) (*Decoder, error) {
+	codec := avcodecFindDecoderByNm(codecName)
+	if codec == nil {
+		return nil, fmt.Errorf("ffmpeg: no decoder for %s", codecName)
+	}
+	d := &Decoder{}
+	if hwDevice != "" {
+		typ := avHwdeviceFindType(hwDevice)
+		if typ <= 0 || !codecSupportsDevice(codec, typ) {
+			return nil, fmt.Errorf("ffmpeg: %s cannot decode on %s", codecName, hwDevice)
+		}
+		if err := check(avHwdeviceCtxCreate(&d.hw, typ, nil, nil, 0)); err != nil {
+			return nil, fmt.Errorf("ffmpeg: %s device: %w", hwDevice, err)
+		}
+		d.HWDevice = hwDevice
+	}
+	d.ctx = avcodecAllocContext3(codec)
+	if d.ctx == nil {
+		d.Close()
+		return nil, errors.New("ffmpeg: out of memory")
+	}
+	c := unsafe.Pointer(d.ctx)
+	*(*int32)(at(c, offAVCodecContextFlags)) |= codecFlagLowDelay
+	*(*int32)(at(c, offAVCodecContextThreadCount)) = int32(threads)
+	*(*int32)(at(c, offAVCodecContextThreadType)) = threadTypeSlice
+	if d.hw != nil {
+		*(*unsafe.Pointer)(at(c, offAVCodecContextHwDeviceCtx)) = avBufferRef(d.hw)
+	}
+	if err := check(avcodecOpen2(d.ctx, codec, nil)); err != nil {
+		d.Close()
+		return nil, fmt.Errorf("ffmpeg: open %s decoder: %w", codecName, err)
+	}
+	return d, nil
+}
+
 func codecSupportsDevice(c *Codec, typ int32) bool {
 	for i := int32(0); ; i++ {
 		cfg := avcodecGetHWConfig(c, i)

@@ -202,12 +202,36 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 		return nil, nil, err
 	}
 	env = append(env, libxml2Env(t, xml)...)
-	if t.os == "linux" {
+	extraCflags := []string{"-I" + filepath.Join(zlib, "include")}
+	extraLdflags := []string{"-L" + filepath.Join(zlib, "lib")}
+	switch t.os {
+	case "windows":
+		nv, err := b.unpackNvCodecHeaders()
+		if err != nil {
+			return nil, nil, err
+		}
+		env = append(env, "NSGO_MEDIA_FFNVCODEC_CFLAGS=-I"+filepath.Join(nv, "include"))
+		amf, err := b.unpackAMFHeaders()
+		if err != nil {
+			return nil, nil, err
+		}
+		extraCflags = append(extraCflags, "-I"+amf)
+		vpl, err := b.buildLibvpl(t)
+		if err != nil {
+			return nil, nil, err
+		}
+		env = append(env, libvplEnv(vpl)...)
+	case "linux":
 		root, err := b.unpackLibva()
 		if err != nil {
 			return nil, nil, err
 		}
 		env = append(env, "NSGO_MEDIA_PKG_ROOT="+root)
+		oh, err := b.buildOpenH264(t)
+		if err != nil {
+			return nil, nil, err
+		}
+		env = append(env, openh264Env(oh)...)
 	}
 	args = append(args,
 		"--enable-cross-compile",
@@ -215,8 +239,8 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 		"--ar="+b.tool+" -as ar",
 		"--ranlib="+b.tool+" -as ranlib",
 		"--strip=true",
-		"--extra-cflags=-I"+filepath.Join(zlib, "include"),
-		"--extra-ldflags=-L"+filepath.Join(zlib, "lib"),
+		"--extra-cflags="+strings.Join(extraCflags, " "),
+		"--extra-ldflags="+strings.Join(extraLdflags, " "),
 	)
 	return args, env, nil
 }
@@ -278,6 +302,23 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 	if err := addFile(zw, "COPYING.libxml2", filepath.Join(xmlSrc, "Copyright"), 0o644); err != nil {
 		return "", err
 	}
+	var extraNotes strings.Builder
+	switch t.os {
+	case "windows":
+		vplSrc := filepath.Join(b.work, "src", strings.TrimSuffix(libvplSource.name, ".tar.gz"))
+		if err := addFile(zw, "COPYING.libvpl", filepath.Join(vplSrc, "LICENSE"), 0o644); err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&extraNotes, "\nlibavcodec links libvpl statically, under the MIT license in COPYING.libvpl.\nSource: %s\nSHA-256: %s\n", libvplSource.url, libvplSource.sha256)
+		fmt.Fprintf(&extraNotes, "\nBuilt with nv-codec-headers (MIT, dynamic driver load).\nSource: %s\nSHA-256: %s\n", nvCodecHeadersSource.url, nvCodecHeadersSource.sha256)
+		fmt.Fprintf(&extraNotes, "\nBuilt with AMF headers (MIT, dynamic driver load).\nSource: %s\nSHA-256: %s\n", amfHeadersSource.url, amfHeadersSource.sha256)
+	case "linux":
+		ohSrc := filepath.Join(b.work, "src", strings.TrimSuffix(openh264Source.name, ".tar.gz"))
+		if err := addFile(zw, "COPYING.openh264", filepath.Join(ohSrc, "LICENSE"), 0o644); err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&extraNotes, "\nlibavcodec links OpenH264 statically, under the BSD 2-Clause license in COPYING.openh264.\nSource: %s\nSHA-256: %s\n", openh264Source.url, openh264Source.sha256)
+	}
 	var patches strings.Builder
 	if len(ffmpegPatches) > 0 {
 		diff, err := b.ffmpegDiff()
@@ -297,8 +338,8 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 		}
 	}
 	note := fmt.Sprintf("FFmpeg %s, built for %s by NSGo Media's tools/ffmpeg (https://github.com/oneo-me/nsgo-media/tree/main/tools/ffmpeg) under the LGPL 2.1 or later.\n\nSource: %s\nSHA-256: %s\n\n%s\nConfigured with:\n  %s\n\n"+
-		"libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.\nSource: %s\nSHA-256: %s\n",
-		FFmpegVersion, t.name, ffmpegSource.url, ffmpegSource.sha256, patches.String(), strings.Join(args, "\n  "), libxml2Source.url, libxml2Source.sha256)
+		"libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.\nSource: %s\nSHA-256: %s\n%s",
+		FFmpegVersion, t.name, ffmpegSource.url, ffmpegSource.sha256, patches.String(), strings.Join(args, "\n  "), libxml2Source.url, libxml2Source.sha256, extraNotes.String())
 	w, err := zw.Create("BUILD.txt")
 	if err != nil {
 		return "", err
@@ -623,6 +664,150 @@ func (b *builder) unpackLibva() (string, error) {
 		}
 	}
 	return root, nil
+}
+
+func (b *builder) unpackNvCodecHeaders() (string, error) {
+	return b.unpack(nvCodecHeadersSource, "nv-codec-headers-n12.1.14.1")
+}
+
+func (b *builder) unpackAMFHeaders() (string, error) {
+	return b.unpack(amfHeadersSource, "amf-headers-v1.5.3")
+}
+
+// buildLibvpl compiles Intel's libvpl dispatcher into a static library for
+// Windows with Zig's C++ compiler, avoiding CMake.
+func (b *builder) buildLibvpl(t target) (string, error) {
+	src, err := b.unpack(libvplSource, strings.TrimSuffix(libvplSource.name, ".tar.gz"))
+	if err != nil {
+		return "", err
+	}
+	dest := filepath.Join(b.work, "deps", t.name, "libvpl")
+	lib := filepath.Join(dest, "lib", "libvpl.a")
+	if _, err := os.Stat(lib); err == nil {
+		return dest, nil
+	}
+	for _, d := range []string{"include/vpl", "lib", "obj"} {
+		if err := os.MkdirAll(filepath.Join(dest, d), 0o755); err != nil {
+			return "", err
+		}
+	}
+	sources := []string{
+		"libvpl/src/windows/main.cpp",
+		"libvpl/src/windows/mfx_critical_section.cpp",
+		"libvpl/src/windows/mfx_dispatcher.cpp",
+		"libvpl/src/windows/mfx_dispatcher_log.cpp",
+		"libvpl/src/windows/mfx_driver_store_loader.cpp",
+		"libvpl/src/windows/mfx_dxva2_device.cpp",
+		"libvpl/src/windows/mfx_function_table.cpp",
+		"libvpl/src/windows/mfx_library_iterator.cpp",
+		"libvpl/src/windows/mfx_load_dll.cpp",
+		"libvpl/src/windows/mfx_win_reg_key.cpp",
+		"libvpl/src/mfx_dispatcher_vpl.cpp",
+		"libvpl/src/mfx_dispatcher_vpl_loader.cpp",
+		"libvpl/src/mfx_dispatcher_vpl_config.cpp",
+		"libvpl/src/mfx_dispatcher_vpl_lowlatency.cpp",
+		"libvpl/src/mfx_dispatcher_vpl_log.cpp",
+		"libvpl/src/mfx_dispatcher_vpl_msdk.cpp",
+		"libvpl/src/mfx_config_interface/mfx_config_interface.cpp",
+		"libvpl/src/mfx_config_interface/mfx_config_interface_string_api.cpp",
+	}
+	env := append(os.Environ(), "ZIG_GLOBAL_CACHE_DIR="+filepath.Join(b.work, "zig-cache"))
+	var objs []string
+	for i, f := range sources {
+		obj := filepath.Join(dest, "obj", fmt.Sprintf("%02d-%s.o", i, strings.TrimSuffix(filepath.Base(f), ".cpp")))
+		if err := run(src, env, b.zig, "c++", "-target", t.zig, "-O2", "-std=c++11",
+			"-DMFX_DEPRECATED_OFF", "-D_UNICODE", "-DUNICODE", "-DNOMINMAX",
+			"-I"+filepath.Join(src, "api"),
+			"-I"+filepath.Join(src, "api", "vpl"),
+			"-I"+filepath.Join(src, "libvpl"),
+			"-I"+filepath.Join(src, "libvpl", "src"),
+			"-I"+filepath.Join(src, "libvpl", "src", "windows"),
+			"-c", f, "-o", obj); err != nil {
+			return "", fmt.Errorf("libvpl %s: %w", f, err)
+		}
+		objs = append(objs, obj)
+	}
+	if err := run(src, env, b.zig, append([]string{"ar", "rcs", lib}, objs...)...); err != nil {
+		return "", fmt.Errorf("libvpl ar: %w", err)
+	}
+	hdrs, err := os.ReadDir(filepath.Join(src, "api", "vpl"))
+	if err != nil {
+		return "", err
+	}
+	for _, h := range hdrs {
+		if h.IsDir() {
+			continue
+		}
+		if err := copyFile(filepath.Join(src, "api", "vpl", h.Name()), filepath.Join(dest, "include", "vpl", h.Name())); err != nil {
+			return "", err
+		}
+	}
+	return dest, nil
+}
+
+func libvplEnv(dir string) []string {
+	inc := filepath.Join(dir, "include")
+	cflags := "-I" + inc + " -I" + filepath.Join(inc, "vpl")
+	libs := "-L" + filepath.Join(dir, "lib") + " -lvpl -lc++ -lole32 -ladvapi32 -lcfgmgr32 -ldxgi -ld3d11 -ldxva2"
+	return []string{"NSGO_MEDIA_VPL_CFLAGS=" + cflags, "NSGO_MEDIA_VPL_LIBS=" + libs}
+}
+
+// buildOpenH264 compiles OpenH264 into a static library for Linux x64.
+func (b *builder) buildOpenH264(t target) (string, error) {
+	src, err := b.unpack(openh264Source, strings.TrimSuffix(openh264Source.name, ".tar.gz"))
+	if err != nil {
+		return "", err
+	}
+	dest := filepath.Join(b.work, "deps", t.name, "openh264")
+	lib := filepath.Join(dest, "lib", "libopenh264.a")
+	if _, err := os.Stat(lib); err == nil {
+		return dest, nil
+	}
+	for _, d := range []string{"include/wels", "lib"} {
+		if err := os.MkdirAll(filepath.Join(dest, d), 0o755); err != nil {
+			return "", err
+		}
+	}
+	dir := filepath.Join(b.work, "build", t.name+"-openh264")
+	if err := os.RemoveAll(dir); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	env := append(os.Environ(), "ZIG_GLOBAL_CACHE_DIR="+filepath.Join(b.work, "zig-cache"))
+	if err := run(dir, env, "make", "-f", filepath.Join(src, "Makefile"), fmt.Sprintf("-j%d", b.jobs),
+		"OS=linux", "ARCH=x86_64", "USE_ASM=Yes", "ASM="+b.nasm,
+		"CC="+b.zig+" cc -target "+t.zig,
+		"CXX="+b.zig+" c++ -target "+t.zig,
+		"AR="+b.zig+" ar",
+		"AR_OPTS=rcs $@",
+		"libopenh264.a",
+	); err != nil {
+		return "", fmt.Errorf("openh264 make: %w", err)
+	}
+	if err := copyFile(filepath.Join(dir, "libopenh264.a"), lib); err != nil {
+		return "", err
+	}
+	hdrs, err := os.ReadDir(filepath.Join(src, "codec", "api", "wels"))
+	if err != nil {
+		return "", err
+	}
+	for _, h := range hdrs {
+		if h.IsDir() {
+			continue
+		}
+		if err := copyFile(filepath.Join(src, "codec", "api", "wels", h.Name()), filepath.Join(dest, "include", "wels", h.Name())); err != nil {
+			return "", err
+		}
+	}
+	return dest, nil
+}
+
+func openh264Env(dir string) []string {
+	cflags := "-I" + filepath.Join(dir, "include")
+	libs := "-L" + filepath.Join(dir, "lib") + " -lopenh264 -lc++ -lpthread -lm"
+	return []string{"NSGO_MEDIA_OPENH264_CFLAGS=" + cflags, "NSGO_MEDIA_OPENH264_LIBS=" + libs}
 }
 
 // extractDeb extracts a Debian package's data archive into root. A .deb is

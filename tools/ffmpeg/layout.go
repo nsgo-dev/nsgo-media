@@ -26,8 +26,8 @@ var layoutFields = map[string][]string{
 	"AVChannelLayout":   {"order", "nb_channels", "u"},
 	"AVChapter":         {"id", "time_base", "start", "end", "metadata"},
 	"AVPacket":          {"pts", "dts", "data", "size", "stream_index", "flags", "duration", "pos"},
-	"AVFrame":           {"data", "linesize", "extended_data", "width", "height", "nb_samples", "format", "sample_aspect_ratio", "pts", "pkt_dts", "sample_rate", "hw_frames_ctx", "ch_layout", "best_effort_timestamp", "duration", "flags", "color_range", "colorspace", "color_trc", "color_primaries"},
-	"AVCodecContext":    {"codec_type", "codec_id", "width", "height", "pix_fmt", "sample_fmt", "sample_rate", "ch_layout", "thread_count", "thread_type", "hw_device_ctx", "pkt_timebase", "extra_hw_frames", "flags", "flags2", "framerate"},
+	"AVFrame":           {"data", "linesize", "extended_data", "width", "height", "nb_samples", "format", "pict_type", "sample_aspect_ratio", "pts", "pkt_dts", "sample_rate", "hw_frames_ctx", "ch_layout", "best_effort_timestamp", "duration", "flags", "color_range", "colorspace", "color_trc", "color_primaries"},
+	"AVCodecContext":    {"codec_type", "codec_id", "bit_rate", "time_base", "width", "height", "gop_size", "pix_fmt", "max_b_frames", "sample_fmt", "sample_rate", "ch_layout", "rc_max_rate", "rc_buffer_size", "color_primaries", "color_trc", "colorspace", "color_range", "thread_count", "thread_type", "hw_device_ctx", "hw_frames_ctx", "pkt_timebase", "extra_hw_frames", "flags", "flags2", "framerate"},
 	"AVCodec":           {"name", "long_name", "type", "id", "capabilities"},
 	"AVCodecHWConfig":   {"pix_fmt", "methods", "device_type"},
 	"AVSubtitle":        {"format", "start_display_time", "end_display_time", "num_rects", "rects", "pts"},
@@ -35,7 +35,7 @@ var layoutFields = map[string][]string{
 	"AVDictionaryEntry": {"key", "value"},
 	"AVIOInterruptCB":   {"callback", "opaque"},
 	"AVBufferRef":       {"data"},
-	"AVHWFramesContext": {"device_ctx", "sw_format", "width", "height"},
+	"AVHWFramesContext": {"device_ctx", "format", "sw_format", "width", "height", "initial_pool_size"},
 	"AVHWDeviceContext": {"type", "hwctx"},
 	// Stub headers stand in for d3d11.h and va/va.h, whose types these
 	// hold only pointers to or integers of.

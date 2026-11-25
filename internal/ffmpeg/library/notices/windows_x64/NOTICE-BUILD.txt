@@ -34,6 +34,15 @@ Configured with:
   --enable-d3d11va
   --enable-dxva2
   --enable-zlib
+  --enable-ffnvcodec
+  --enable-nvenc
+  --enable-encoder=h264_nvenc
+  --enable-libvpl
+  --enable-encoder=h264_qsv
+  --enable-amf
+  --enable-encoder=h264_amf
+  --enable-mediafoundation
+  --enable-encoder=h264_mf
   --pkg-config=$WORK/host/bin/nsgo-media-ffmpeg -as pkg-config
   --x86asmexe=$WORK/host/bin/nasm
   --nm=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm
@@ -42,9 +51,21 @@ Configured with:
   --ar=$WORK/host/bin/nsgo-media-ffmpeg -as ar
   --ranlib=$WORK/host/bin/nsgo-media-ffmpeg -as ranlib
   --strip=true
-  --extra-cflags=-I$WORK/deps/windows_x64/zlib/include
+  --extra-cflags=-I$WORK/deps/windows_x64/zlib/include -I$WORK/src/amf-headers-v1.5.3
   --extra-ldflags=-L$WORK/deps/windows_x64/zlib/lib
 
 libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.
 Source: https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz
 SHA-256: 98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821
+
+libavcodec links libvpl statically, under the MIT license in COPYING.libvpl.
+Source: https://github.com/intel/libvpl/archive/refs/tags/v2.17.0.tar.gz
+SHA-256: 4de3e2faf1e8307fb282e4a43f443191810f6a6b0a484fffa7995ba1c814c6ec
+
+Built with nv-codec-headers (MIT, dynamic driver load).
+Source: https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n12.1.14.1.tar.gz
+SHA-256: f40c8a27417eb2688412da32985e382e811196311c4d103d1fcaafad2876cfc1
+
+Built with AMF headers (MIT, dynamic driver load).
+Source: https://github.com/GPUOpen-LibrariesAndSDKs/AMF/releases/download/v1.5.3/AMF-headers-v1.5.3.tar.gz
+SHA-256: 0f521ad98041f8001147cded4a660127f18b1c27a801a5cd691bda1fa48381be

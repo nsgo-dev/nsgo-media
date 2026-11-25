@@ -92,13 +92,38 @@ func pkgConfig(root string, args []string) int {
 	var flags []string
 	version := "1.17.0"
 	for _, p := range pkgs {
-		if p == "libxml-2.0" {
+		switch p {
+		case "libxml-2.0":
 			cflags, libs := os.Getenv("NSGO_MEDIA_LIBXML2_CFLAGS"), os.Getenv("NSGO_MEDIA_LIBXML2_LIBS")
 			if libs == "" {
 				return 1
 			}
 			flags = append(flags, strings.Fields(cflags+" "+libs)...)
 			version = "2.15.4"
+			continue
+		case "ffnvcodec":
+			cflags := os.Getenv("NSGO_MEDIA_FFNVCODEC_CFLAGS")
+			if cflags == "" {
+				return 1
+			}
+			flags = append(flags, strings.Fields(cflags)...)
+			version = "12.1.14.1"
+			continue
+		case "vpl":
+			cflags, libs := os.Getenv("NSGO_MEDIA_VPL_CFLAGS"), os.Getenv("NSGO_MEDIA_VPL_LIBS")
+			if libs == "" {
+				return 1
+			}
+			flags = append(flags, strings.Fields(cflags+" "+libs)...)
+			version = "2.17.0"
+			continue
+		case "openh264":
+			cflags, libs := os.Getenv("NSGO_MEDIA_OPENH264_CFLAGS"), os.Getenv("NSGO_MEDIA_OPENH264_LIBS")
+			if libs == "" {
+				return 1
+			}
+			flags = append(flags, strings.Fields(cflags+" "+libs)...)
+			version = "2.7.0"
 			continue
 		}
 		if root == "" {

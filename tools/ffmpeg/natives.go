@@ -18,7 +18,7 @@ import (
 // libraries are published under, which nsgo-natives.yaml downloads them
 // from. Its assets never change: libraries built again are published
 // under a new tag.
-const releaseTag = "ffmpeg-" + FFmpegVersion + "-1"
+const releaseTag = "ffmpeg-" + FFmpegVersion + "-2"
 
 const releaseURL = "https://github.com/nsgo-dev/nsgo-media/releases/download/" + releaseTag + "/"
 
@@ -38,10 +38,12 @@ var nativeTargets = []struct {
 // file named COPYING as a license, which must be one it recognizes, and
 // one named NOTICE as a notice going with it.
 const (
-	noticesDir    = "notices"
-	lgplNotice    = noticesDir + "/COPYING.LGPLv2.1"
-	libxml2Notice = noticesDir + "/COPYING.libxml2"
-	patchNotice   = noticesDir + "/NOTICE-" + patchName
+	noticesDir     = "notices"
+	lgplNotice     = noticesDir + "/COPYING.LGPLv2.1"
+	libxml2Notice  = noticesDir + "/COPYING.libxml2"
+	libvplNotice   = noticesDir + "/COPYING.libvpl"
+	openh264Notice = noticesDir + "/COPYING.openh264"
+	patchNotice    = noticesDir + "/NOTICE-" + patchName
 )
 
 func buildNotice(target string) string { return noticesDir + "/" + target + "/NOTICE-BUILD.txt" }
@@ -49,12 +51,19 @@ func buildNotice(target string) string { return noticesDir + "/" + target + "/NO
 // archiveNotices maps the notices of an archive to the manifest's paths;
 // BUILD.txt differs by target.
 func archiveNotices(target string) map[string]string {
-	return map[string]string{
+	m := map[string]string{
 		"COPYING.LGPLv2.1": lgplNotice,
 		"COPYING.libxml2":  libxml2Notice,
 		patchName:          patchNotice,
 		"BUILD.txt":        buildNotice(target),
 	}
+	switch target {
+	case "windows_x64":
+		m["COPYING.libvpl"] = libvplNotice
+	case "linux_x64":
+		m["COPYING.openh264"] = openh264Notice
+	}
+	return m
 }
 
 // writeNatives takes the desktop archives and source in out, which a
@@ -122,6 +131,14 @@ func writeNatives(out, pkg string) error {
 			if lib == "avformat" {
 				// Only libavformat links libxml2 and holds the change.
 				licenses = append(licenses, libxml2Notice, patchNotice)
+			}
+			if lib == "avcodec" {
+				switch nt.name {
+				case "windows_x64":
+					licenses = append(licenses, libvplNotice)
+				case "linux_x64":
+					licenses = append(licenses, openh264Notice)
+				}
 			}
 			fmt.Fprintf(&yaml, "    - name: %s\n      url: %s\n      sha256: %q\n      licenses: [%s]\n",
 				name, releaseURL+asset, hex.EncodeToString(sum[:]), strings.Join(licenses, ", "))
