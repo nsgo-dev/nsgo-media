@@ -26,7 +26,7 @@ func platformEncoders(codec string) []encoderSpec {
 		return nil
 	}
 	switch runtime.GOOS {
-	case "darwin":
+	case "darwin", "ios":
 		return []encoderSpec{
 			{
 				codec:    H264,
@@ -147,7 +147,7 @@ func platformEncoders(codec string) []encoderSpec {
 
 func platformHWDecodeDevice() string {
 	switch runtime.GOOS {
-	case "darwin":
+	case "darwin", "ios":
 		return "videotoolbox"
 	case "windows":
 		return "d3d11va"
