@@ -2,6 +2,7 @@ component name="Cards/Video" width=213
 box name=card class="group gap-2"
   box class="h-[120px] overflow-hidden rounded-xl bg-zinc-200 shadow-sm"
     image "Video thumbnail" name=image src="assets/thumbs/mountains.jpg" class="size-full"
+    use source-badge name=source class="absolute top-1.5 left-1.5" note="Plugin source icon marking where this video comes from in the merged feed."
     text "12:34" name=duration class="absolute right-1.5 bottom-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white"
     box name=watched class="absolute right-0 bottom-0 left-0 hidden h-[3px] bg-white/40" note="How far the viewer got, from the resume positions kept locally; shown once a part of the video was played."
       box class="h-full w-2/5 bg-[#FF6B4A]"

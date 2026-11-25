@@ -1,6 +1,5 @@
 design en in="main#content" name="Main/Settings"
 box class="flex-1"
-  use toolbar variant=root title="Settings"
   box class="flex-1 items-center overflow-hidden px-7 py-6"
     box class="w-[680px] gap-6"
       box class="gap-2"
@@ -27,7 +26,7 @@ box class="flex-1"
           end
           use button variant=secondary icon=plus label="Add Plugin" button.class="h-7 px-2.5" button.tap="open #add"
         end
-        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white" note="Every plugin loaded, enabled or not, built-in first. Pressing a row opens its page; the switch enables or disables it, adding or removing its sidebar section."
+        box class="overflow-hidden rounded-xl border border-zinc-200 bg-white" note="Every plugin loaded, enabled or not, built-in first. Pressing a row opens its page; the switch enables or disables it, adding or removing its videos from the merged feeds."
           use plugin-row tile.class="from-[#3BD6B8] to-[#16A88E]" initial="L" title="Local Files" version="Built-in" source-icon=hard-drive source="Videos on this Mac" row.tap="open plugin#builtin"
           use plugin-row variant=update row.tap="open plugin" update.tap="open update-plugin"
           use plugin-row variant=off tile.class="from-[#FFD25C] to-[#F0A800]" initial="S" title="Sample Feeds" version="0.4.0" source-icon=folder source="~/code/sample-feeds" row.tap="open plugin"
@@ -40,7 +39,6 @@ end
 
 design add in="main#content" name="Settings · Add plugin"
 box class="flex-1"
-  use toolbar variant=root title="Settings"
   box class="flex-1 items-center overflow-hidden px-7 py-6"
     box class="w-[680px] gap-6"
       box class="gap-2"
@@ -70,7 +68,7 @@ box class="flex-1"
       end
     end
   end
-  box class="absolute top-[176px] right-[144px] w-[260px] gap-0.5 rounded-xl border border-zinc-200 bg-white/95 p-1.5 shadow-xl" note="The ways to add a plugin. GitHub comes first, as plugins are published there."
+  box class="absolute top-[168px] right-[260px] w-[260px] gap-0.5 rounded-xl border border-zinc-200 bg-white/95 p-1.5 shadow-xl" note="The ways to add a plugin. GitHub comes first, as plugins are published there."
     box class="flex-row items-center gap-2.5 rounded-lg bg-[#E8553A] px-2.5 py-2" tap="open install-github"
       icon git-fork class="size-4 text-white"
       box class="flex-1"
@@ -78,7 +76,7 @@ box class="flex-1"
         text "Its latest release, kept up to date" class="text-[11px] text-white/80"
       end
     end
-    box class="h-px bg-zinc-100 mx-2 my-1"
+    box class="mx-2 my-1 h-px bg-zinc-100"
     end
     box class="flex-row items-center gap-2.5 rounded-lg px-2.5 py-1.5" tap="open approve-plugin"
       icon folder class="size-4 text-zinc-500"
@@ -97,7 +95,6 @@ end
 
 design checking in="main#content" name="Settings · Checking for updates"
 box class="flex-1"
-  use toolbar variant=root title="Settings"
   box class="flex-1 items-center overflow-hidden px-7 py-6"
     box class="w-[680px] gap-2"
       box class="flex-row items-center gap-2 px-1"
@@ -117,7 +114,6 @@ end
 
 design check-failed in="main#content" name="Settings · Update check failed"
 box class="flex-1"
-  use toolbar variant=root title="Settings"
   box class="flex-1 items-center overflow-hidden px-7 py-6"
     box class="w-[680px] gap-2"
       box class="flex-row items-center gap-2 px-1"
@@ -139,7 +135,6 @@ end
 
 design empty in="main#content" name="Settings · No plugins added"
 box class="flex-1"
-  use toolbar variant=root title="Settings"
   box class="flex-1 items-center overflow-hidden px-7 py-6"
     box class="w-[680px] gap-2"
       box class="flex-row items-center gap-2 px-1"

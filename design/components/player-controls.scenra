@@ -1,62 +1,63 @@
-component name="Player/Controls" width=fill preview=800 backdrop="bg-linear-to-br from-sky-700 via-amber-600 to-rose-800"
-box class="gap-3 overflow-hidden rounded-[28px] border border-white/25 bg-white/10 px-4 pt-3 pb-4 shadow-2xl backdrop-blur-2xl backdrop-saturate-150" note="A floating panel of Liquid Glass over the picture, 800 points wide, centred near the window's bottom: it blurs and brightens the video behind it, with a light rim along its top. It shows and hides with the top bar."
-  box class="absolute top-0 right-0 left-0 h-12 bg-linear-to-b from-white/20 to-transparent"
-  end
-  box class="flex-row items-center gap-2"
-    box class="flex-row items-center gap-0.5 rounded-full bg-white/10 p-1"
-      box name=play class="size-10 items-center justify-center rounded-full bg-white/90 shadow-md hover:bg-white"
-        icon pause name=play-icon class="size-5 text-zinc-900"
+component name="Player/Controls" width=fill preview=560 backdrop="bg-linear-to-br from-sky-700 via-amber-600 to-rose-800"
+box class="gap-1 overflow-hidden rounded-2xl border border-white/20 bg-black/40 px-2 pt-2 pb-1.5 shadow-xl backdrop-blur-2xl backdrop-saturate-150" note="Slim floating Liquid Glass bar: a thin seek line over one row of small buttons. Shows only while the pointer is over the player window and fades out with the top bar, as the Player window's note says; it stays while the pointer is over it or one of its menus is open."
+  box name=seek class="h-2.5 justify-center px-1" note="Seeks where pressed or dragged, showing the time under the pointer; the line thickens to 4 points under the pointer, and the lighter range is what is buffered."
+    box class="h-[3px] overflow-hidden rounded-full bg-white/20"
+      box class="absolute top-0 bottom-0 left-0 w-[72%] bg-white/30"
       end
-      box name=next class="size-10 items-center justify-center rounded-full hover:bg-white/15" note="Plays the next part; shown for a video of several parts."
-        icon skip-forward class="size-[18px] text-white"
+      box name=played class="absolute top-0 bottom-0 left-0 w-[56%] rounded-full bg-white"
       end
     end
-    box name=volume class="h-12 flex-row items-center gap-2 rounded-full bg-white/10 pr-4 pl-1"
-      box class="size-10 items-center justify-center rounded-full hover:bg-white/15"
-        icon volume-2 name=volume-icon class="size-[18px] text-white"
+    box name=thumb class="absolute left-[56%] -ml-1 size-2.5 rounded-full bg-white shadow-md"
+    end
+  end
+  box class="h-7 flex-row items-center gap-0.5"
+    box name=play class="size-7 items-center justify-center rounded-full hover:bg-white/15"
+      icon pause name=play-icon class="size-4 text-white"
+    end
+    box name=next class="size-7 items-center justify-center rounded-full hover:bg-white/15" note="Plays the next part; shown for a video of several parts."
+      icon skip-forward class="size-3.5 text-white"
+    end
+    box name=volume class="h-7 flex-row items-center gap-1 rounded-full pr-2 hover:bg-white/10"
+      box class="size-7 items-center justify-center"
+        icon volume-2 name=volume-icon class="size-3.5 text-white"
       end
-      box class="h-1 w-20 rounded-full bg-white/25"
+      box name=volume-slider class="h-[3px] w-12 rounded-full bg-white/25" note="Shown while the pointer is over the volume button."
         box class="h-full w-3/4 rounded-full bg-white"
         end
       end
     end
-    box class="flex-1 items-center gap-0.5 px-4"
-      text "The ridge catches the sun" name=caption class="truncate text-[13px] font-semibold text-white"
-      text "P2 · Sunrise over an alpine lake" name=subcaption class="truncate text-[11px] font-medium text-white/60"
+    box name=time class="flex-row items-center gap-1 px-1.5" note="Pressing it switches the duration to the time left."
+      text "1:31:05" name=elapsed class="text-[11px] font-medium text-white/90"
+      text "/" class="text-[11px] text-white/40"
+      text "1:46:32" name=duration class="text-[11px] font-medium text-white/50"
     end
-    box class="flex-row items-center gap-0.5 rounded-full bg-white/10 p-1"
-      box name=parts class="h-10 flex-row items-center gap-1.5 rounded-full px-3 hover:bg-white/15" note="The parts of the video; shown when it has several."
-        icon list-video class="size-[18px] text-white"
-        text "P2/3" name=parts-label class="text-[13px] font-medium text-white"
-      end
-      box name=speed class="h-10 min-w-10 items-center justify-center rounded-full px-2.5 hover:bg-white/15"
-        text "1×" name=speed-label class="text-[13px] font-semibold text-white"
-      end
-      box name=subtitles class="size-10 items-center justify-center rounded-full hover:bg-white/15" note="Subtitle and audio tracks, in one menu; shown when the source has a choice."
-        icon captions class="size-5 text-white"
-      end
-      box name=quality class="h-10 items-center justify-center rounded-full px-3 hover:bg-white/15" note="The qualities the plugin's stream offers; shown when it offers several."
-        text "1080p" name=quality-label class="text-[13px] font-semibold text-white"
-      end
-      box name=fullscreen class="size-10 items-center justify-center rounded-full hover:bg-white/15"
-        icon maximize name=fullscreen-icon class="size-[18px] text-white"
+    box class="flex-1"
+    end
+    box name=danmaku class="h-7 flex-row items-center gap-1 rounded-full px-2 hover:bg-white/15" note="Toggles danmaku; pressing and holding, or the arrow beside it on hover, opens danmaku settings."
+      icon message-square-text name=danmaku-icon class="size-3.5 text-[#66CCFF]"
+      text "DM" name=danmaku-label class="text-[11px] font-semibold text-white"
+      box name=danmaku-dot class="size-1 rounded-full bg-[#66CCFF]"
       end
     end
-  end
-  box class="flex-row items-center gap-3 px-1"
-    text "1:31:05" name=elapsed class="w-14 text-[12px] font-medium text-white/90"
-    box name=seek class="h-4 flex-1 justify-center" note="Seeks where pressed or dragged, showing the time under the pointer; the lighter range is what is buffered. The bar thickens while the pointer is over it."
-      box class="h-1.5 overflow-hidden rounded-full bg-white/20"
-        box class="absolute top-0 bottom-0 left-0 w-[72%] bg-white/30"
-        end
-        box name=played class="absolute top-0 bottom-0 left-0 w-[56%] rounded-full bg-white"
-        end
-      end
-      box name=thumb class="absolute left-[56%] -ml-2 size-4 rounded-full bg-white shadow-lg"
-      end
+    box name=parts class="h-7 flex-row items-center gap-1 rounded-full px-2 hover:bg-white/15" note="The parts of the video; shown when it has several."
+      icon list-video class="size-3.5 text-white"
+      text "P2/3" name=parts-label class="text-[11px] font-medium text-white"
     end
-    text "−15:27" name=remaining class="w-14 text-right text-[12px] font-medium text-white/60" note="The time left; pressing it shows the duration instead."
+    box name=speed class="h-7 min-w-7 items-center justify-center rounded-full px-1.5 hover:bg-white/15"
+      text "1×" name=speed-label class="text-[11px] font-semibold text-white"
+    end
+    box name=subtitles class="size-7 items-center justify-center rounded-full hover:bg-white/15" note="Subtitle and audio tracks, in one menu; shown when the source has a choice."
+      icon captions class="size-3.5 text-white"
+    end
+    box name=quality class="h-7 items-center justify-center rounded-full px-2 hover:bg-white/15" note="The qualities the plugin's stream offers; shown when it offers several."
+      text "1080p" name=quality-label class="text-[11px] font-semibold text-white"
+    end
+    box name=fullscreen class="size-7 items-center justify-center rounded-full hover:bg-white/15"
+      icon maximize name=fullscreen-icon class="size-3.5 text-white"
+    end
   end
 end
-variant local parts.class="hidden" next.class="hidden" quality.class="hidden" subcaption.class="hidden"
+variant local parts.class="hidden" next.class="hidden" quality.class="hidden" danmaku.class="hidden"
 variant fullscreen fullscreen-icon=minimize
+variant danmaku-off danmaku-icon.class="text-white/50" danmaku-label.class="text-white/60" danmaku-dot.class="hidden"
+variant mini volume-slider.class="hidden" volume.class="pr-0" parts.class="hidden" speed.class="hidden" subtitles.class="hidden" quality.class="hidden" next.class="hidden"

@@ -1,7 +1,6 @@
 design en in="main#content" name="Main/Open"
 box class="flex-1"
-  use toolbar variant=root title="Open"
-  box class="flex-1 items-center justify-center gap-6 px-10 pb-10" note="Opens a local file or a URL in the player. Loading and errors show in the player, which opens at once."
+  box class="flex-1 items-center justify-center gap-6 px-10 pb-10" note="Opens a local file or a URL in the standalone compact player window. Loading and errors show in the player window, which opens at once."
     box class="w-[520px] items-center gap-4 rounded-3xl border-2 border-dashed border-zinc-200 bg-zinc-50/60 px-10 py-10" note="A file dropped anywhere in the window plays."
       image "NSGo Player's icon" src="assets/app-icon.png" class="size-20"
       box class="items-center gap-1"
@@ -25,7 +24,6 @@ end
 
 design dragging in="main#content" name="Open · Dropping a file"
 box class="flex-1"
-  use toolbar variant=root title="Open"
   box class="flex-1 items-center justify-center gap-6 px-10 pb-10"
     box class="w-[520px] items-center gap-4 rounded-3xl border-2 border-dashed border-[#E8553A] bg-[#FF6B4A]/[0.07] px-10 py-10"
       box class="size-20 items-center justify-center rounded-3xl bg-[#E8553A] shadow-lg"

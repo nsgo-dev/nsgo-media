@@ -1,32 +1,40 @@
-design en in="main#content" name="Main/Plugin page"
-box class="flex-1"
-  use toolbar title="Popular" back.tap="close"
-  box class="flex-1 gap-6 overflow-hidden px-7 py-6" note="A page of the plugin: a sidebar entry, a section's More, an uploader or a collection, all drawn from the sections browse answers. A section without a title shows its cards alone, as here."
+design en in="main#content" name="Main/Discover"
+box class="flex-1" note="Merged discovery page combining popular feeds, rankings and plugin categories across all enabled sources."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  box class="flex-1 gap-6 overflow-hidden px-7 py-5"
     box class="flex-row flex-wrap gap-x-5 gap-y-6"
-      use video-card image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="Blue Hours · 2 days ago" duration="9:31" card.tap="open video"
-      use video-card image.src="assets/thumbs/bread.jpg" title="My sourdough routine, start to finish" subtitle="Small Kitchen · 5 days ago" duration="24:16" card.tap="open video"
+      use video-card source.variant=orbit image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="Blue Hours · 2 days ago" duration="9:31" card.tap="open video"
+      use video-card source.variant=feeds image.src="assets/thumbs/bread.jpg" title="My sourdough routine, start to finish" subtitle="Small Kitchen · 5 days ago" duration="24:16" card.tap="open video"
       use video-card image.src="assets/thumbs/forest.jpg" title="A misty forest walk with only the sound of rain" subtitle="Morning Trails · 6 days ago" duration="31:44" card.tap="open video"
-      use video-card image.src="assets/thumbs/desk.jpg" title="How I plan a week of drawing" subtitle="Quiet Studio · 1 week ago" duration="14:02" card.tap="open video"
-      use video-card image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55" card.tap="open video"
-      use video-card image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10" card.tap="open video"
-      use video-card image.src="assets/thumbs/city.jpg" title="Driving through the city in the rain" subtitle="Night Loops · 1 month ago" duration="1:12:05" card.tap="open video"
+      use video-card source.variant=feeds image.src="assets/thumbs/desk.jpg" title="How I plan a week of drawing" subtitle="Quiet Studio · 1 week ago" duration="14:02" card.tap="open video"
+      use video-card source.variant=orbit image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55" card.tap="open video"
+      use video-card source.variant=orbit image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10" card.tap="open video"
+      use video-card source.variant=local image.src="assets/thumbs/city.jpg" title="night-drive-2026-10-03.mkv" subtitle="Local Files · Movies" duration="1:12:05" card.tap="open player#local"
       use video-card image.src="assets/thumbs/mountains.jpg" title="Sunrise over an alpine lake, four hours of calm" subtitle="Morning Trails · 1 month ago" duration="4:02:18" card.tap="open video"
+      use video-card source.variant=feeds image.src="assets/thumbs/ramen.jpg" title="Shoyu ramen from scratch at home" subtitle="Small Kitchen · 1 week ago" duration="18:47" card.tap="open video"
+      use video-card image.src="assets/thumbs/forest.jpg" title="Autumn trail in the northern woods" subtitle="Morning Trails · 2 months ago" duration="28:15" card.tap="open video"
     end
-    box class="items-center pt-2" note="Shown while the plugin answered a next cursor; loads the page after and adds its cards. It loads by itself once scrolled into view."
+    box class="items-center pt-2" note="Shown while any source answered a next cursor; loads the next page and merges its cards."
       use button variant="secondary text" label="Load More" button.tap="open #loading-more"
     end
   end
 end
 
-design loading-more in="main#content" name="Plugin page · Loading more"
+design loading-more in="main#content" name="Discover · Loading more"
 box class="flex-1"
-  use toolbar title="Popular" back.tap="close"
-  box class="flex-1 gap-6 overflow-hidden px-7 py-6"
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  box class="flex-1 gap-6 overflow-hidden px-7 py-5"
     box class="flex-row flex-wrap gap-x-5 gap-y-6"
-      use video-card image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55"
-      use video-card image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10"
-      use video-card image.src="assets/thumbs/city.jpg" title="Driving through the city in the rain" subtitle="Night Loops · 1 month ago" duration="1:12:05"
+      use video-card source.variant=orbit image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55"
+      use video-card source.variant=orbit image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10"
+      use video-card source.variant=local image.src="assets/thumbs/city.jpg" title="night-drive-2026-10-03.mkv" subtitle="Local Files · Movies" duration="1:12:05"
       use video-card image.src="assets/thumbs/mountains.jpg" title="Sunrise over an alpine lake, four hours of calm" subtitle="Morning Trails · 1 month ago" duration="4:02:18"
+      use video-card source.variant=feeds image.src="assets/thumbs/ramen.jpg" title="Shoyu ramen from scratch at home" subtitle="Small Kitchen · 1 week ago" duration="18:47"
+      use skeleton-card
       use skeleton-card
       use skeleton-card
       use skeleton-card
@@ -35,15 +43,18 @@ box class="flex-1"
   end
 end
 
-design more-failed in="main#content" name="Plugin page · Loading more failed"
+design more-failed in="main#content" name="Discover · Loading more failed"
 box class="flex-1"
-  use toolbar title="Popular" back.tap="close"
-  box class="flex-1 gap-6 overflow-hidden px-7 py-6"
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  box class="flex-1 gap-6 overflow-hidden px-7 py-5"
     box class="flex-row flex-wrap gap-x-5 gap-y-6"
-      use video-card image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55"
-      use video-card image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10"
-      use video-card image.src="assets/thumbs/city.jpg" title="Driving through the city in the rain" subtitle="Night Loops · 1 month ago" duration="1:12:05"
+      use video-card source.variant=orbit image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55"
+      use video-card source.variant=orbit image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10"
+      use video-card source.variant=local image.src="assets/thumbs/city.jpg" title="night-drive-2026-10-03.mkv" subtitle="Local Files · Movies" duration="1:12:05"
       use video-card image.src="assets/thumbs/mountains.jpg" title="Sunrise over an alpine lake, four hours of calm" subtitle="Morning Trails · 1 month ago" duration="4:02:18"
+      use video-card source.variant=feeds image.src="assets/thumbs/ramen.jpg" title="Shoyu ramen from scratch at home" subtitle="Small Kitchen · 1 week ago" duration="18:47"
     end
     box class="flex-row items-center justify-center gap-3 rounded-xl bg-rose-50 px-4 py-3" note="Loading the next page failed: the cards loaded stay, and Try Again asks for the same cursor."
       icon circle-alert class="size-4 text-rose-500"
@@ -53,7 +64,7 @@ box class="flex-1"
   end
 end
 
-design uploader in="main#content" name="Plugin page · Uploader"
+design uploader in="main#content" name="Discover · Uploader"
 box class="flex-1"
   use toolbar title="Morning Trails" back.tap="close"
   box class="flex-1 gap-7 overflow-hidden px-7 py-6" note="An uploader opens browse with its id; the plugin answers sections, such as its videos and its collections, drawn as on any page."
@@ -64,6 +75,7 @@ box class="flex-1"
         use video-card image.src="assets/thumbs/mountains.jpg" title="Sunrise over an alpine lake, four hours of calm" subtitle="1 month ago" duration="4:02:18" card.tap="open video"
         use video-card image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="2 months ago" duration="9:31" card.tap="open video"
         use video-card image.src="assets/thumbs/desk.jpg" title="Packing light for three days on the trail" subtitle="3 months ago" duration="16:20" card.tap="open video"
+        use video-card image.src="assets/thumbs/piano.jpg" title="Evening camp by the river" subtitle="4 months ago" duration="22:10" card.tap="open video"
       end
     end
     box class="gap-3"
@@ -83,10 +95,12 @@ box class="flex-1"
   end
 end
 
-design loading in="main#content" name="Plugin page · Loading"
+design loading in="main#content" name="Discover · Loading"
 box class="flex-1"
-  use toolbar title="Popular" back.tap="close"
-  box class="flex-1 gap-6 overflow-hidden px-7 py-6"
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  box class="flex-1 gap-6 overflow-hidden px-7 py-5"
     box class="flex-row flex-wrap gap-x-5 gap-y-6"
       use skeleton-card
       use skeleton-card
@@ -96,17 +110,19 @@ box class="flex-1"
       use skeleton-card
       use skeleton-card
       use skeleton-card
+      use skeleton-card
+      use skeleton-card
     end
   end
 end
 
-design empty in="main#content" name="Plugin page · Empty"
+design empty in="main#content" name="Discover · Empty"
 box class="flex-1"
   use toolbar title="Favorites" back.tap="close"
   use state title="Nothing here" message="This page has no videos yet."
 end
 
-design signin in="main#content" name="Plugin page · Sign in"
+design signin in="main#content" name="Discover · Sign in"
 box class="flex-1"
   use toolbar title="Favorites" back.tap="close"
   use state variant=sign-in title="Sign in to Demo" message="Sign in to see your favorites." note="A plugin's signIn error: its message, and Sign In, which opens the plugin's sign-in. The page loads again once signed in."
@@ -116,9 +132,9 @@ box class="flex-1"
   end
 end
 
-design error in="main#content" name="Plugin page · Error"
+design error in="main#content" name="Discover · Error"
 box class="flex-1"
-  use toolbar title="Popular" back.tap="close"
+  use toolbar title="Discover" back.tap="close"
   use state variant=error title="Demo could not answer" message="The plugin answered something the app cannot show."
     fill action
       use button variant="secondary text" label="Try Again"

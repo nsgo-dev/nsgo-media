@@ -1,25 +1,24 @@
 design en in="main#content" name="Main/Following"
-box class="flex-1" note="A plugin's following export answers the shows its account follows, newest update first, with each one's status, episodes watched, latest episode and whether it has a new one; follow and unfollow change them on the account."
-  use toolbar variant=root title="Following"
-    fill actions
-      use status-tabs all.state=selected all.tap="open following" watching.tap="open #watching"
-    end
+box class="flex-1" note="Merges followed shows from every plugin that supports following, newest update first, with each show's source icon in the top-right corner."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+    use status-tabs all.state=selected all.tap="open following" watching.tap="open #watching"
   end
-  box class="flex-1 gap-7 overflow-hidden px-7 py-6"
+  box class="flex-1 gap-7 overflow-hidden px-7 py-5"
     box class="gap-3"
       use section-header title="New episodes" variant=no-more
       box class="flex-row gap-5"
         use series-card card.tap="open video#show"
-        use series-card image.src="assets/thumbs/city.jpg" title="Night Loops: Season 2" watched="Watched EP 7" latest="Updated to EP 8" progress-bar.class="w-7/8" card.tap="open video#show"
-        use series-card image.src="assets/thumbs/ramen.jpg" title="Small Kitchen, Big Flavors" watched="Watched EP 20" latest="Updated to EP 22" progress-bar.class="w-11/12" card.tap="open video#show"
+        use series-card source.variant=orbit image.src="assets/thumbs/city.jpg" title="Night Loops: Season 2" watched="Watched EP 7" latest="Updated to EP 8" progress-bar.class="w-7/8" card.tap="open video#show"
+        use series-card source.variant=feeds image.src="assets/thumbs/ramen.jpg" title="Small Kitchen, Big Flavors" watched="Watched EP 20" latest="Updated to EP 22" progress-bar.class="w-11/12" card.tap="open video#show"
       end
     end
     box class="gap-3"
       use section-header title="Watching" variant=no-more
       box class="flex-row flex-wrap gap-x-5 gap-y-6"
         use series-card variant=seen image.src="assets/thumbs/forest.jpg" title="Forests of the North" watched="Watched EP 3" latest="10 episodes" progress-bar.class="w-3/10" card.tap="open video#show"
-        use series-card variant=seen image.src="assets/thumbs/ocean.jpg" title="Coastlines" watched="Watched EP 6" latest="Updated to EP 6" progress-bar.class="w-full" card.tap="open video#show"
-        use series-card variant=unstarted image.src="assets/thumbs/piano.jpg" title="Felt Keys Live" watched="Not started" latest="8 episodes" card.tap="open video#show"
+        use series-card variant=seen source.variant=orbit image.src="assets/thumbs/ocean.jpg" title="Coastlines" watched="Watched EP 6" latest="Updated to EP 6" progress-bar.class="w-full" card.tap="open video#show"
+        use series-card variant=unstarted source.variant=feeds image.src="assets/thumbs/piano.jpg" title="Felt Keys Live" watched="Not started" latest="8 episodes" card.tap="open video#show"
         use series-card variant=finished image.src="assets/thumbs/mountains.jpg" title="Lakes of the Alps" watched="Completed" latest="18 episodes" card.tap="open video#show"
       end
     end
@@ -28,32 +27,30 @@ end
 
 design watching in="main#content" name="Following · Watching"
 box class="flex-1"
-  use toolbar variant=root title="Following"
-    fill actions
-      use status-tabs watching.state=selected all.tap="open following" watching.tap="open #watching"
-    end
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+    use status-tabs watching.state=selected all.tap="open following" watching.tap="open #watching"
   end
-  box class="flex-1 gap-6 overflow-hidden px-7 py-6" note="A status asks following again with it; the plugin answers one list."
+  box class="flex-1 gap-6 overflow-hidden px-7 py-5" note="A status asks each source's following again with it and merges the results."
     box class="flex-row flex-wrap gap-x-5 gap-y-6"
       use series-card card.tap="open video#show"
-      use series-card image.src="assets/thumbs/city.jpg" title="Night Loops: Season 2" watched="Watched EP 7" latest="Updated to EP 8" progress-bar.class="w-7/8"
-      use series-card image.src="assets/thumbs/ramen.jpg" title="Small Kitchen, Big Flavors" watched="Watched EP 20" latest="Updated to EP 22" progress-bar.class="w-11/12"
+      use series-card source.variant=orbit image.src="assets/thumbs/city.jpg" title="Night Loops: Season 2" watched="Watched EP 7" latest="Updated to EP 8" progress-bar.class="w-7/8"
+      use series-card source.variant=feeds image.src="assets/thumbs/ramen.jpg" title="Small Kitchen, Big Flavors" watched="Watched EP 20" latest="Updated to EP 22" progress-bar.class="w-11/12"
       use series-card variant=seen image.src="assets/thumbs/forest.jpg" title="Forests of the North" watched="Watched EP 3" latest="10 episodes" progress-bar.class="w-3/10"
-      use series-card variant=seen image.src="assets/thumbs/ocean.jpg" title="Coastlines" watched="Watched EP 6" latest="Updated to EP 6" progress-bar.class="w-full"
+      use series-card variant=seen source.variant=orbit image.src="assets/thumbs/ocean.jpg" title="Coastlines" watched="Watched EP 6" latest="Updated to EP 6" progress-bar.class="w-full"
     end
   end
 end
 
 design loading in="main#content" name="Following · Loading"
 box class="flex-1"
-  use toolbar variant=root title="Following"
-  box class="flex-1 gap-3 overflow-hidden px-7 py-6"
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  box class="flex-1 gap-3 overflow-hidden px-7 py-5"
     box class="h-5 w-36 rounded-md bg-zinc-200/70"
     end
     box class="flex-row flex-wrap gap-x-5 gap-y-6"
-      use skeleton-card
-      use skeleton-card
-      use skeleton-card
       use skeleton-card
       use skeleton-card
       use skeleton-card
@@ -65,14 +62,18 @@ end
 
 design empty in="main#content" name="Following · Empty"
 box class="flex-1"
-  use toolbar variant=root title="Following"
-  use state icon=tv title="You're not following anything yet" message="Follow a show from its page on Demo, and its new episodes show up here."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  use state icon=tv title="You're not following anything yet" message="Follow a show from any plugin, and its new episodes show up here."
 end
 
 design signin in="main#content" name="Following · Sign in"
 box class="flex-1"
-  use toolbar variant=root title="Following"
-  use state variant=sign-in title="Sign in to Demo" message="Sign in to see the shows you follow." note="Following lives on the plugin's account: signed out, the plugin answers its signIn error."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter demo.state=selected
+  end
+  use state variant=sign-in title="Sign in to Demo" message="Sign in to see the shows you follow." note="Following lives on each plugin's account: signed out, the plugin answers its signIn error."
     fill action
       use button variant=text label="Sign In" button.tap="open sign-in"
     end
@@ -81,7 +82,9 @@ end
 
 design error in="main#content" name="Following · Error"
 box class="flex-1"
-  use toolbar variant=root title="Following"
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter demo.state=selected
+  end
   use state variant=error title="Demo could not answer" message="The plugin could not answer."
     fill action
       use button variant="secondary text" label="Try Again"

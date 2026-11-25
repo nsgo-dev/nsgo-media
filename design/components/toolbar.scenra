@@ -1,9 +1,9 @@
-component name="Content/Toolbar" width=fill preview=968
-box class="h-[52px] flex-row items-center gap-2 border-b border-zinc-200/70 bg-white/80 px-4"
-  box name=back class="size-7 items-center justify-center rounded-md hover:bg-zinc-100" note="Back to the page this one was opened from; hidden on a page opened from the sidebar."
+component name="Content/Sub-page bar" width=fill preview=1200
+box class="h-11 flex-row items-center gap-2 border-b border-zinc-200/70 bg-white/80 px-5" note="Shown on pushed detail pages (video, uploader, plugin settings) below the unified toolbar."
+  box name=back class="size-7 items-center justify-center rounded-md hover:bg-zinc-100" note="Returns to the previous page."
     icon chevron-left class="size-[18px] text-zinc-600"
   end
-  text "Home" name=title class="flex-1 truncate text-[15px] font-semibold text-zinc-900" note="The page's title: the plugin's own page title when it answers one, else the sidebar entry's or the item's that opened it."
+  text "Page Title" name=title class="flex-1 truncate text-[14px] font-semibold text-zinc-900"
   slot actions class="flex-row items-center gap-2"
   end
 end

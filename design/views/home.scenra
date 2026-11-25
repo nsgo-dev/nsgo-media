@@ -1,33 +1,38 @@
 design en in="main#content" name="Main/Home"
-box class="flex-1"
-  use toolbar variant=root title="Demo"
-  box class="flex-1 gap-8 overflow-hidden px-7 py-6"
+box class="flex-1" note="Unified home feed merging videos from all enabled plugins; each card marks its source with an icon badge in the top-left corner."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  box class="flex-1 gap-7 overflow-hidden px-7 py-5"
     box class="gap-3"
       use section-header title="Continue watching" variant=no-more
       box class="flex-row gap-5"
         use video-card variant=watched image.src="assets/thumbs/mountains.jpg" title="Sunrise over an alpine lake, four hours of calm" subtitle="Morning Trails · 3 days ago" duration="4:02:18" card.tap="open video"
-        use video-card variant=watched image.src="assets/thumbs/ramen.jpg" title="Shoyu ramen from scratch at home" subtitle="Small Kitchen · 1 week ago" duration="18:47" card.tap="open video"
-        use video-card image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10" card.tap="open video"
-        use video-card image.src="assets/thumbs/city.jpg" title="Driving through the city in the rain" subtitle="Night Loops · 1 month ago" duration="1:12:05" card.tap="open video"
+        use video-card variant=watched source.variant=local image.src="assets/thumbs/city.jpg" title="night-drive-2026-10-03.mkv" subtitle="Local Files · Movies" duration="1:12:05" card.tap="open player#local"
+        use video-card variant=watched source.variant=feeds image.src="assets/thumbs/ramen.jpg" title="Shoyu ramen from scratch at home" subtitle="Small Kitchen · 1 week ago" duration="18:47" card.tap="open video"
+        use video-card source.variant=orbit image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10" card.tap="open video"
+        use video-card image.src="assets/thumbs/desk.jpg" title="How I plan a week of drawing" subtitle="Quiet Studio · 1 week ago" duration="14:02" card.tap="open video"
       end
     end
     box class="gap-3"
-      use section-header title="Popular this week" more.tap="open browse"
+      use section-header title="Recommended across sources" more.tap="open browse"
       box class="flex-row gap-5"
-        use video-card image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="Blue Hours · 2 days ago" duration="9:31" card.tap="open video"
-        use video-card image.src="assets/thumbs/bread.jpg" title="My sourdough routine, start to finish" subtitle="Small Kitchen · 5 days ago" duration="24:16" card.tap="open video"
+        use video-card source.variant=orbit image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="Blue Hours · 2 days ago" duration="9:31" card.tap="open video"
+        use video-card source.variant=feeds image.src="assets/thumbs/bread.jpg" title="My sourdough routine, start to finish" subtitle="Small Kitchen · 5 days ago" duration="24:16" card.tap="open video"
         use video-card variant=collection image.src="assets/thumbs/nebula.jpg" title="Journey through the nebulae" subtitle="Deep Field · Collection" duration="12 videos" card.tap="open browse"
         use video-card image.src="assets/thumbs/forest.jpg" title="A misty forest walk with only the sound of rain" subtitle="Morning Trails · 6 days ago" duration="31:44" card.tap="open video"
+        use video-card source.variant=local image.src="assets/thumbs/mountains.jpg" title="alps-timelapse-raw.mov" subtitle="Local Files · Clips" duration="06:42" card.tap="open player#local"
       end
     end
     box class="gap-3"
       use section-header title="Uploaders you follow" more.tap="open browse"
       box class="flex-row gap-6"
         use uploader-card title="Morning Trails" subtitle="128 videos"
-        use uploader-card image.src="assets/thumbs/avatar1.jpg" title="Small Kitchen" subtitle="64 videos"
-        use uploader-card image.src="assets/thumbs/piano.jpg" title="Felt Keys" subtitle="41 videos"
+        use uploader-card source.variant=feeds image.src="assets/thumbs/avatar1.jpg" title="Small Kitchen" subtitle="64 videos"
+        use uploader-card source.variant=orbit image.src="assets/thumbs/piano.jpg" title="Felt Keys" subtitle="41 videos"
         use uploader-card image.src="assets/thumbs/city.jpg" title="Night Loops" subtitle="23 videos"
-        use uploader-card image.src="assets/thumbs/nebula.jpg" title="Deep Field" subtitle="97 videos"
+        use uploader-card source.variant=orbit image.src="assets/thumbs/nebula.jpg" title="Deep Field" subtitle="97 videos"
+        use uploader-card source.variant=feeds image.src="assets/thumbs/desk.jpg" title="Quiet Studio" subtitle="52 videos"
       end
     end
   end
@@ -35,8 +40,10 @@ end
 
 design loading in="main#content" name="Home · Loading"
 box class="flex-1"
-  use toolbar variant=root title="Demo"
-  box class="flex-1 gap-8 overflow-hidden px-7 py-6" note="Grey cards stand in for the sections until home answers; a page loading more keeps its cards and shows one row of these below them."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  box class="flex-1 gap-7 overflow-hidden px-7 py-5" note="Grey cards stand in for the merged feed until plugins answer; each source fills in as it responds."
     box class="gap-3"
       box class="h-5 w-44 rounded-md bg-zinc-200/70"
       end
@@ -45,12 +52,14 @@ box class="flex-1"
         use skeleton-card
         use skeleton-card
         use skeleton-card
+        use skeleton-card
       end
     end
     box class="gap-3"
-      box class="h-5 w-36 rounded-md bg-zinc-200/70"
+      box class="h-5 w-48 rounded-md bg-zinc-200/70"
       end
       box class="flex-row gap-5"
+        use skeleton-card
         use skeleton-card
         use skeleton-card
         use skeleton-card
@@ -62,14 +71,18 @@ end
 
 design empty in="main#content" name="Home · Empty"
 box class="flex-1"
-  use toolbar variant=root title="Demo"
-  use state title="Nothing here" message="Demo has nothing to show on its home yet." note="Shown when the page's sections hold no items."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter all.state=selected
+  end
+  use state title="Nothing here" message="None of your enabled sources have videos to show yet." note="Shown when no enabled plugin returns items."
 end
 
 design error in="main#content" name="Home · Error"
 box class="flex-1"
-  use toolbar variant=root title="Demo"
-  use state variant=error title="Demo could not answer" message="The plugin took too long or used too much memory." note="The message is the plugin's own when it threw one, else the app's for a failed, invalid or stopped plugin. A plugin's unavailable error shows no button."
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter demo.state=selected
+  end
+  use state variant=error title="Demo could not answer" message="The plugin took too long or used too much memory." note="When viewing a single source that failed; in All Sources, other plugins still render and a compact banner notes the failed source."
     fill action
       use button variant="secondary text" label="Try Again"
     end
@@ -78,10 +91,12 @@ end
 
 design setup in="main#content" name="Home · Needs setup"
 box class="flex-1"
-  use toolbar variant=root title="Local Files"
+  box class="flex-row items-center justify-between border-b border-zinc-100 px-7 py-3"
+    use source-filter local.state=selected
+  end
   use state variant=sign-in icon=folder-cog title="Local Files needs setting up" message="Add your video folders in the settings." note="A plugin's setup error: its message, and a button to its settings."
     fill action
-      use button variant=text label="Open Settings" button.tap="open plugin"
+      use button variant=text label="Open Settings" button.tap="open plugin#builtin"
     end
   end
 end

@@ -1,0 +1,23 @@
+component name="Controls/Source filter" width=fill preview=1144
+box class="flex-row items-center gap-2" note="Filters the merged stream by source; All Sources combines every enabled plugin into one feed."
+  box name=all class="group h-7 flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 hover:bg-zinc-50 selected:border-zinc-900 selected:bg-zinc-900"
+    icon layers class="size-3.5 text-zinc-500 group-selected:text-white"
+    text "All Sources" class="text-xs font-medium text-zinc-700 group-selected:text-white"
+  end
+  box name=demo class="group h-7 flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white py-0.5 pr-3 pl-1.5 hover:bg-zinc-50 selected:border-[#E8553A] selected:bg-[#FF6B4A]/10"
+    use source-badge variant=small
+    text "Demo" class="text-xs font-medium text-zinc-700 group-selected:text-[#C8442B]"
+  end
+  box name=local class="group h-7 flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white py-0.5 pr-3 pl-1.5 hover:bg-zinc-50 selected:border-[#16A88E] selected:bg-[#16A88E]/10"
+    use source-badge variant="local small"
+    text "Local Files" class="text-xs font-medium text-zinc-700 group-selected:text-[#0F766E]"
+  end
+  box name=feeds class="group h-7 flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white py-0.5 pr-3 pl-1.5 hover:bg-zinc-50 selected:border-[#F0A800] selected:bg-[#F0A800]/10"
+    use source-badge variant="feeds small"
+    text "Sample Feeds" class="text-xs font-medium text-zinc-700 group-selected:text-[#A16207]"
+  end
+  box name=orbit class="group h-7 flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white py-0.5 pr-3 pl-1.5 hover:bg-zinc-50 selected:border-[#0284C7] selected:bg-[#0284C7]/10"
+    use source-badge variant="orbit small"
+    text "Orbit" class="text-xs font-medium text-zinc-700 group-selected:text-[#0369A1]"
+  end
+end

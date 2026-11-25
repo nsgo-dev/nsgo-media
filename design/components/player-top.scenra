@@ -1,9 +1,20 @@
-component name="Player/Top bar" width=fill preview=1200 backdrop="bg-zinc-700"
-box class="h-[76px] flex-row items-center gap-3 pr-5 pl-[88px]" note="The title shows in the floating controls; this bar keeps only the way back, 20 points from the top as the controls are from the bottom, its centre on the window buttons' centre and 16 points right of them."
-  box name=back class="size-9 items-center justify-center rounded-full border border-white/25 bg-white/10 shadow-lg backdrop-blur-2xl hover:bg-white/20"
-    icon chevron-left class="size-[18px] text-white"
+component name="Player/Top bar" width=fill preview=960 backdrop="bg-zinc-700"
+box class="h-14 flex-row items-center gap-2.5 px-3.5" note="Compact borderless top bar for the standalone player window: no macOS traffic lights; dragging empty space moves the window. Shows and hides with the controls: only while the pointer is over the window, fading out as soon as it leaves or rests for 1.5 seconds."
+  box name=close class="size-8 items-center justify-center rounded-full border border-white/20 bg-black/35 shadow-lg backdrop-blur-2xl hover:bg-black/55" note="Closes the standalone player window."
+    icon x class="size-4 text-white"
   end
-  text "Sunrise over an alpine lake, four hours of calm – The ridge catches the sun" name=title class="hidden flex-1 truncate text-sm font-semibold text-white"
+  box name=title-pill class="max-w-[520px] flex-row items-center gap-2 rounded-full border border-white/15 bg-black/30 py-1 pr-3 pl-1.5 backdrop-blur-2xl"
+    use source-badge name=source variant=small
+    text "Sunrise over an alpine lake – The ridge catches the sun" name=title class="truncate text-xs font-medium text-white/95"
+  end
+  box class="flex-1"
+  end
+  box name=pin class="h-8 flex-row items-center gap-1.5 rounded-full border border-white/20 bg-black/35 px-2.5 shadow-lg backdrop-blur-2xl hover:bg-black/55" note="Pins the standalone player window above all other windows (always on top)."
+    icon pin name=pin-icon class="size-3.5 text-white"
+    text "Pinned" name=pin-label class="hidden text-xs font-semibold text-white"
+  end
 end
-variant fullscreen class="pl-5"
-variant titled class="bg-linear-to-b from-black/70 to-transparent" title.class="flex"
+variant pinned pin.class="border-[#FF8A6B]/60 bg-[#E8553A] px-3 hover:bg-[#d94a30]" pin-label.class="flex"
+variant fullscreen pin.class="hidden"
+variant local source.variant="local small"
+variant titled class="bg-linear-to-b from-black/70 to-transparent"

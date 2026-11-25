@@ -1,0 +1,9 @@
+component name="Badges/Source icon"
+box name=badge class="size-5 items-center justify-center rounded-md bg-linear-to-br from-[#FF8A6B] to-[#E8553A] shadow-sm ring-1 ring-white/25" note="Marks which plugin or source an item comes from in a merged video stream."
+  icon play name=icon class="size-3 text-white"
+end
+variant local badge.class="from-[#3BD6B8] to-[#16A88E]" icon=hard-drive
+variant feeds badge.class="from-[#FFD25C] to-[#F0A800]" icon=rss
+variant orbit badge.class="from-[#38BDF8] to-[#0284C7]" icon=sparkles
+variant small badge.class="size-4 rounded" icon.class="size-2.5"
+variant circle badge.class="rounded-full ring-2 ring-white"

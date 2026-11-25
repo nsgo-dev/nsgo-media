@@ -3,6 +3,7 @@ box name=card class="group gap-2"
   box class="h-[120px] overflow-hidden rounded-xl bg-zinc-200 shadow-sm"
     image "Show cover" name=image src="assets/thumbs/nebula.jpg" class="size-full"
     text "New" name=new class="absolute top-1.5 left-1.5 rounded-md bg-[#E8553A] px-1.5 py-0.5 text-[11px] font-semibold text-white" note="The plugin says an episode came out since the viewer last watched."
+    use source-badge name=source class="absolute top-1.5 right-1.5" note="Plugin source icon marking which account this followed show belongs to."
     box name=progress class="absolute right-0 bottom-0 left-0 h-[3px] bg-white/40" note="Episodes watched of those out."
       box name=progress-bar class="h-full w-5/12 bg-[#FF6B4A]"
       end

@@ -3,8 +3,9 @@ box class="flex-1"
   use toolbar title="Sunrise over an alpine lake, four hours of calm" back.tap="close"
   box class="flex-1 gap-7 overflow-hidden px-7 py-6"
     box class="flex-row gap-7"
-      box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg" tap="open player" note="The video's picture; pressing it plays as Play does."
+      box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg" tap="open player" note="The video's picture; pressing it opens the standalone compact player window."
         image "Alpine lake at sunrise" src="assets/thumbs/mountains.jpg" class="size-full"
+        use source-badge class="absolute top-2.5 left-2.5"
         box class="absolute inset-0 items-center justify-center bg-black/10"
           box class="size-16 items-center justify-center rounded-full bg-white/85 shadow-xl"
             icon play class="ml-1 size-7 text-zinc-900"
@@ -22,10 +23,14 @@ box class="flex-1"
             image "Uploader's avatar" src="assets/thumbs/avatar2.jpg" class="size-6 rounded-full"
             text "Morning Trails" class="text-[13px] font-medium text-zinc-800"
           end
+          box class="flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white py-0.5 pr-2.5 pl-1" note="Identifies which plugin provides this video."
+            use source-badge variant=small
+            text "Demo" class="text-xs font-medium text-zinc-600"
+          end
           text "Nov 21, 2026 · 4:02:18 · 3 parts" class="text-[13px] text-zinc-500" note="The date published and the length, when the plugin answers them, and the number of parts when there are several."
         end
         box class="flex-row items-center gap-2 pt-1"
-          use button variant=large label="Resume P2 at 1:31:05" button.tap="open player" note="Play starts with the part the plugin names, else the first; where the viewer left a part, it resumes there, as the player's resume offer does today."
+          use button variant=large label="Resume P2 at 1:31:05" button.tap="open player" note="Opens the standalone player window and resumes where the viewer left off."
           use button variant="secondary large" icon=rotate-ccw label="Play from Start" button.tap="open player"
           use button variant="secondary large" icon=plus label="Follow" button.tap="open #show" note="Shown when the plugin has follow and the video belongs to a show it can follow; follows it on the plugin's account."
         end
@@ -45,21 +50,23 @@ box class="flex-1"
       use section-header title="Related" variant=no-more
       box class="flex-row gap-5"
         use video-card image.src="assets/thumbs/forest.jpg" title="A misty forest walk with only the sound of rain" subtitle="Morning Trails · 6 days ago" duration="31:44" card.tap="open video"
-        use video-card image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="Blue Hours · 2 days ago" duration="9:31" card.tap="open video"
-        use video-card image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55" card.tap="open video"
-        use video-card image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10" card.tap="open video"
+        use video-card source.variant=orbit image.src="assets/thumbs/ocean.jpg" title="Turquoise coast from above, 4K drone footage" subtitle="Blue Hours · 2 days ago" duration="9:31" card.tap="open video"
+        use video-card source.variant=orbit image.src="assets/thumbs/nebula.jpg" title="What we know about the Carina Nebula" subtitle="Deep Field · 1 week ago" duration="42:55" card.tap="open video"
+        use video-card source.variant=feeds image.src="assets/thumbs/piano.jpg" title="Late-night piano: twelve quiet pieces" subtitle="Felt Keys · 2 weeks ago" duration="52:10" card.tap="open video"
+        use video-card source.variant=feeds image.src="assets/thumbs/bread.jpg" title="My sourdough routine, start to finish" subtitle="Small Kitchen · 5 days ago" duration="24:16" card.tap="open video"
       end
     end
   end
 end
 
 design show in="main#content" name="Video · Followed show"
-box class="flex-1" note="A video of a followed show: its parts are the show's episodes, and the episode to play next starts."
+box class="flex-1" note="A video of a followed show: its parts are the show's episodes, and the episode to play next starts in the standalone player window."
   use toolbar title="Journey through the nebulae" back.tap="close"
   box class="flex-1 gap-7 overflow-hidden px-7 py-6"
     box class="flex-row gap-7"
       box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg" tap="open player"
         image "Space nebula" src="assets/thumbs/nebula.jpg" class="size-full"
+        use source-badge variant=orbit class="absolute top-2.5 left-2.5"
         box class="absolute inset-0 items-center justify-center bg-black/10"
           box class="size-16 items-center justify-center rounded-full bg-white/85 shadow-xl"
             icon play class="ml-1 size-7 text-zinc-900"
@@ -72,6 +79,10 @@ box class="flex-1" note="A video of a followed show: its parts are the show's ep
           box class="flex-row items-center gap-2 rounded-full bg-zinc-100 py-1 pr-3 pl-1"
             image "Uploader's avatar" src="assets/thumbs/avatar1.jpg" class="size-6 rounded-full"
             text "Deep Field" class="text-[13px] font-medium text-zinc-800"
+          end
+          box class="flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white py-0.5 pr-2.5 pl-1"
+            use source-badge variant="orbit small"
+            text "Orbit" class="text-xs font-medium text-zinc-600"
           end
           text "Updated to EP 12 · New episodes on Fridays" class="text-[13px] text-zinc-500" note="The plugin's own words about the show's schedule, when it answers them."
         end
@@ -115,7 +126,7 @@ box class="flex-1"
       end
     end
   end
-  box class="absolute top-[200px] left-[580px] w-[220px] gap-0.5 rounded-xl border border-zinc-200 bg-white/95 p-1.5 shadow-xl" note="The statuses the plugin offers; choosing one tells its follow. Unfollow asks its unfollow."
+  box class="absolute top-[192px] left-[580px] w-[220px] gap-0.5 rounded-xl border border-zinc-200 bg-white/95 p-1.5 shadow-xl" note="The statuses the plugin offers; choosing one tells its follow. Unfollow asks its unfollow."
     box class="h-8 flex-row items-center gap-2.5 rounded-lg bg-zinc-100 px-2.5" tap="close"
       icon eye class="size-4 text-zinc-500"
       text "Watching" class="flex-1 text-[13px] font-medium text-zinc-900"
@@ -172,6 +183,7 @@ box class="flex-1"
     box class="flex-row gap-7"
       box class="h-[225px] w-[400px] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg" tap="open player"
         image "Sourdough being sliced" src="assets/thumbs/bread.jpg" class="size-full"
+        use source-badge variant=feeds class="absolute top-2.5 left-2.5"
         box class="absolute inset-0 items-center justify-center bg-black/10"
           box class="size-16 items-center justify-center rounded-full bg-white/85 shadow-xl"
             icon play class="ml-1 size-7 text-zinc-900"
@@ -184,6 +196,10 @@ box class="flex-1"
           box class="flex-row items-center gap-2 rounded-full bg-zinc-100 py-1 pr-3 pl-1"
             image "Uploader's avatar" src="assets/thumbs/avatar1.jpg" class="size-6 rounded-full"
             text "Small Kitchen" class="text-[13px] font-medium text-zinc-800"
+          end
+          box class="flex-row items-center gap-1.5 rounded-full border border-zinc-200 bg-white py-0.5 pr-2.5 pl-1"
+            use source-badge variant="feeds small"
+            text "Sample Feeds" class="text-xs font-medium text-zinc-600"
           end
           text "24:16" class="text-[13px] text-zinc-500"
         end
