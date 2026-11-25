@@ -88,7 +88,7 @@ player.View{
 }
 ```
 
-`Contain` 完整显示画面并留出黑边，`Cover` 填满视图并裁掉溢出部分，`Fill` 拉伸画面。`FitFunc` 可以改从信号里取填充方式。视图会跟随流的旋转，它拿到的帧不会大于最大的视图所需的尺寸。在 Windows 和 Linux 上，显示器开启 HDR 且 GPU 视图支持时，HDR10 和 HLG 视频会直接输出 HDR；在 SDR 显示器、软件解码路径和截图中会先色调映射到 SDR 再显示，SDR 画面保持不变。
+`Contain` 完整显示画面并留出黑边，`Cover` 填满视图并裁掉溢出部分，`Fill` 拉伸画面。`FitFunc` 可以改从信号里取填充方式。视图会跟随流的旋转，它拿到的帧不会大于最大的视图所需的尺寸。在 Windows、Linux 和 macOS 上，显示器开启 HDR 且 GPU 视图支持时，HDR10 和 HLG 视频会直接输出 HDR；在 SDR 显示器、软件解码路径和截图中会先色调映射到 SDR 再显示，SDR 画面保持不变。
 
 ## 在 iOS 上
 

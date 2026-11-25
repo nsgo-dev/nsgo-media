@@ -18,7 +18,7 @@ NSGo's `core.Video` hands a source to each platform's own player. Formats differ
 - **Sources**: local files and HTTP(S) URLs with the headers the app gives, in any container and codec the bundled FFmpeg decodes, and a separate audio source played with a source's picture, as DASH serves them.
 - **Playback**: play, pause, stop, fast and exact seeking, stepping one frame forward or backward, rates from 0.25× to 4× with the pitch kept, looping and snapshots.
 - **Sound**: volume, mute and the audio track, on the system's default device, and passthrough of AC-3, E-AC-3, DTS, DTS-HD and TrueHD to a receiver.
-- **Picture**: a view that draws the frame with contain, cover or fill, follows the stream's rotation, handles HDR10 and HLG (native HDR on Windows and Linux HDR displays, tone-mapped to SDR otherwise) and lets app views draw above it.
+- **Picture**: a view that draws the frame with contain, cover or fill, follows the stream's rotation, handles HDR10 and HLG (native HDR on Windows, Linux and macOS HDR displays, tone-mapped to SDR otherwise) and lets app views draw above it.
 - **Subtitles**: text and bitmap tracks delivered as cues for the app to draw.
 - **Streams**: HLS and DASH, on demand and live.
 - **Decoding**: VideoToolbox, D3D11VA and VAAPI, falling back to software.

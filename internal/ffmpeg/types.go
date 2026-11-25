@@ -435,6 +435,14 @@ func (f *Frame) SetColor(colorspace int32, fullRange bool) {
 	}
 }
 
+// CopyColor gives f src's color space, range, transfer characteristic
+// and primaries.
+func (f *Frame) CopyColor(src *Frame) {
+	for _, off := range []uintptr{offAVFrameColorRange, offAVFrameColorspace, offAVFrameColorTrc, offAVFrameColorPrimaries} {
+		*(*int32)(at(f.p(), off)) = i32(src.p(), off)
+	}
+}
+
 // SetPlane sets the i-th plane pointer and line size directly, for
 // wrapping caller-owned buffers without copying. Clear it before freeing.
 func (f *Frame) SetPlane(i int, data unsafe.Pointer, stride int) {

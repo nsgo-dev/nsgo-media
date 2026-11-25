@@ -23,8 +23,8 @@ const (
 
 // View draws a player's picture in its box. Children draw above the
 // picture, as do views placed after it: the picture is an image view, or
-// on Windows and Linux a GPU view for pictures decoded on the GPU, never
-// a native window.
+// a GPU view for pictures decoded on the GPU (Windows and Linux) and HDR
+// pictures (macOS), never a native window.
 type View struct {
 	Player *Player
 	Fit    Fit

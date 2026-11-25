@@ -88,7 +88,7 @@ player.View{
 }
 ```
 
-`Contain` shows the whole picture with bars, `Cover` fills the view and crops what overflows, and `Fill` stretches the picture. `FitFunc` gives the fit from a signal instead. The view follows the stream's rotation, and the frames it gets are no larger than the largest view needs. On Windows and Linux, HDR10 and HLG streams output native HDR when the display is in HDR mode and the GPU surface honors it, and tone-map to SDR on SDR displays, software decoding and snapshots; SDR pictures stay unchanged.
+`Contain` shows the whole picture with bars, `Cover` fills the view and crops what overflows, and `Fill` stretches the picture. `FitFunc` gives the fit from a signal instead. The view follows the stream's rotation, and the frames it gets are no larger than the largest view needs. On Windows, Linux and macOS, HDR10 and HLG streams output native HDR when the display is in HDR mode and the GPU surface honors it, and tone-map to SDR on SDR displays, software decoding and snapshots; SDR pictures stay unchanged.
 
 ## On iOS
 
