@@ -5,9 +5,11 @@ package app
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,9 +31,9 @@ import (
 // against.
 const Version = "0.1.0"
 
-// App is the main window: the sidebar of the plugins beside the content,
-// and the player over both while a source plays. Files dropped anywhere
-// play.
+// App is the main window: the unified toolbar over the pages of every
+// enabled plugin together, and a player window of its own while a source
+// plays. Files dropped anywhere play.
 type App struct {
 	// Builtin are the plugins embedded in the app; nil is the local
 	// files plugin.
@@ -77,6 +79,10 @@ func (a App) Render(cx *core.Scope) core.Node {
 	if err != nil {
 		log.Printf("resume positions: %v", err)
 	}
+	recent, err := store.OpenRecent(in("recent.json"))
+	if err != nil {
+		log.Printf("recent videos: %v", err)
+	}
 	client := a.Client
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
@@ -87,11 +93,16 @@ func (a App) Render(cx *core.Scope) core.Node {
 		ctx:       cx.Context(),
 		settings:  settings,
 		positions: positions,
+		recent:    recent,
 		played:    core.NewSignal(cx, 0),
 		dragging:  core.NewSignal(cx, false),
 		pictures:  newPictures(client),
 		prompts:   &prompts{cx: cx, shown: core.NewSignal[*prompt](cx, nil)},
-		stack:     core.NewSignalFunc(cx, []route{{kind: routeOpen}}, nil),
+		stack:     core.NewSignalFunc(cx, []route{{kind: routeHome}}, nil),
+		filter:    core.NewSignal(cx, ""),
+		marks:     map[*plugin.Plugin]*core.SVG{},
+		searches:  core.NewSignal(cx, 0),
+		news:      core.NewSignalFunc[map[*plugin.Plugin]int](cx, nil, nil),
 		toaster:   ui.NewToaster(cx),
 		accounts:  map[*plugin.Plugin]*account{},
 	}
@@ -166,15 +177,11 @@ func (a App) Render(cx *core.Scope) core.Node {
 			}
 		},
 		Children: []core.Node{
-			ui.SidebarShell{
-				TestID:        "shell",
-				Fixed:         true,
-				DefaultWidth:  232,
-				Sidebar:       []core.Node{sh.sidebar(cx)},
-				SidebarFooter: []core.Node{sh.sidebarFooter(cx)},
-				Header:        sh.header(cx),
-				Content:       []core.Node{sh.content(cx, pl)},
-			},
+			core.View{TestID: "shell", Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
+				sh.toolbar(cx),
+				sh.content(cx, pl),
+			}},
+			sh.newsWatcher(cx),
 			pl.page(cx),
 			sh.signInDialog(cx),
 			sh.fromGitHubDialog(cx),
@@ -193,6 +200,7 @@ type shell struct {
 	ctx       context.Context
 	settings  *store.Settings
 	positions *store.Positions
+	recent    *store.Recent
 	// played counts the player closing, after which the resume positions
 	// the pages show change.
 	played *core.Signal[int]
@@ -205,6 +213,11 @@ type shell struct {
 	plugins *core.Signal[[]*plugin.Plugin]
 	refused *core.Signal[[]*refusal]
 	toggled *core.Signal[int]
+	// filter is the id of the plugin the merged pages show alone, "" for
+	// all of them.
+	filter *core.Signal[string]
+	// marks are the plugins' icons, parsed.
+	marks map[*plugin.Plugin]*core.SVG
 	// installing is the plugin whose permissions the viewer is asked to
 	// approve, install how installing it goes, and removing the plugin
 	// they are asked to remove.
@@ -230,10 +243,15 @@ type shell struct {
 	prompts  *prompts
 	accounts map[*plugin.Plugin]*account
 	toaster  *ui.Toaster
-	// stack is the pages opened from the sidebar's entry, the last
-	// showing; opened counts the pages opened.
+	// stack is the pages opened from the toolbar's page, the first, the
+	// last showing; opened counts the pages opened.
 	stack  *core.Signal[[]route]
 	opened int
+	// searches counts the toolbar's search being pressed, which focuses
+	// the search page's field.
+	searches *core.Signal[int]
+	// news counts the shows with new episodes of each plugin following.
+	news *core.Signal[map[*plugin.Plugin]int]
 	// play plays a part of a video from start, which 0 leaves to the
 	// resume offer unless fromStart.
 	play func(p *plugin.Plugin, v *plugin.Video, part int, start time.Duration, fromStart bool)
@@ -242,21 +260,23 @@ type shell struct {
 type routeKind int
 
 const (
-	routeOpen routeKind = iota
-	routeHome
-	routeBrowse
-	routeSearch
-	routeVideo
-	routeSettings
-	routePlugin
+	routeHome routeKind = iota
 	routeFollowing
+	routeDiscover
+	routeOpen
+	routeSearch
+	routeSettings
+	routeBrowse
+	routeVideo
+	routePlugin
 )
 
 // statsPages name the kinds of page in the app's statistics.
-var statsPages = map[routeKind]string{routeOpen: "open", routeHome: "home", routeBrowse: "browse",
+var statsPages = map[routeKind]string{routeOpen: "open", routeHome: "home", routeDiscover: "discover", routeBrowse: "browse",
 	routeSearch: "search", routeVideo: "video", routeSettings: "settings", routePlugin: "plugin", routeFollowing: "following"}
 
-// route is a page: the open page, or one of a plugin's.
+// route is a page: a toolbar's page of every plugin, or one of a
+// plugin's opened from it.
 type route struct {
 	// n tells the pages opened apart.
 	n      int
@@ -264,25 +284,8 @@ type route struct {
 	plugin *plugin.Plugin
 	// refused is the plugin a plugin page shows when the app refused it.
 	refused *refusal
-	// id is browse's or video's, and title what the header shows.
+	// id is browse's or video's, and title what the page's bar shows.
 	id, title string
-}
-
-// entry is the sidebar item a route of the sidebar is.
-func (r route) entry() string {
-	switch r.kind {
-	case routeOpen:
-		return "open"
-	case routeSettings:
-		return "settings"
-	case routeHome:
-		return r.plugin.Manifest.ID + "/home"
-	case routeSearch:
-		return r.plugin.Manifest.ID + "/search"
-	case routeFollowing:
-		return r.plugin.Manifest.ID + "/following"
-	}
-	return r.plugin.Manifest.ID + "/browse/" + r.id
 }
 
 func (sh *shell) top() route {
@@ -304,6 +307,26 @@ func (sh *shell) back() {
 		}
 		return s
 	})
+}
+
+// choose starts over at a toolbar's page, or goes back to it when it
+// shows under the pages opened from it.
+func (sh *shell) choose(r route) {
+	if s := sh.stack.GetUntracked(); s[0].kind == r.kind {
+		if len(s) > 1 {
+			sh.stack.Set(s[:1])
+		}
+		return
+	}
+	sh.opened++
+	r.n = sh.opened
+	sh.stack.Set([]route{r})
+}
+
+// startSearch shows the search page, its field focused.
+func (sh *shell) startSearch() {
+	sh.choose(route{kind: routeSearch})
+	sh.searches.Update(func(n int) int { return n + 1 })
 }
 
 // openItem opens what an item of p's names.
@@ -332,132 +355,27 @@ func (sh *shell) active() []*plugin.Plugin {
 	return ps
 }
 
-// entries are the sidebar's routes: the open page, and each enabled
-// plugin's home, search and own entries; settings are in its footer.
-func (sh *shell) entries(cx *core.Scope) []ui.SidebarSection {
-	sections := []ui.SidebarSection{{Items: []ui.SidebarItem{
-		{ID: "open", Text: locales.OpenPage(cx), Icon: lucide.FolderOpen, TestID: "nav-open"},
-	}}}
-	for _, p := range sh.active() {
-		var items []ui.SidebarItem
-		id := p.Manifest.ID
-		if p.Has(plugin.ExportHome) {
-			items = append(items, ui.SidebarItem{ID: id + "/home", Text: locales.Home(cx), Icon: lucide.House, TestID: "nav-" + id + "-home"})
-		}
-		if p.Has(plugin.ExportSearch) {
-			items = append(items, ui.SidebarItem{ID: id + "/search", Text: locales.Search(cx), Icon: lucide.Search, TestID: "nav-" + id + "-search"})
-		}
-		if p.Has(plugin.ExportFollowing) {
-			items = append(items, ui.SidebarItem{ID: id + "/following", Text: locales.Following(cx), Content: sh.followingEntry(cx, p), TestID: "nav-" + id + ":following"})
-		}
-		if p.Has(plugin.ExportBrowse) {
-			for _, e := range p.Manifest.Navigation {
-				items = append(items, ui.SidebarItem{ID: id + "/browse/" + e.ID, Text: p.Translate(e.Label), Icon: lucide.List, TestID: "nav-" + id + "-" + e.ID})
-			}
-		}
-		sections = append(sections, ui.SidebarSection{
-			Title:   p.Name(),
-			Items:   items,
-			Actions: sh.accountMenu(cx, p),
-			TestID:  "plugin-" + id,
-		})
-	}
-	return sections
-}
-
-// routeOf is the route of a sidebar entry.
-func (sh *shell) routeOf(cx *core.Scope, entry string) (route, bool) {
-	switch entry {
-	case "open":
-		return route{kind: routeOpen}, true
-	case "settings":
-		return route{kind: routeSettings, title: locales.Settings(cx)}, true
-	}
-	for _, p := range core.Untracked(cx, sh.active) {
-		rest, ok := strings.CutPrefix(entry, p.Manifest.ID+"/")
-		if !ok {
-			continue
-		}
-		switch {
-		case rest == "home":
-			return route{kind: routeHome, plugin: p, title: p.Name()}, true
-		case rest == "search":
-			return route{kind: routeSearch, plugin: p, title: locales.Search(cx)}, true
-		case rest == "following":
-			return route{kind: routeFollowing, plugin: p, title: locales.Following(cx)}, true
-		}
-		if id, ok := strings.CutPrefix(rest, "browse/"); ok {
-			for _, e := range p.Manifest.Navigation {
-				if e.ID == id {
-					return route{kind: routeBrowse, plugin: p, id: id, title: p.Translate(e.Label)}, true
-				}
-			}
-		}
-	}
-	return route{}, false
-}
-
-func (sh *shell) sidebar(cx *core.Scope) core.Node {
-	return ui.Sidebar{
-		TestID:       "nav",
-		SectionsFunc: func() []ui.SidebarSection { return sh.entries(cx) },
-		Selected:     func() string { return sh.stack.Get()[0].entry() },
-		OnSelect:     func(id string) { sh.choose(cx, id) },
-	}
-}
-
-// sidebarFooter holds the settings, at the sidebar's foot.
-func (sh *shell) sidebarFooter(cx *core.Scope) core.Node {
-	return core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{ui.Sidebar{
-		TestID: "nav-footer",
-		SectionsFunc: func() []ui.SidebarSection {
-			return []ui.SidebarSection{{Items: []ui.SidebarItem{
-				{ID: "settings", Text: locales.Settings(cx), Content: badgedEntry(cx, lucide.Settings, locales.Settings(cx), "updates-badge", func() int { return len(sh.updates.Get()) }), TestID: "nav-settings"},
-			}}}
-		},
-		Selected: func() string { return sh.stack.Get()[0].entry() },
-		OnSelect: func(id string) { sh.choose(cx, id) },
-	}}}
-}
-
-// choose starts over at the sidebar's entry id.
-func (sh *shell) choose(cx *core.Scope, id string) {
-	if r, ok := sh.routeOf(cx, id); ok {
-		sh.opened++
-		r.n = sh.opened
-		sh.stack.Set([]route{r})
-	}
-}
-
-// header is the content's: back to the page before, and the page's
-// title.
-func (sh *shell) header(cx *core.Scope) []core.Node {
-	return []core.Node{
-		core.Show{
-			When: func() bool { return len(sh.stack.Get()) > 1 },
-			Then: func(cx *core.Scope) core.Node {
-				return ui.IconButton{TestID: "page-back", Icon: lucide.ChevronLeft, Label: locales.Back(cx), Variant: ui.IconButtonGhost, Size: 28, IconSize: 18, OnPress: sh.back}
-			},
-		},
-		core.Text{TestID: "page-title", ContentFunc: func() string { return sh.top().title }, MaxLines: 1, Class: "text-[15px] font-semibold text-foreground", Style: core.Style{FlexShrink: 1}},
-	}
-}
-
-// content shows the page on top of the stack, keeping those under it.
+// content shows the page on top of the stack, keeping those under it,
+// under the bar of a page opened over a toolbar's.
 func (sh *shell) content(cx *core.Scope, pl *player) core.Node {
 	return core.View{
 		Style: core.Style{FlexGrow: 1, FlexShrink: 1},
-		Children: []core.Node{core.Each(sh.stack.Get, func(r route) int { return r.n }, func(cx *core.Scope, item func() route, index func() int) core.Node {
-			return core.View{
-				StyleFunc: func() core.Style {
-					if index() == len(sh.stack.Get())-1 {
-						return core.Style{FlexGrow: 1, FlexShrink: 1}
+		Children: []core.Node{
+			sh.subpageBar(cx),
+			core.View{TestID: "content", Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
+				core.Each(sh.stack.Get, func(r route) int { return r.n }, func(cx *core.Scope, item func() route, index func() int) core.Node {
+					return core.View{
+						StyleFunc: func() core.Style {
+							if index() == len(sh.stack.Get())-1 {
+								return core.Style{FlexGrow: 1, FlexShrink: 1}
+							}
+							return core.Style{Display: core.DisplayNone}
+						},
+						Children: []core.Node{sh.page(cx, pl, item())},
 					}
-					return core.Style{Display: core.DisplayNone}
-				},
-				Children: []core.Node{sh.page(cx, pl, item())},
-			}
-		})},
+				}),
+			}},
+		},
 	}
 }
 
@@ -465,17 +383,15 @@ func (sh *shell) content(cx *core.Scope, pl *player) core.Node {
 func (sh *shell) page(cx *core.Scope, pl *player, r route) core.Node {
 	switch r.kind {
 	case routeHome:
-		return sh.sectionsPage(cx, r.plugin, pageHome, func(ctx context.Context, cursor string) (*plugin.Page, error) {
-			return r.plugin.Home(ctx, plugin.PageParams{Cursor: cursor})
-		})
-	case routeBrowse:
-		return sh.sectionsPage(cx, r.plugin, pageBrowse, func(ctx context.Context, cursor string) (*plugin.Page, error) {
-			return r.plugin.Browse(ctx, plugin.BrowseParams{ID: r.id, Cursor: cursor})
-		})
-	case routeSearch:
-		return sh.searchPage(cx, r.plugin)
+		return sh.homePage(cx)
 	case routeFollowing:
-		return sh.followingPage(cx, r.plugin)
+		return sh.followingPage(cx)
+	case routeDiscover:
+		return sh.discoverPage(cx)
+	case routeBrowse:
+		return sh.browsePage(cx, r.plugin, r.id)
+	case routeSearch:
+		return sh.searchPage(cx)
 	case routeVideo:
 		return sh.videoPage(cx, r.plugin, r.id)
 	case routeSettings:
@@ -591,6 +507,8 @@ type player struct {
 	// parts are the parts played by their sources' keys, to report
 	// positions to.
 	parts map[string]*part
+	// close closes the player, as its close button does.
+	close func()
 }
 
 // part is a part of a plugin's video at a quality.
@@ -606,6 +524,7 @@ type part struct {
 func newPlayer(sh *shell, positions *store.Positions, client *http.Client) *player {
 	pl := &player{sh: sh, positions: positions, client: client, playing: core.NewSignal[*playback.Source](sh.cx, nil), parts: map[string]*part{}}
 	sh.play = func(p *plugin.Plugin, v *plugin.Video, i int, start time.Duration, fromStart bool) {
+		pl.remember(p, v)
 		pl.playPart(&part{p: p, video: v, index: i, fromStart: fromStart}, start)
 	}
 	// What plays keeps playing; its qualities and parts come from the
@@ -621,6 +540,31 @@ func newPlayer(sh *shell, positions *store.Positions, client *http.Client) *play
 		}
 	}
 	return pl
+}
+
+// remember puts v first among the videos played, as its item, for the
+// home page to offer to continue.
+func (pl *player) remember(p *plugin.Plugin, v *plugin.Video) {
+	if pl.sh.recent == nil {
+		return
+	}
+	it := plugin.Item{Kind: plugin.KindVideo, ID: v.ID, Title: v.Title, Image: v.Image, Duration: v.Duration}
+	if v.Uploader != nil {
+		it.Subtitle = v.Uploader.Title
+	}
+	if it.Duration == 0 && len(v.Parts) == 1 {
+		it.Duration = v.Parts[0].Duration
+	}
+	data, err := json.Marshal(it)
+	if err != nil {
+		return
+	}
+	recent, id := pl.sh.recent, p.Manifest.ID
+	go func() {
+		if err := recent.Add(id, v.ID, data); err != nil {
+			log.Printf("recent videos: %v", err)
+		}
+	}()
 }
 
 func (pl *player) playLocal(path string) {
@@ -641,6 +585,10 @@ func (pl *player) playPart(pt *part, start time.Duration) {
 		cur.quality = s.Quality
 		src := sourceOf(partKey(pt.p, pt.video, pt.index), partTitle(cx, pt.video, pt.index), s)
 		src.Start, src.FromStart = start, pt.fromStart && start == 0
+		src.Badge = pl.sh.badge(pt.p, badgeSmall)
+		if pt.p.Has(plugin.ExportDanmaku) {
+			src.Danmaku = danmakuOf(pt.p, pt.video.ID, pt.video.Parts[pt.index].ID)
+		}
 		cur.fromStart = false
 		if len(pt.video.Parts) > 1 {
 			src.Video = pt.video.Title
@@ -653,6 +601,31 @@ func (pl *player) playPart(pt *part, start time.Duration) {
 		pl.parts[src.Key] = &cur
 		pl.playing.Set(&src)
 	})
+}
+
+// danmakuOf loads the comments of p's part of video for the player.
+func danmakuOf(p *plugin.Plugin, video, part string) playback.DanmakuLoader {
+	return func(ctx context.Context, from, to time.Duration) ([]playback.Comment, error) {
+		list, err := p.Danmaku(ctx, plugin.DanmakuParams{Video: video, Part: part, From: from.Seconds(), To: to.Seconds()})
+		if err != nil {
+			return nil, err
+		}
+		out := make([]playback.Comment, 0, len(list))
+		for _, d := range list {
+			c := playback.Comment{At: seconds(d.Time), Text: d.Text}
+			switch d.Mode {
+			case plugin.DanmakuTop:
+				c.Mode = playback.Top
+			case plugin.DanmakuBottom:
+				c.Mode = playback.Bottom
+			}
+			if v, err := strconv.ParseUint(strings.TrimPrefix(d.Color, "#"), 16, 32); err == nil && d.Color != "" && v != 0xffffff {
+				c.Color, c.Colored = core.RGB(uint32(v)), true
+			}
+			out = append(out, c)
+		}
+		return out, nil
+	}
 }
 
 func partKey(p *plugin.Plugin, v *plugin.Video, i int) string {
@@ -710,32 +683,88 @@ func headers(m map[string]string) http.Header {
 	return h
 }
 
+// page plays what plays: in a player window of its own where the
+// platform opens windows, else over the main window.
 func (pl *player) page(cx *core.Scope) core.Node {
-	return core.Show{
-		When: func() bool { return pl.playing.Get() != nil },
-		Then: func(cx *core.Scope) core.Node {
-			// The last source stays while the page closes.
-			last := *pl.playing.GetUntracked()
-			return playback.Page{
-				Source: func() playback.Source {
-					if s := pl.playing.Get(); s != nil {
-						last = *s
-					}
-					return last
-				},
-				Positions: pl.positions,
-				Client:    pl.client,
-				OnClose: func() {
-					pl.now = nil
-					pl.playing.Set(nil)
-					pl.sh.played.Update(func(n int) int { return n + 1 })
-				},
-				OnQuality:  pl.switchQuality,
-				OnPart:     pl.playIndex,
-				OnEnded:    pl.next,
-				OnPosition: pl.report,
+	var win *desktop.Window
+	closed := func() {
+		win = nil
+		pl.now = nil
+		pl.playing.Set(nil)
+		pl.sh.played.Update(func(n int) int { return n + 1 })
+	}
+	pl.close = func() {
+		w := win
+		closed()
+		if w != nil {
+			w.Close()
+		}
+	}
+	// The last source stays while the page closes.
+	var last playback.Source
+	source := func() playback.Source {
+		if s := pl.playing.Get(); s != nil {
+			last = *s
+		}
+		return last
+	}
+	page := func(window bool) playback.Page {
+		return playback.Page{
+			Source:     source,
+			Positions:  pl.positions,
+			Settings:   pl.sh.settings,
+			Client:     pl.client,
+			Window:     window,
+			OnClose:    pl.close,
+			OnQuality:  pl.switchQuality,
+			OnPart:     pl.playIndex,
+			OnEnded:    pl.next,
+			OnPosition: pl.report,
+		}
+	}
+	// over is set where no window opens, and the page covers the main
+	// window instead.
+	over := core.NewSignal(cx, false)
+	cx.Effect(func() {
+		s := pl.playing.Get()
+		cx.Untrack(func() {
+			if s == nil || over.GetUntracked() {
+				return
 			}
-		},
+			if win != nil && !win.Closed() {
+				win.Focus()
+				return
+			}
+			w := desktop.OpenWindow(cx, desktop.WindowOptions{
+				Key:         "player",
+				Title:       s.Title,
+				Width:       playback.WindowWidth,
+				Height:      playback.WindowHeight,
+				Transparent: true,
+				Constraints: desktop.WindowConstraints{MinWidth: 320, MinHeight: 180},
+			}, func(cx *core.Scope) core.Node {
+				return core.View{Style: core.Style{FlexGrow: 1}, Children: []core.Node{page(true)}}
+			})
+			if w == nil {
+				over.Set(true)
+				return
+			}
+			win = w
+			w.OnClosing(cx, func(*desktop.WindowClosing) {
+				if win == w {
+					closed()
+				}
+			})
+		})
+	})
+	cx.Cleanup(func() {
+		if win != nil {
+			win.Close()
+		}
+	})
+	return core.Show{
+		When: func() bool { return over.Get() && pl.playing.Get() != nil },
+		Then: func(cx *core.Scope) core.Node { return page(false) },
 	}
 }
 

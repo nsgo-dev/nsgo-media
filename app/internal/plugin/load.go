@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -77,6 +78,8 @@ type Plugin struct {
 	// Builtin is set for plugins embedded in the app, which can be
 	// disabled but not removed.
 	Builtin bool
+	// Icon is the SVG document of the manifest's icon, nil for none.
+	Icon []byte
 
 	opts  Options
 	allow func(*http.Request) error
@@ -166,7 +169,13 @@ func newPlugin(fsys fs.FS, m *Manifest, builtin bool, opts Options) (*Plugin, er
 	if err != nil {
 		return nil, fmt.Errorf("plugin %s: %w", m.ID, err)
 	}
-	p := &Plugin{Manifest: m, Builtin: builtin, opts: opts, locales: locales, data: d, exports: map[string]bool{}}
+	var icon []byte
+	if m.Icon != "" {
+		if icon, err = readIcon(fsys, m.Icon); err != nil {
+			return nil, fmt.Errorf("plugin %s: %w", m.ID, err)
+		}
+	}
+	p := &Plugin{Manifest: m, Builtin: builtin, Icon: icon, opts: opts, locales: locales, data: d, exports: map[string]bool{}}
 	// "und", the source, stands for the texts as the plugin writes them.
 	p.catalog = i18n.NewCatalog("und", slices.Sorted(maps.Keys(locales))...)
 	p.opts.Limits = opts.Limits.withDefaults()
@@ -176,6 +185,21 @@ func newPlugin(fsys fs.FS, m *Manifest, builtin bool, opts Options) (*Plugin, er
 	}
 	p.opts.Logger = p.opts.Logger.With("plugin", m.ID)
 	return p, nil
+}
+
+// maxIcon bounds an icon's file.
+const maxIcon = 64 << 10
+
+// readIcon reads the icon at name, an SVG document.
+func readIcon(fsys fs.FS, name string) ([]byte, error) {
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxIcon || !bytes.Contains(data, []byte("<svg")) {
+		return nil, fmt.Errorf("icon %s is not an SVG document of at most %d KiB", name, maxIcon>>10)
+	}
+	return data, nil
 }
 
 // readLocales reads locales/<language>.yaml, each a mapping from a text to

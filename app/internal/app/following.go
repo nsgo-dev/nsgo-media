@@ -3,7 +3,8 @@ package app
 import (
 	"context"
 	"errors"
-	"strconv"
+	"maps"
+	"slices"
 
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/icons/lucide"
@@ -17,182 +18,180 @@ import (
 // following for them, follow and unfollow to change them, and keeps
 // none itself.
 
-// followingEntry is p's sidebar entry of the shows followed, with a badge
-// counting those with new episodes, asked again after signing in or out
-// and after a follow changed here.
-func (sh *shell) followingEntry(cx *core.Scope, p *plugin.Plugin) core.Node {
-	fresh := core.NewSignal(cx, 0)
-	a := sh.account(p)
+// newsWatcher counts the shows with new episodes of every enabled plugin
+// following, for the toolbar's badge, asked again after signing in or
+// out and after a follow changed here. It shows nothing.
+func (sh *shell) newsWatcher(cx *core.Scope) core.Node {
 	ctx := cx.Context()
-	gen := 0
-	cx.Effect(func() {
-		a.epoch.Get()
-		a.follows.Get()
-		cx.Untrack(func() {
-			gen++
-			n := gen
-			call(cx, ctx, func(ctx context.Context) (*plugin.Following, error) {
-				return p.Following(ctx, plugin.FollowingParams{})
-			}, func(f *plugin.Following, err error) {
-				if n != gen {
-					return
-				}
-				count := 0
-				if err == nil {
-					for _, s := range f.Shows {
-						if s.New {
-							count++
+	return core.Each(func() []*plugin.Plugin { return sh.sources(plugin.ExportFollowing) }, func(p *plugin.Plugin) *plugin.Plugin { return p }, func(cx *core.Scope, item func() *plugin.Plugin, _ func() int) core.Node {
+		p := item()
+		a := sh.account(p)
+		gen := 0
+		cx.Effect(func() {
+			a.epoch.Get()
+			a.follows.Get()
+			cx.Untrack(func() {
+				gen++
+				n := gen
+				call(cx, ctx, func(ctx context.Context) (*plugin.Following, error) {
+					return p.Following(ctx, plugin.FollowingParams{})
+				}, func(f *plugin.Following, err error) {
+					if n != gen {
+						return
+					}
+					count := 0
+					if err == nil {
+						for _, s := range f.Shows {
+							if s.New {
+								count++
+							}
 						}
 					}
-				}
-				fresh.Set(count)
+					sh.setNews(p, count)
+				})
 			})
 		})
+		cx.Cleanup(func() { sh.setNews(p, 0) })
+		return nil
 	})
-	return badgedEntry(cx, lucide.Tv, locales.Following(cx), "following-badge-"+p.Manifest.ID, fresh.Get)
 }
 
-// followingPage shows the shows p's account follows, of the status the
-// tabs choose when the plugin offers several.
-func (sh *shell) followingPage(cx *core.Scope, p *plugin.Plugin) core.Node {
-	status := core.NewSignal(cx, "")
-	children := []core.Node{}
-	if statuses := p.Manifest.Statuses; len(statuses) > 1 {
-		options := []ui.Option[string]{{Value: "", Label: locales.StatusAll(cx), TestID: "status-all"}}
-		for _, s := range statuses {
-			options = append(options, ui.Option[string]{Value: s.ID, Label: p.Translate(s.Label), TestID: "status-" + s.ID})
+func (sh *shell) setNews(p *plugin.Plugin, n int) {
+	sh.news.Update(func(m map[*plugin.Plugin]int) map[*plugin.Plugin]int {
+		m = maps.Clone(m)
+		if m == nil {
+			m = map[*plugin.Plugin]int{}
 		}
-		children = append(children, core.View{Class: "flex-row px-7 pt-5", Children: []core.Node{ui.Tabs[string]{
+		if n == 0 {
+			delete(m, p)
+		} else {
+			m[p] = n
+		}
+		return m
+	})
+}
+
+// fresh is how many followed shows have new episodes, of the enabled
+// plugins.
+func (sh *shell) fresh() int {
+	n := 0
+	for _, p := range sh.active() {
+		n += sh.news.Get()[p]
+	}
+	return n
+}
+
+// statusOf is a status of the plugins', by its id, and the plugin
+// naming it first.
+type statusOf struct {
+	plugin.Status
+	p *plugin.Plugin
+}
+
+// statuses are the statuses of the plugins' follows, each once.
+func statuses(ps []*plugin.Plugin) []statusOf {
+	var out []statusOf
+	for _, p := range ps {
+		for _, s := range p.Manifest.Statuses {
+			if !slices.ContainsFunc(out, func(o statusOf) bool { return o.ID == s.ID }) {
+				out = append(out, statusOf{s, p})
+			}
+		}
+	}
+	return out
+}
+
+// followingPage shows the shows the accounts of the enabled plugins
+// follow, newest update first, or those of the plugin the filter chose,
+// of the status the tabs choose when there are several.
+func (sh *shell) followingPage(cx *core.Scope) core.Node {
+	sources := func() []*plugin.Plugin { return sh.sources(plugin.ExportFollowing) }
+	status := core.NewSignal(cx, "")
+	tabs := core.Dynamic(func(cx *core.Scope) core.Node {
+		all := statuses(sh.shown(sources()))
+		if len(all) < 2 {
+			return nil
+		}
+		options := []ui.Option[string]{{Value: "", Label: locales.StatusAll(cx), TestID: "status-all"}}
+		for _, s := range all {
+			options = append(options, ui.Option[string]{Value: s.ID, Label: s.p.Translate(s.Label), TestID: "status-" + s.ID})
+		}
+		return ui.Tabs[string]{
 			TestID:   "status",
 			Label:    locales.FollowStatus(cx),
 			Size:     ui.SizeSmall,
 			Options:  options,
 			Value:    status.Get,
 			OnChange: status.Set,
-		}}})
-	}
-	children = append(children, core.Dynamic(func(cx *core.Scope) core.Node { return sh.shows(cx, p, status.Get()) }))
-	return core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: children}
+		}
+	})
+	return core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
+		sh.filterBar(cx, sources, tabs),
+		core.Dynamic(func(cx *core.Scope) core.Node {
+			shown := sh.shown(sources())
+			st := status.Get()
+			if !slices.ContainsFunc(statuses(shown), func(s statusOf) bool { return s.ID == st }) {
+				st = ""
+			}
+			return sh.shows(cx, shown, st)
+		}),
+	}}
 }
 
-// shows are the shows followed of status, "" for all, with the pages
-// after them on request or once scrolled to the end, asked again after
-// signing in or out and after a follow changed.
-func (sh *shell) shows(cx *core.Scope, p *plugin.Plugin, status string) core.Node {
-	pages := core.NewSignalFunc[[]*plugin.Following](cx, nil, nil)
-	loading := core.NewSignal(cx, false)
-	failed := core.NewSignalFunc[error](cx, nil, nil)
-	ctx := cx.Context()
-	gen := 0
-	fetch := func(cursor string) {
-		gen++
-		n := gen
-		loading.Set(true)
-		failed.Set(nil)
-		params := plugin.FollowingParams{Status: status, Cursor: cursor}
-		call(cx, ctx, func(ctx context.Context) (*plugin.Following, error) { return p.Following(ctx, params) }, func(f *plugin.Following, err error) {
-			if n != gen {
-				return
-			}
-			loading.Set(false)
-			if err != nil {
-				failed.Set(err)
-				return
-			}
-			if cursor == "" {
-				pages.Set([]*plugin.Following{f})
-				return
-			}
-			pages.Update(func(ps []*plugin.Following) []*plugin.Following { return append(ps[:len(ps):len(ps)], f) })
-		})
-	}
-	a := sh.account(p)
-	cx.Effect(func() {
-		a.epoch.Get()
-		a.follows.Get()
-		cx.Untrack(func() { fetch("") })
-	})
-	next := func() string {
-		ps := pages.Get()
-		if len(ps) == 0 {
-			return ""
+// followed is a show of a plugin's account.
+type followed struct {
+	p *plugin.Plugin
+	s plugin.Show
+}
+
+// shows are the shows the plugins follow of status, "" for all, with the
+// pages after them on request or once scrolled to the end, asked again
+// after signing in or out and after a follow changed.
+func (sh *shell) shows(cx *core.Scope, plugins []*plugin.Plugin, status string) core.Node {
+	var ps pagers[*plugin.Following]
+	for _, p := range plugins {
+		if _, ok := p.Manifest.Status(status); status != "" && !ok {
+			continue
 		}
-		return ps[len(ps)-1].Next
+		ps = append(ps, newPager(cx, p, func(ctx context.Context, cursor string) (*plugin.Following, error) {
+			return p.Following(ctx, plugin.FollowingParams{Status: status, Cursor: cursor})
+		}, func(f *plugin.Following) string { return f.Next }))
 	}
-	more := func() {
-		if !loading.GetUntracked() && failed.GetUntracked() == nil {
-			if c := core.Untracked(cx, next); c != "" {
-				fetch(c)
+	ps.start(cx, sh, true)
+	all := func() []followed {
+		var shows []followed
+		for _, pg := range ps {
+			for _, f := range pg.pages.Get() {
+				for _, s := range f.Shows {
+					shows = append(shows, followed{pg.p, s})
+				}
 			}
-		}
-	}
-	all := func() []plugin.Show {
-		var shows []plugin.Show
-		for _, f := range pages.Get() {
-			shows = append(shows, f.Shows...)
 		}
 		return shows
 	}
-	return core.Dynamic(func(cx *core.Scope) core.Node {
-		started := len(pages.Get()) > 0
+	loading := core.View{TestID: "page-loading", Class: "flex-1 gap-3 overflow-hidden px-7 py-6", Children: []core.Node{skeletonLine("w-36"), skeletonCards(8)}}
+	nothing := func(cx *core.Scope) core.Node {
 		switch {
-		case !started && failed.Get() != nil:
-			return sh.failure(cx, p, failed.Get(), func() { fetch("") })
-		case !started:
-			return core.View{TestID: "page-loading", Class: "flex-1 gap-3 overflow-hidden px-7 py-6", Children: []core.Node{skeletonLine("w-36"), skeletonCards(8)}}
-		case len(all()) == 0 && status == "":
-			return state(stateQuiet, lucide.Tv, locales.NotFollowing(cx), locales.FollowingEmpty(cx, p.Name()))
-		case len(all()) == 0:
+		case status != "":
 			return state(stateQuiet, lucide.Inbox, locales.NothingHere(cx), locales.PageEmpty(cx))
+		case len(plugins) == 1:
+			return state(stateQuiet, lucide.Tv, locales.NotFollowing(cx), locales.FollowingEmpty(cx, plugins[0].Name()))
 		}
-		return ui.ScrollView{
-			TestID:       "shows",
-			Style:        core.Style{FlexGrow: 1, FlexShrink: 1},
-			ContentStyle: core.Style{Padding: core.Symmetric(24, 28), Gap: 28},
-			OnScroll: func(e core.ScrollEvent) {
-				if e.Offset.Y+e.Size.Height >= e.ContentSize.Height-240 {
-					more()
-				}
-			},
-			Children: []core.Node{
-				core.Dynamic(func(cx *core.Scope) core.Node {
-					return core.View{Class: "gap-7", Children: sh.showGroups(cx, p, status, all())}
-				}),
-				core.Show{
-					When: func() bool { return loading.Get() && len(pages.Get()) > 0 && next() != "" },
-					Then: func(*core.Scope) core.Node { return skeletonCards(4) },
-				},
-				core.Show{
-					When: func() bool { return failed.Get() != nil },
-					Then: func(cx *core.Scope) core.Node {
-						return core.View{TestID: "more-failed", Class: "flex-row items-center justify-center gap-3 rounded-xl bg-error-soft px-4 py-3", Children: []core.Node{
-							core.Icon{SVG: lucide.CircleAlert(), Class: "size-4 text-error-icon"},
-							core.Text{Content: locales.CouldNotAnswerShort(cx, p.Name()), Class: "text-[13px] text-error-ink", Style: core.Style{FlexShrink: 1}},
-							retryButton(cx, func() { fetch(core.Untracked(cx, next)) }),
-						}}
-					},
-				},
-				core.Show{
-					When: func() bool { return !loading.Get() && failed.Get() == nil && next() != "" },
-					Then: func(cx *core.Scope) core.Node {
-						return core.View{Class: "items-center pt-2", Children: []core.Node{
-							ui.Button{TestID: "load-more", Text: locales.LoadMore(cx), Variant: ui.ButtonOutline, OnPress: more},
-						}}
-					},
-				},
-			},
-		}
+		return state(stateQuiet, lucide.Tv, locales.NotFollowing(cx), locales.FollowingEmptyAll(cx))
+	}
+	return feed(cx, sh, ps, loading, func() bool { return len(all()) == 0 }, nothing, func(cx *core.Scope) core.Node {
+		return core.View{Class: "gap-7", Children: sh.showGroups(cx, plugins, status, all())}
 	})
 }
 
 // showGroups lays out the shows of status: all of them with those with
-// new episodes first, then by the manifest's statuses, or those of one
-// status alone.
-func (sh *shell) showGroups(cx *core.Scope, p *plugin.Plugin, status string, shows []plugin.Show) []core.Node {
-	group := func(title, testID string, shows []plugin.Show) core.Node {
+// new episodes first, then by the statuses, or those of one status
+// alone.
+func (sh *shell) showGroups(cx *core.Scope, plugins []*plugin.Plugin, status string, shows []followed) []core.Node {
+	group := func(title, testID string, shows []followed) core.Node {
 		var cards []core.Node
-		for _, s := range shows {
-			cards = append(cards, sh.showCard(cx, p, s))
+		for _, f := range shows {
+			cards = append(cards, sh.showCard(cx, f.p, f.s))
 		}
 		children := []core.Node{}
 		if title != "" {
@@ -205,21 +204,21 @@ func (sh *shell) showGroups(cx *core.Scope, p *plugin.Plugin, status string, sho
 		return []core.Node{group("", "shows-"+status, shows)}
 	}
 	var groups []core.Node
-	var fresh []plugin.Show
-	byStatus := map[string][]plugin.Show{}
-	for _, s := range shows {
-		if s.New {
-			fresh = append(fresh, s)
+	var fresh []followed
+	byStatus := map[string][]followed{}
+	for _, f := range shows {
+		if f.s.New {
+			fresh = append(fresh, f)
 		} else {
-			byStatus[s.Status] = append(byStatus[s.Status], s)
+			byStatus[f.s.Status] = append(byStatus[f.s.Status], f)
 		}
 	}
 	if len(fresh) > 0 {
 		groups = append(groups, group(locales.NewEpisodes(cx), "shows-new", fresh))
 	}
-	for _, st := range p.Manifest.Statuses {
+	for _, st := range statuses(plugins) {
 		if len(byStatus[st.ID]) > 0 {
-			groups = append(groups, group(p.Translate(st.Label), "shows-"+st.ID, byStatus[st.ID]))
+			groups = append(groups, group(st.p.Translate(st.Label), "shows-"+st.ID, byStatus[st.ID]))
 		}
 	}
 	return groups
@@ -234,6 +233,7 @@ func (sh *shell) showCard(cx *core.Scope, p *plugin.Plugin, s plugin.Show) core.
 	if s.New {
 		thumb = append(thumb, core.Text{TestID: "new", Content: locales.NewBadge(cx), Class: "absolute top-1.5 left-1.5 rounded-md bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-white"})
 	}
+	thumb = append(thumb, core.View{Class: "absolute top-1.5 right-1.5", Children: []core.Node{sh.badge(p, badgeCover)}})
 	if s.Episodes > 0 {
 		thumb = append(thumb, bar("h-[3px]", func() float64 { return float64(s.Watched) / float64(s.Episodes) }))
 	}
@@ -344,23 +344,4 @@ func episodeLabels(cx *core.Scope, v *plugin.Video, i int) (number, label string
 		return locales.EpisodeNumber(cx, i+1), locales.EpisodeLabel(cx, i+1, title)
 	}
 	return locales.PartNumber(cx, i+1), locales.PartLabel(cx, i+1, title)
-}
-
-// badgedEntry is a sidebar entry whose badge, testID, counts something
-// while there is any.
-func badgedEntry(cx *core.Scope, icon func() *core.SVG, text, testID string, count func() int) core.Node {
-	label := ui.Text(text, 13, ui.Regular, ui.ColorsOf(cx).Text)
-	label.MaxLines, label.Style.FlexGrow, label.Style.FlexShrink = 1, 1, 1
-	return core.Group{
-		ui.Icon(icon, 16, ui.ColorsOf(cx).Accent),
-		label,
-		core.Show{
-			When: func() bool { return count() > 0 },
-			Then: func(cx *core.Scope) core.Node {
-				return core.View{TestID: testID, Class: "h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5", Children: []core.Node{
-					core.Text{ContentFunc: func() string { return strconv.Itoa(count()) }, Class: "text-[11px] font-semibold text-white"},
-				}}
-			},
-		},
-	}
 }

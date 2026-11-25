@@ -122,6 +122,7 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 		Class: "h-[225px] w-[400px] overflow-hidden rounded-2xl bg-well shadow-lg",
 		Children: []core.Node{
 			sh.cover(cx, v.Image, "absolute inset-0"),
+			core.View{Class: "absolute top-2.5 left-2.5", Children: []core.Node{sh.badge(p, badgeCover)}},
 			core.View{Class: "absolute inset-0 items-center justify-center bg-black/10", Children: []core.Node{
 				core.View{Class: "size-16 items-center justify-center rounded-full bg-white/85 shadow-xl", Children: []core.Node{
 					core.Icon{SVG: lucide.Play(), Class: "ml-1 size-7 text-zinc-900"},
@@ -162,6 +163,14 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 			},
 		})
 	}
+	line = append(line, core.View{
+		TestID: "video-source",
+		Class:  "flex-row items-center gap-1.5 rounded-full border border-border bg-background py-0.5 pr-2.5 pl-1",
+		Children: []core.Node{
+			sh.badge(p, badgeSmall),
+			core.Text{Content: p.Name(), MaxLines: 1, Class: "text-xs font-medium text-muted-foreground"},
+		},
+	})
 	if len(meta) > 0 {
 		line = append(line, core.Text{Content: strings.Join(meta, " · "), Class: "text-[13px] text-muted-foreground"})
 	}
@@ -238,7 +247,11 @@ func (sh *shell) videoDetails(cx *core.Scope, p *plugin.Plugin, v *plugin.Video)
 		}})
 	}
 	if len(v.Related) > 0 {
-		children = append(children, sh.section(cx, p, plugin.Section{Title: locales.Related(cx), Items: v.Related}))
+		s := section{title: locales.Related(cx)}
+		for _, it := range v.Related {
+			s.items = append(s.items, entry{p: p, it: it})
+		}
+		children = append(children, sh.section(cx, s))
 	}
 	return ui.ScrollView{
 		TestID:       "video-page",

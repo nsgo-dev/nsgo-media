@@ -16,15 +16,20 @@ import (
 // Manifest is a plugin's plugin.yaml: everything the app shows or asks the
 // viewer before it runs any of the plugin's code.
 type Manifest struct {
-	ID            string      `yaml:"id"`
-	Name          string      `yaml:"name"`
-	Version       string      `yaml:"version"`
-	MinAppVersion string      `yaml:"minAppVersion"`
-	Main          string      `yaml:"main"`
-	Media         string      `yaml:"media"`
-	Permissions   Permissions `yaml:"permissions"`
-	Settings      []Setting   `yaml:"settings,omitempty"`
-	Navigation    []Entry     `yaml:"navigation,omitempty"`
+	ID            string `yaml:"id"`
+	Name          string `yaml:"name"`
+	Version       string `yaml:"version"`
+	MinAppVersion string `yaml:"minAppVersion"`
+	Main          string `yaml:"main"`
+	Media         string `yaml:"media"`
+	// Icon is an SVG file in the plugin's folder, drawn in white on Color
+	// where the app marks what comes from the plugin; Color is #rrggbb.
+	// Either left out is chosen by the plugin's id.
+	Icon        string      `yaml:"icon,omitempty"`
+	Color       string      `yaml:"color,omitempty"`
+	Permissions Permissions `yaml:"permissions"`
+	Settings    []Setting   `yaml:"settings,omitempty"`
+	Navigation  []Entry     `yaml:"navigation,omitempty"`
 	// Statuses are those a followed show can have, which follow takes.
 	Statuses []Status `yaml:"statuses,omitempty"`
 }
@@ -71,7 +76,9 @@ type Choice struct {
 	Label string `yaml:"label"`
 }
 
-// Entry is a sidebar entry under the plugin, which opens browse with its id.
+// Entry is a page of the plugin's own, which opens browse with its id:
+// the Discover page shows its first, and offers the others while only the
+// plugin's videos show.
 type Entry struct {
 	ID    string `yaml:"id"`
 	Label string `yaml:"label"`
@@ -95,7 +102,10 @@ func (e *TooNewError) Error() string {
 // ManifestFile is the manifest's name in a plugin's folder.
 const ManifestFile = "plugin.yaml"
 
-var idPattern = regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`)
+var (
+	idPattern    = regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`)
+	colorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+)
 
 // ParseManifest reads and validates plugin.yaml for an app of appVersion.
 // A plugin needing a newer app is a *TooNewError, checked before the rest
@@ -142,6 +152,12 @@ func (m *Manifest) validate() error {
 	}
 	if ext := path.Ext(m.Main); m.Main != "" && (!fsPath(m.Main) || (ext != ".js" && ext != ".ts")) {
 		fail("main %q is not a .js or .ts file in the plugin's folder", m.Main)
+	}
+	if ext := path.Ext(m.Icon); m.Icon != "" && (!fsPath(m.Icon) || ext != ".svg") {
+		fail("icon %q is not an .svg file in the plugin's folder", m.Icon)
+	}
+	if m.Color != "" && !colorPattern.MatchString(m.Color) {
+		fail("color %q is not a color such as #e8553a", m.Color)
 	}
 	if m.Media != MediaVideo && m.Media != MediaAudio {
 		fail("media %q is neither %q nor %q", m.Media, MediaVideo, MediaAudio)

@@ -28,6 +28,8 @@ version: 1.0.0
 minAppVersion: 0.1.0
 main: index.ts
 media: video
+icon: icon.svg
+color: "#e8553a"
 permissions:
   network: [demo.example.com, "*.cdn.example.com"]
 settings:
@@ -47,7 +49,8 @@ statuses:
 
 - `permissions.network` lists the only hosts `fetch` reaches, and the only hosts the app fetches your pictures, streams and subtitles from. `*.example.com` matches its subdomains.
 - `settings` appear in the app's settings; your code reads them with `host.settings.get`.
-- `navigation` adds sidebar entries, each opening `browse` with its `id`.
+- `icon` is an SVG file of the folder, drawn in white on `color` to mark your videos, uploaders and shows among other plugins'; either left out is chosen by the `id`.
+- `navigation` lists your own pages, each opening `browse` with its `id`: **Discover** shows the first, and the others while your videos show alone.
 - `statuses` are those a followed show can have; a plugin exporting `follow` lists at least one.
 - An unknown field is refused. A `minAppVersion` newer than the app is refused with a message to update it.
 
@@ -63,7 +66,7 @@ Default quality: 默认清晰度
 
 ## Exports
 
-Export the functions you support; the app leaves out what you do not export. A plugin without `search` gets no search box.
+Export the functions you support; the app leaves out what you do not export. A plugin without `search` is left out of the search.
 
 | Export | Answers |
 | --- | --- |
@@ -75,6 +78,7 @@ Export the functions you support; the app leaves out what you do not export. A p
 | `account`, `signIn`, `signOut` | The signed-in account, or `null` |
 | `following` | The shows the account follows, newest update first: each with the video that opens it, its status, the episodes `watched` and out, and whether one is `new` |
 | `follow`, `unfollow` | Nothing; they follow a show with a status, change its status, or unfollow it on the account |
+| `danmaku` | The comments of a span of a part, at most 20,000: each with its `time` in seconds, its `mode` (`scroll`, `top` or `bottom`), an optional `#rrggbb` `color` and its `text` |
 | `setSetting` | Nothing; it tells you a setting changed |
 
 ```ts

@@ -4,6 +4,8 @@ version: 1.0.0
 minAppVersion: 0.1.0
 main: index.ts
 media: video
+icon: icon.svg
+color: "#e8553a"
 permissions:
   network: [demo.example.com]
 settings:

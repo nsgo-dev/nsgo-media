@@ -4,7 +4,7 @@ A plugin of [NSGo Player](app.md) turns one source of videos into pages and stre
 
 ## Manifest
 
-`plugin.yaml` names the plugin (`id`, `name`, `version`), the oldest app version it works with (`minAppVersion`), its module (`main`) and the media it serves (`media`: `video` now, `audio` reserved). It also lists its permissions, its settings, its sidebar entries and the statuses a followed show can have (`statuses`), such as watching, plan to watch and completed. Anything a viewer must approve or fill in is declared here, so the app can show it before running any code. Unknown fields are refused, except that a newer `minAppVersion` is reported first.
+`plugin.yaml` names the plugin (`id`, `name`, `version`), the oldest app version it works with (`minAppVersion`), its module (`main`) and the media it serves (`media`: `video` now, `audio` reserved), and optionally its mark: an SVG file of its folder (`icon`), drawn in white on its color (`color`, `#rrggbb`), which badges every card, uploader and show of it in the app's merged pages; one left out is chosen by its id. It also lists its permissions, its settings, its own pages (`navigation`, which the Discover page offers) and the statuses a followed show can have (`statuses`), such as watching, plan to watch and completed. Anything a viewer must approve or fill in is declared here, so the app can show it before running any code. Unknown fields are refused, except that a newer `minAppVersion` is reported first.
 
 `locales/<language>.yaml` maps the plugin's own texts, its name, labels and messages, to their translation; the app picks the locale that suits the viewer's language best.
 
@@ -21,9 +21,12 @@ The app calls an export with one object of parameters and awaits its value or pr
 | `stream` | What to play for one part at a quality |
 | `progress` | The position the viewer reached, for sources that keep history |
 | `following`, `follow`, `unfollow` | The shows the account follows, and following, changing the status of or unfollowing one |
+| `danmaku` | The comments shown over the picture during a span of a part |
 | `setSetting` | A setting the viewer changed |
 
 `stream` answers a video URL, an optional separate audio URL, the request headers each needs, the qualities on offer and the subtitle tracks. Sites often serve DASH with separate video and audio behind a `Referer`, so both belong in the contract rather than in one plugin's workaround. A subtitle track is a URL of SRT, WebVTT or ASS, or their text: a plugin converts a site's own format, as the app reads none.
+
+`danmaku` takes a part and a span of it in seconds, as the player asks six minutes ahead of the position, and answers its comments, at most 20,000: each with its time, whether it scrolls across or is fixed at the top or the bottom, an optional `#rrggbb` color and its text. A site's own format and filtering stay in its plugin; the app lays them out and the viewer's settings hide them by kind.
 
 `video` may name the part to start with, so a pasted link to a video's later part plays that part.
 

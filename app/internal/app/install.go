@@ -56,7 +56,9 @@ func (sh *shell) installDialog(cx *core.Scope) core.Node {
 				sh.toggled.Update(func(n int) int { return n + 1 })
 				sh.plugins.Update(func(ps []*plugin.Plugin) []*plugin.Plugin { return append(slices.Clip(ps), p) })
 				if p.Has(plugin.ExportHome) {
-					sh.choose(cx, p.Manifest.ID+"/home")
+					// Home shows the new plugin's videos alone.
+					sh.filter.Set(p.Manifest.ID)
+					sh.choose(route{kind: routeHome})
 				}
 			})
 		})

@@ -280,6 +280,38 @@ const (
 	textCouldNotFollow
 	textCouldNotUnfollow
 	textCouldNotChangeStatus
+	textShowTimeLeft
+	textPinned
+	textPinOnTop
+	textUnpin
+	textDanmaku
+	textShowDanmaku
+	textHideDanmaku
+	textDanmakuSettings
+	textOpacity
+	textDanmakuKinds
+	textDanmakuScroll
+	textDanmakuTop
+	textDanmakuBottom
+	textDanmakuColor
+	textDanmakuArea
+	textDanmakuFull
+	textDanmakuSize
+	textSizeSmall
+	textSizeMedium
+	textSizeLarge
+	textSpeedSlow
+	textSpeedFast
+	textDiscover
+	textSearchAll
+	textSearchAllTitle
+	textSearchPlaceholderAll
+	textAllSources
+	textSources
+	textContinueWatching
+	textHomeEmptyAll
+	textDiscoverEmpty
+	textFollowingEmptyAll
 	numTexts
 )
 
@@ -413,6 +445,38 @@ var keyOfText = [numTexts]string{
 	"couldNotFollow",
 	"couldNotUnfollow",
 	"couldNotChangeStatus",
+	"showTimeLeft",
+	"pinned",
+	"pinOnTop",
+	"unpin",
+	"danmaku",
+	"showDanmaku",
+	"hideDanmaku",
+	"danmakuSettings",
+	"opacity",
+	"danmakuKinds",
+	"danmakuScroll",
+	"danmakuTop",
+	"danmakuBottom",
+	"danmakuColor",
+	"danmakuArea",
+	"danmakuFull",
+	"danmakuSize",
+	"sizeSmall",
+	"sizeMedium",
+	"sizeLarge",
+	"speedSlow",
+	"speedFast",
+	"discover",
+	"searchAll",
+	"searchAllTitle",
+	"searchPlaceholderAll",
+	"allSources",
+	"sources",
+	"continueWatching",
+	"homeEmptyAll",
+	"discoverEmpty",
+	"followingEmptyAll",
 }
 
 // textsEn are the messages without arguments in en.
@@ -543,7 +607,39 @@ var textsEn = i18n.NewTexts(""+
 	"Unfollow"+
 	"Could not follow"+
 	"Could not unfollow"+
-	"Could not change the status",
+	"Could not change the status"+
+	"Show Time Left"+
+	"Pinned"+
+	"Keep on Top"+
+	"Stop Keeping on Top"+
+	"Danmaku"+
+	"Show Danmaku"+
+	"Hide Danmaku"+
+	"Danmaku Settings"+
+	"Opacity"+
+	"Display types"+
+	"Scroll"+
+	"Top"+
+	"Bottom"+
+	"Color"+
+	"Display area"+
+	"Full"+
+	"Font size"+
+	"S"+
+	"M"+
+	"L"+
+	"Slow"+
+	"Fast"+
+	"Discover"+
+	"Search all sources…"+
+	"Search all sources"+
+	"Search across all sources, or paste a link"+
+	"All Sources"+
+	"Sources"+
+	"Continue watching"+
+	"None of your enabled sources have videos to show yet."+
+	"None of your enabled sources have pages to discover yet."+
+	"Follow a show from any plugin, and its new episodes show up here.",
 	[]uint16{
 		11,
 		12,
@@ -672,6 +768,38 @@ var textsEn = i18n.NewTexts(""+
 		16,
 		18,
 		27,
+		14,
+		6,
+		11,
+		19,
+		7,
+		12,
+		12,
+		16,
+		7,
+		13,
+		6,
+		3,
+		6,
+		5,
+		12,
+		4,
+		9,
+		1,
+		1,
+		1,
+		4,
+		4,
+		8,
+		21,
+		18,
+		42,
+		11,
+		7,
+		17,
+		53,
+		56,
+		65,
 	})
 
 // textsZhHans are the messages without arguments in zh-Hans.
@@ -802,7 +930,39 @@ var textsZhHans = i18n.NewTexts(""+
 	"取消关注"+
 	"无法关注"+
 	"无法取消关注"+
-	"无法更改状态",
+	"无法更改状态"+
+	"显示剩余时间"+
+	"已置顶"+
+	"置顶"+
+	"取消置顶"+
+	"弹幕"+
+	"开启弹幕"+
+	"关闭弹幕"+
+	"弹幕设置"+
+	"不透明度"+
+	"显示类型"+
+	"滚动"+
+	"顶部"+
+	"底部"+
+	"彩色"+
+	"显示区域"+
+	"全屏"+
+	"字号"+
+	"小"+
+	"中"+
+	"大"+
+	"慢"+
+	"快"+
+	"发现"+
+	"搜索全部来源…"+
+	"搜索全部来源"+
+	"在全部来源中搜索，或粘贴链接"+
+	"全部来源"+
+	"来源"+
+	"继续观看"+
+	"已启用的来源暂时没有可显示的视频。"+
+	"已启用的来源暂时没有可发现的页面。"+
+	"在任意插件中关注剧集后，新的一集会显示在这里。",
 	[]uint16{
 		11,
 		15,
@@ -931,6 +1091,38 @@ var textsZhHans = i18n.NewTexts(""+
 		12,
 		18,
 		18,
+		18,
+		9,
+		6,
+		12,
+		6,
+		12,
+		12,
+		12,
+		12,
+		12,
+		6,
+		6,
+		6,
+		6,
+		12,
+		6,
+		6,
+		3,
+		3,
+		3,
+		3,
+		3,
+		6,
+		21,
+		18,
+		42,
+		12,
+		6,
+		12,
+		51,
+		51,
+		69,
 	})
 
 // texts returns the messages without arguments in lang, nil for a
@@ -3297,6 +3489,262 @@ func CouldNotChangeStatus(cx *core.Scope) string { return For(cx).CouldNotChange
 
 // CouldNotChangeStatus is the package's CouldNotChangeStatus in the language of msgs.
 func (msgs Messages) CouldNotChangeStatus() string { return msgs.text(textCouldNotChangeStatus) }
+
+// ShowTimeLeft says "Show Time Left"
+// in the language the app shows under cx.
+//
+// Switches the player's duration to the time left, and back.
+func ShowTimeLeft(cx *core.Scope) string { return For(cx).ShowTimeLeft() }
+
+// ShowTimeLeft is the package's ShowTimeLeft in the language of msgs.
+func (msgs Messages) ShowTimeLeft() string { return msgs.text(textShowTimeLeft) }
+
+// Pinned says "Pinned"
+// in the language the app shows under cx.
+//
+// Shown on the player window's pin button while it stays above other windows.
+func Pinned(cx *core.Scope) string { return For(cx).Pinned() }
+
+// Pinned is the package's Pinned in the language of msgs.
+func (msgs Messages) Pinned() string { return msgs.text(textPinned) }
+
+// PinOnTop says "Keep on Top"
+// in the language the app shows under cx.
+func PinOnTop(cx *core.Scope) string { return For(cx).PinOnTop() }
+
+// PinOnTop is the package's PinOnTop in the language of msgs.
+func (msgs Messages) PinOnTop() string { return msgs.text(textPinOnTop) }
+
+// Unpin says "Stop Keeping on Top"
+// in the language the app shows under cx.
+func Unpin(cx *core.Scope) string { return For(cx).Unpin() }
+
+// Unpin is the package's Unpin in the language of msgs.
+func (msgs Messages) Unpin() string { return msgs.text(textUnpin) }
+
+// Danmaku says "Danmaku"
+// in the language the app shows under cx.
+//
+// Comments that fly over the video as it plays.
+func Danmaku(cx *core.Scope) string { return For(cx).Danmaku() }
+
+// Danmaku is the package's Danmaku in the language of msgs.
+func (msgs Messages) Danmaku() string { return msgs.text(textDanmaku) }
+
+// ShowDanmaku says "Show Danmaku"
+// in the language the app shows under cx.
+func ShowDanmaku(cx *core.Scope) string { return For(cx).ShowDanmaku() }
+
+// ShowDanmaku is the package's ShowDanmaku in the language of msgs.
+func (msgs Messages) ShowDanmaku() string { return msgs.text(textShowDanmaku) }
+
+// HideDanmaku says "Hide Danmaku"
+// in the language the app shows under cx.
+func HideDanmaku(cx *core.Scope) string { return For(cx).HideDanmaku() }
+
+// HideDanmaku is the package's HideDanmaku in the language of msgs.
+func (msgs Messages) HideDanmaku() string { return msgs.text(textHideDanmaku) }
+
+// DanmakuSettings says "Danmaku Settings"
+// in the language the app shows under cx.
+func DanmakuSettings(cx *core.Scope) string { return For(cx).DanmakuSettings() }
+
+// DanmakuSettings is the package's DanmakuSettings in the language of msgs.
+func (msgs Messages) DanmakuSettings() string { return msgs.text(textDanmakuSettings) }
+
+// Opacity says "Opacity"
+// in the language the app shows under cx.
+func Opacity(cx *core.Scope) string { return For(cx).Opacity() }
+
+// Opacity is the package's Opacity in the language of msgs.
+func (msgs Messages) Opacity() string { return msgs.text(textOpacity) }
+
+// DanmakuKinds says "Display types"
+// in the language the app shows under cx.
+func DanmakuKinds(cx *core.Scope) string { return For(cx).DanmakuKinds() }
+
+// DanmakuKinds is the package's DanmakuKinds in the language of msgs.
+func (msgs Messages) DanmakuKinds() string { return msgs.text(textDanmakuKinds) }
+
+// DanmakuScroll says "Scroll"
+// in the language the app shows under cx.
+//
+// Danmaku that scroll across the picture.
+func DanmakuScroll(cx *core.Scope) string { return For(cx).DanmakuScroll() }
+
+// DanmakuScroll is the package's DanmakuScroll in the language of msgs.
+func (msgs Messages) DanmakuScroll() string { return msgs.text(textDanmakuScroll) }
+
+// DanmakuTop says "Top"
+// in the language the app shows under cx.
+//
+// Danmaku fixed at the picture's top.
+func DanmakuTop(cx *core.Scope) string { return For(cx).DanmakuTop() }
+
+// DanmakuTop is the package's DanmakuTop in the language of msgs.
+func (msgs Messages) DanmakuTop() string { return msgs.text(textDanmakuTop) }
+
+// DanmakuBottom says "Bottom"
+// in the language the app shows under cx.
+//
+// Danmaku fixed at the picture's bottom.
+func DanmakuBottom(cx *core.Scope) string { return For(cx).DanmakuBottom() }
+
+// DanmakuBottom is the package's DanmakuBottom in the language of msgs.
+func (msgs Messages) DanmakuBottom() string { return msgs.text(textDanmakuBottom) }
+
+// DanmakuColor says "Color"
+// in the language the app shows under cx.
+//
+// Danmaku in colors other than white.
+func DanmakuColor(cx *core.Scope) string { return For(cx).DanmakuColor() }
+
+// DanmakuColor is the package's DanmakuColor in the language of msgs.
+func (msgs Messages) DanmakuColor() string { return msgs.text(textDanmakuColor) }
+
+// DanmakuArea says "Display area"
+// in the language the app shows under cx.
+func DanmakuArea(cx *core.Scope) string { return For(cx).DanmakuArea() }
+
+// DanmakuArea is the package's DanmakuArea in the language of msgs.
+func (msgs Messages) DanmakuArea() string { return msgs.text(textDanmakuArea) }
+
+// DanmakuFull says "Full"
+// in the language the app shows under cx.
+//
+// Danmaku may fill the whole picture.
+func DanmakuFull(cx *core.Scope) string { return For(cx).DanmakuFull() }
+
+// DanmakuFull is the package's DanmakuFull in the language of msgs.
+func (msgs Messages) DanmakuFull() string { return msgs.text(textDanmakuFull) }
+
+// DanmakuSize says "Font size"
+// in the language the app shows under cx.
+func DanmakuSize(cx *core.Scope) string { return For(cx).DanmakuSize() }
+
+// DanmakuSize is the package's DanmakuSize in the language of msgs.
+func (msgs Messages) DanmakuSize() string { return msgs.text(textDanmakuSize) }
+
+// SizeSmall says "S"
+// in the language the app shows under cx.
+//
+// The small danmaku size, in one letter.
+func SizeSmall(cx *core.Scope) string { return For(cx).SizeSmall() }
+
+// SizeSmall is the package's SizeSmall in the language of msgs.
+func (msgs Messages) SizeSmall() string { return msgs.text(textSizeSmall) }
+
+// SizeMedium says "M"
+// in the language the app shows under cx.
+//
+// The medium danmaku size, in one letter.
+func SizeMedium(cx *core.Scope) string { return For(cx).SizeMedium() }
+
+// SizeMedium is the package's SizeMedium in the language of msgs.
+func (msgs Messages) SizeMedium() string { return msgs.text(textSizeMedium) }
+
+// SizeLarge says "L"
+// in the language the app shows under cx.
+//
+// The large danmaku size, in one letter.
+func SizeLarge(cx *core.Scope) string { return For(cx).SizeLarge() }
+
+// SizeLarge is the package's SizeLarge in the language of msgs.
+func (msgs Messages) SizeLarge() string { return msgs.text(textSizeLarge) }
+
+// SpeedSlow says "Slow"
+// in the language the app shows under cx.
+//
+// Danmaku scrolling slowly.
+func SpeedSlow(cx *core.Scope) string { return For(cx).SpeedSlow() }
+
+// SpeedSlow is the package's SpeedSlow in the language of msgs.
+func (msgs Messages) SpeedSlow() string { return msgs.text(textSpeedSlow) }
+
+// SpeedFast says "Fast"
+// in the language the app shows under cx.
+//
+// Danmaku scrolling fast.
+func SpeedFast(cx *core.Scope) string { return For(cx).SpeedFast() }
+
+// SpeedFast is the package's SpeedFast in the language of msgs.
+func (msgs Messages) SpeedFast() string { return msgs.text(textSpeedFast) }
+
+// Discover says "Discover"
+// in the language the app shows under cx.
+//
+// The toolbar's page of each plugin's own pages together, such as what is popular.
+func Discover(cx *core.Scope) string { return For(cx).Discover() }
+
+// Discover is the package's Discover in the language of msgs.
+func (msgs Messages) Discover() string { return msgs.text(textDiscover) }
+
+// SearchAll says "Search all sources…"
+// in the language the app shows under cx.
+func SearchAll(cx *core.Scope) string { return For(cx).SearchAll() }
+
+// SearchAll is the package's SearchAll in the language of msgs.
+func (msgs Messages) SearchAll() string { return msgs.text(textSearchAll) }
+
+// SearchAllTitle says "Search all sources"
+// in the language the app shows under cx.
+func SearchAllTitle(cx *core.Scope) string { return For(cx).SearchAllTitle() }
+
+// SearchAllTitle is the package's SearchAllTitle in the language of msgs.
+func (msgs Messages) SearchAllTitle() string { return msgs.text(textSearchAllTitle) }
+
+// SearchPlaceholderAll says "Search across all sources, or paste a link"
+// in the language the app shows under cx.
+func SearchPlaceholderAll(cx *core.Scope) string { return For(cx).SearchPlaceholderAll() }
+
+// SearchPlaceholderAll is the package's SearchPlaceholderAll in the language of msgs.
+func (msgs Messages) SearchPlaceholderAll() string { return msgs.text(textSearchPlaceholderAll) }
+
+// AllSources says "All Sources"
+// in the language the app shows under cx.
+//
+// Shows the videos of every enabled plugin together.
+func AllSources(cx *core.Scope) string { return For(cx).AllSources() }
+
+// AllSources is the package's AllSources in the language of msgs.
+func (msgs Messages) AllSources() string { return msgs.text(textAllSources) }
+
+// Sources says "Sources"
+// in the language the app shows under cx.
+//
+// The label of the choice of which plugin's videos a page shows.
+func Sources(cx *core.Scope) string { return For(cx).Sources() }
+
+// Sources is the package's Sources in the language of msgs.
+func (msgs Messages) Sources() string { return msgs.text(textSources) }
+
+// ContinueWatching says "Continue watching"
+// in the language the app shows under cx.
+func ContinueWatching(cx *core.Scope) string { return For(cx).ContinueWatching() }
+
+// ContinueWatching is the package's ContinueWatching in the language of msgs.
+func (msgs Messages) ContinueWatching() string { return msgs.text(textContinueWatching) }
+
+// HomeEmptyAll says "None of your enabled sources have videos to show yet."
+// in the language the app shows under cx.
+func HomeEmptyAll(cx *core.Scope) string { return For(cx).HomeEmptyAll() }
+
+// HomeEmptyAll is the package's HomeEmptyAll in the language of msgs.
+func (msgs Messages) HomeEmptyAll() string { return msgs.text(textHomeEmptyAll) }
+
+// DiscoverEmpty says "None of your enabled sources have pages to discover yet."
+// in the language the app shows under cx.
+func DiscoverEmpty(cx *core.Scope) string { return For(cx).DiscoverEmpty() }
+
+// DiscoverEmpty is the package's DiscoverEmpty in the language of msgs.
+func (msgs Messages) DiscoverEmpty() string { return msgs.text(textDiscoverEmpty) }
+
+// FollowingEmptyAll says "Follow a show from any plugin, and its new episodes show up here."
+// in the language the app shows under cx.
+func FollowingEmptyAll(cx *core.Scope) string { return For(cx).FollowingEmptyAll() }
+
+// FollowingEmptyAll is the package's FollowingEmptyAll in the language of msgs.
+func (msgs Messages) FollowingEmptyAll() string { return msgs.text(textFollowingEmptyAll) }
 
 // dated is lang with the hour cycle the user set, which times take.
 func (msgs Messages) dated(lang string) string {
