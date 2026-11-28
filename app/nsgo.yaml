@@ -13,10 +13,7 @@ build:
   output: dist
   targets: [macos_arm64, macos_x64, windows_x64, linux_x64]
 
-# The FFmpeg libraries load libva for VAAPI, and the core PulseAudio's
-# client libraries for sound.
+# The core's packages name the Linux packages they load, libva and
+# PulseAudio's client library, in their nsgo-natives.yaml.
 linux:
   categories: [AudioVideo, Video, Player]
-  depends:
-    deb: [libva2, libva-drm2, libpulse0]
-    arch: [libva, libpulse]

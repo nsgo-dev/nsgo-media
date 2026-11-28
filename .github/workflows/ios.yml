@@ -1,0 +1,41 @@
+name: iOS packaging
+
+# Builds examples/demo for the iOS simulator on macOS and checks that nsgo build put the six FFmpeg frameworks that nsgo-natives.yaml declares into the app, with no other step.
+on:
+  push:
+    branches: [main]
+    paths: ['**.go', go.mod, go.sum, '**/nsgo-natives.yaml', examples/demo/**, .github/workflows/ios.yml]
+  pull_request:
+    paths: ['**.go', go.mod, go.sum, '**/nsgo-natives.yaml', examples/demo/**, .github/workflows/ios.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    name: Simulator build
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+      - name: Build
+        working-directory: examples/demo
+        run: go tool nsgo build -target ios_simulator
+      - name: Check the frameworks
+        working-directory: examples/demo
+        run: |
+          app=$(echo dist/*-ios_simulator/*.app)
+          for lib in avutil swresample swscale avcodec avformat avfilter; do
+            test -f "$app/Frameworks/lib$lib.framework/lib$lib" || { echo "no lib$lib.framework in $app"; exit 1; }
+          done
+          codesign --verify --deep "$app"

@@ -2,10 +2,7 @@ module github.com/nsgo-dev/nsgo-media/app
 
 go 1.27.3
 
-tool (
-	github.com/nsgo-dev/nsgo-media/cmd/nsgo-media
-	github.com/nsgo-dev/nsgo/cmd/nsgo
-)
+tool github.com/nsgo-dev/nsgo/cmd/nsgo
 
 require (
 	github.com/MoeForge/moejs v0.1.1
