@@ -4,6 +4,7 @@
 
 ### Added
 
+- `nsgo-module.yaml` tells NSGo v0.4.0's `nsgo add` to import `player`, the targets the player works on, which `nsgo check` warns an app of, and what an app owes under the LGPL.
 - The website, the demo and NSGo Player count their use in Umami, tagged `website`, `demo` and `app`; `nsgo dev` builds and tests send nothing, and NSGo Player's settings turn it off.
 - NSGo Player, the first-party desktop app on macOS, Windows and Linux, plays the viewer's video folders through its built-in local files plugin, and other sources through JavaScript or TypeScript plugins with YAML manifests and locales, installed from the latest release of a GitHub repository and updated as newer ones are published, or installed or used where their folder is picked in the settings; its pages, player and dialogs follow the designs in `design/`.
 - NSGo Player follows shows on a plugin's account through its `following`, `follow` and `unfollow` exports and the show `video` answers: a Following page by status with a count of shows with new episodes, and a video page following its show and playing the next episode.
