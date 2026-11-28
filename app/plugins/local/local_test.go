@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
 )
 
 // folder makes a video folder with a subfolder, videos, subtitles beside

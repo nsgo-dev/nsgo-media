@@ -10,8 +10,8 @@ import (
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
 
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
-	"github.com/oneo-me/nsgo-media/app/locales"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/locales"
 )
 
 // account is the viewer's account of a plugin.

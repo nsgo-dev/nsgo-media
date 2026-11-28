@@ -2,7 +2,7 @@
 
 package pipeline
 
-import "github.com/oneo-me/nsgo-media/internal/ffmpeg"
+import "github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 
 // gpuState is empty where pictures never go to the GPU.
 type gpuState struct{}

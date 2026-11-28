@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
 )
 
 // FS holds the plugin's folder: its manifest and locales.

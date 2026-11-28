@@ -12,8 +12,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
-	"github.com/oneo-me/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
 )
 
 func testLibrary(t *testing.T, builtin ...fs.FS) *library {

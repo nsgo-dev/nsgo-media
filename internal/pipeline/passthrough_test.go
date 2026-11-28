@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/audioout"
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/audioout"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // endpoint is a mock IEC 61937 device: it takes the streams refuse lets

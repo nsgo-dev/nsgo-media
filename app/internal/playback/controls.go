@@ -5,14 +5,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/nsgo-dev/nsgo-media/player"
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/desktop"
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
-	"github.com/oneo-me/nsgo-media/player"
 
-	"github.com/oneo-me/nsgo-media/app/internal/store"
-	"github.com/oneo-me/nsgo-media/app/locales"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/locales"
 )
 
 // The controls' widths: in a window, full screen and pinned.

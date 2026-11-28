@@ -40,7 +40,7 @@ type source struct {
 // tools/ffmpeg/pinned.go.
 const ffmpegVersion = "9.0.2"
 
-const modulePath = "github.com/oneo-me/nsgo-media"
+const modulePath = "github.com/nsgo-dev/nsgo-media"
 
 const buildHint = "build them in NSGo Media's directory with go run ./tools/ffmpeg, or name their directory with -libs"
 

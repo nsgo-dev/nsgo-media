@@ -4,7 +4,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // demux reads d's packets into the queues of the streams being decoded,

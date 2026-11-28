@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // item is what a packet queue carries: a packet, or a marker that the

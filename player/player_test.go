@@ -19,7 +19,7 @@ import (
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/nsgotest"
 
-	"github.com/oneo-me/nsgo-media/internal/audioout"
+	"github.com/nsgo-dev/nsgo-media/internal/audioout"
 )
 
 func TestMain(m *testing.M) { nsgotest.Main(m) }

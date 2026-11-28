@@ -5,7 +5,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // GPUKind is how pictures reach a view on the GPU without a copy through

@@ -26,3 +26,7 @@
 - The desktop libraries are published as this repository's release `ffmpeg-9.0.2-1` and declared in the core's `nsgo-natives.yaml`, so `nsgo build` puts them into a desktop app's packages and installers, signed and notarized with it, and their notices into its `THIRD_PARTY_NOTICES.txt`.
 - iOS on devices and the arm64 simulator: `tools/ffmpeg` builds the libraries as frameworks with VideoToolbox (`-target ios,ios_simulator`), the loader finds them in the app, PCM plays through an AudioQueue, and `bundle` puts them into an iOS app, signing it again and writing its IPA again. A playing player holds the audio session at Playback through `audio.HoldSession`, so the Ring/Silent switch does not silence it. It pauses as an interruption begins and plays again as it ends when iOS allows it, and pauses as headphones are unplugged. With the app's `audio` background mode its sound plays on in the background, the picture decoded again as the app returns; without it, it pauses there.
 - A demo app with its own controls, among them stepping both ways, saving a snapshot, choosing an HLS or DASH stream's quality, bitmap subtitles drawn over the picture and a passthrough switch for AC-3, E-AC-3, DTS, DTS-HD and TrueHD with the output it gives; on a touch screen it keeps out of the system's areas, with 44 pt buttons and a tap on the picture playing or pausing.
+
+### Changed
+
+- The module path is `github.com/nsgo-dev/nsgo-media`, which was `github.com/oneo-me/nsgo-media`; it requires NSGo v0.4.0, and installs with `go get`.

@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/audioout"
+	"github.com/nsgo-dev/nsgo-media/internal/audioout"
 )
 
 // wallClock is the clock without audio: a media time running from a

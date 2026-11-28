@@ -4,7 +4,7 @@ import (
 	"maps"
 	"runtime"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // encoderSpec defines one FFmpeg encoder backend and its low-latency defaults.

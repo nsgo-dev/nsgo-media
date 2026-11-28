@@ -5,7 +5,7 @@
 //
 // Add it to an app's tools and run it after building:
 //
-//	go get -tool github.com/oneo-me/nsgo-media/cmd/nsgo-media
+//	go get -tool github.com/nsgo-dev/nsgo-media/cmd/nsgo-media
 //	go tool nsgo build -target ios
 //	go tool nsgo-media bundle dist/*
 //

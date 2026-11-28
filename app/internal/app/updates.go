@@ -14,9 +14,9 @@ import (
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
 
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
-	"github.com/oneo-me/nsgo-media/app/internal/store"
-	"github.com/oneo-me/nsgo-media/app/locales"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/locales"
 )
 
 // checkEvery is how often the app checks the repositories of the plugins

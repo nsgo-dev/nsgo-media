@@ -10,7 +10,7 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg/library"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg/library"
 )
 
 // Majors are the library major versions the binding's struct layouts are

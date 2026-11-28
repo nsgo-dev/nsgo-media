@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
 )
 
 // gitHubAPI is GitHub's REST API, which the app asks for plugins'

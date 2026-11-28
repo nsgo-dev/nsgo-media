@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/audioout"
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/audioout"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // Passthrough is the codecs whose audio passes undecoded, in IEC 61937

@@ -337,7 +337,7 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 			fmt.Fprintf(&patches, "  %s on %s: %s\n", p.file, p.date, p.why)
 		}
 	}
-	note := fmt.Sprintf("FFmpeg %s, built for %s by NSGo Media's tools/ffmpeg (https://github.com/oneo-me/nsgo-media/tree/main/tools/ffmpeg) under the LGPL 2.1 or later.\n\nSource: %s\nSHA-256: %s\n\n%s\nConfigured with:\n  %s\n\n"+
+	note := fmt.Sprintf("FFmpeg %s, built for %s by NSGo Media's tools/ffmpeg (https://github.com/nsgo-dev/nsgo-media/tree/main/tools/ffmpeg) under the LGPL 2.1 or later.\n\nSource: %s\nSHA-256: %s\n\n%s\nConfigured with:\n  %s\n\n"+
 		"libavformat links libxml2 statically, under the MIT license in COPYING.libxml2, configured with --with-minimum --with-threads and its xmlCleanupParser made a no-op.\nSource: %s\nSHA-256: %s\n%s",
 		FFmpegVersion, t.name, ffmpegSource.url, ffmpegSource.sha256, patches.String(), strings.Join(args, "\n  "), libxml2Source.url, libxml2Source.sha256, extraNotes.String())
 	w, err := zw.Create("BUILD.txt")

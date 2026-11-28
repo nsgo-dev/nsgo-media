@@ -22,7 +22,7 @@ CPU is a percentage of one core. Copying hardware frames to memory and convertin
 
 ## The app's share
 
-The pipeline's frames in memory then go through NSGo's pixel buffers: the engine copies each new version and the platform uploads it. In the demo on macOS, a 4K60 HEVC clip in a window about 2500×1400 pixels used about 140% CPU in all, against the pipeline's 25%, as each frame is converted to the view's size and then copied twice more. Zero-copy rendering on macOS and iOS is a [later goal](https://github.com/oneo-me/nsgo-media/issues/40).
+The pipeline's frames in memory then go through NSGo's pixel buffers: the engine copies each new version and the platform uploads it. In the demo on macOS, a 4K60 HEVC clip in a window about 2500×1400 pixels used about 140% CPU in all, against the pipeline's 25%, as each frame is converted to the view's size and then copied twice more. Zero-copy rendering on macOS and iOS is a [later goal](https://github.com/nsgo-dev/nsgo-media/issues/40).
 
 Until then, macOS uploads HDR pictures to a `gpu` view instead of converting them to RGBA. Writing a 4K frame's P010 planes (24 MiB) takes about 1.2 ms of the engine's goroutine, as NSGo copies them for its backend, which copies them again into a staging buffer the GPU copies from. In the demo, 1024×672 points on a MacBook Pro (M1 Max), a 4K60 HEVC 10-bit HDR10 clip with VideoToolbox used 200–203% CPU over 20 s after 6 s of playing before, and 64–72% after, about 1.1–1.2 GiB resident in both (2026-11-25).
 

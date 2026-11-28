@@ -1,13 +1,14 @@
-module github.com/oneo-me/nsgo-media
+module github.com/nsgo-dev/nsgo-media
 
 go 1.27.3
 
 require (
 	github.com/ebitengine/purego v0.11.3
-	github.com/nsgo-dev/nsgo v0.3.3-0.20261125111955-8d716d9b939c
+	github.com/nsgo-dev/nsgo v0.4.0
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/andybalholm/brotli v1.3.0 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
@@ -30,6 +31,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/crypto v0.59.0 // indirect
 	golang.org/x/image v0.48.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
@@ -42,6 +44,6 @@ require (
 )
 
 tool (
+	github.com/nsgo-dev/nsgo-media/cmd/nsgo-media
 	github.com/nsgo-dev/nsgo/cmd/nsgo
-	github.com/oneo-me/nsgo-media/cmd/nsgo-media
 )
