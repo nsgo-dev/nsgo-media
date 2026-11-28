@@ -59,6 +59,8 @@ const (
 	libxml2Notice  = noticesDir + "/COPYING.libxml2"
 	libvplNotice   = noticesDir + "/COPYING.libvpl"
 	openh264Notice = noticesDir + "/COPYING.openh264"
+	libvpxNotice   = noticesDir + "/COPYING.libvpx"
+	opusNotice     = noticesDir + "/COPYING.opus"
 	patchNotice    = noticesDir + "/NOTICE-" + patchName
 )
 
@@ -70,6 +72,8 @@ func archiveNotices(target string) map[string]string {
 	m := map[string]string{
 		"COPYING.LGPLv2.1": lgplNotice,
 		"COPYING.libxml2":  libxml2Notice,
+		"COPYING.libvpx":   libvpxNotice,
+		"COPYING.opus":     opusNotice,
 		patchName:          patchNotice,
 		"BUILD.txt":        buildNotice(target),
 	}
@@ -197,6 +201,7 @@ func libraryNotices(target, lib string) []string {
 		// Only libavformat links libxml2 and holds the change.
 		licenses = append(licenses, libxml2Notice, patchNotice)
 	case "avcodec":
+		licenses = append(licenses, libvpxNotice, opusNotice)
 		switch target {
 		case "windows_x64":
 			licenses = append(licenses, libvplNotice)

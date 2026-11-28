@@ -17,17 +17,18 @@ import (
 // layoutFields are the struct fields the binding reads or writes, by C
 // struct. A struct listed with no fields has only its size generated.
 var layoutFields = map[string][]string{
-	"AVFormatContext":   {"iformat", "pb", "ctx_flags", "nb_streams", "streams", "nb_chapters", "chapters", "url", "start_time", "duration", "bit_rate", "flags", "metadata", "interrupt_callback", "opaque", "io_open", "io_close2"},
+	"AVFormatContext":   {"iformat", "oformat", "pb", "ctx_flags", "nb_streams", "streams", "nb_chapters", "chapters", "url", "start_time", "duration", "bit_rate", "flags", "metadata", "interrupt_callback", "opaque", "io_open", "io_close2"},
 	"AVInputFormat":     {"name", "long_name", "flags"},
+	"AVOutputFormat":    {"flags"},
 	"AVIOContext":       {"buffer", "pos"},
 	"AVStream":          {"index", "id", "codecpar", "time_base", "start_time", "duration", "nb_frames", "disposition", "discard", "sample_aspect_ratio", "metadata", "avg_frame_rate", "r_frame_rate"},
-	"AVCodecParameters": {"codec_type", "codec_id", "format", "bit_rate", "profile", "width", "height", "sample_aspect_ratio", "framerate", "ch_layout", "sample_rate", "coded_side_data", "nb_coded_side_data"},
+	"AVCodecParameters": {"codec_type", "codec_id", "codec_tag", "format", "bit_rate", "profile", "width", "height", "sample_aspect_ratio", "framerate", "ch_layout", "sample_rate", "coded_side_data", "nb_coded_side_data"},
 	"AVPacketSideData":  {"data", "size", "type"},
 	"AVChannelLayout":   {"order", "nb_channels", "u"},
 	"AVChapter":         {"id", "time_base", "start", "end", "metadata"},
 	"AVPacket":          {"pts", "dts", "data", "size", "stream_index", "flags", "duration", "pos"},
 	"AVFrame":           {"data", "linesize", "extended_data", "width", "height", "nb_samples", "format", "pict_type", "sample_aspect_ratio", "pts", "pkt_dts", "sample_rate", "hw_frames_ctx", "ch_layout", "best_effort_timestamp", "duration", "flags", "color_range", "colorspace", "color_trc", "color_primaries"},
-	"AVCodecContext":    {"codec_type", "codec_id", "bit_rate", "time_base", "width", "height", "gop_size", "pix_fmt", "max_b_frames", "sample_fmt", "sample_rate", "ch_layout", "rc_max_rate", "rc_buffer_size", "color_primaries", "color_trc", "colorspace", "color_range", "thread_count", "thread_type", "hw_device_ctx", "hw_frames_ctx", "pkt_timebase", "extra_hw_frames", "flags", "flags2", "framerate"},
+	"AVCodecContext":    {"codec", "codec_type", "codec_id", "bit_rate", "time_base", "width", "height", "gop_size", "pix_fmt", "max_b_frames", "sample_fmt", "sample_rate", "ch_layout", "rc_max_rate", "rc_buffer_size", "color_primaries", "color_trc", "colorspace", "color_range", "thread_count", "thread_type", "hw_device_ctx", "hw_frames_ctx", "pkt_timebase", "extra_hw_frames", "flags", "flags2", "framerate", "frame_size", "global_quality"},
 	"AVCodec":           {"name", "long_name", "type", "id", "capabilities"},
 	"AVCodecHWConfig":   {"pix_fmt", "methods", "device_type"},
 	"AVSubtitle":        {"format", "start_display_time", "end_display_time", "num_rects", "rects", "pts"},

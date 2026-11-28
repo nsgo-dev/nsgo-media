@@ -61,6 +61,28 @@ func (r *Resampler) Convert(f *Frame) ([]float32, error) {
 	return unsafe.Slice((*float32)(r.buf), int(got)*int(r.outChan)), nil
 }
 
+// Flush returns the samples the resampler still holds, valid until the
+// next call.
+func (r *Resampler) Flush() ([]float32, error) {
+	if r.ctx == nil {
+		return nil, nil
+	}
+	maxOut := int(swrGetDelay(r.ctx, int64(r.outRate))) + 256
+	if maxOut > r.bufSamples {
+		if r.buf != nil {
+			avFree(r.buf)
+		}
+		r.buf = avMalloc(uintptr(maxOut * int(r.outChan) * 4))
+		r.bufSamples = maxOut
+	}
+	out := r.buf
+	got := swrConvert(r.ctx, &out, int32(maxOut), nil, 0)
+	if got < 0 {
+		return nil, Error(got)
+	}
+	return unsafe.Slice((*float32)(r.buf), int(got)*int(r.outChan)), nil
+}
+
 // Reset drops what the resampler holds, as after a seek.
 func (r *Resampler) Reset() {
 	if r.ctx != nil {
@@ -71,6 +93,77 @@ func (r *Resampler) Reset() {
 // Close frees the resampler.
 func (r *Resampler) Close() {
 	r.Reset()
+	if r.buf != nil {
+		avFree(r.buf)
+		r.buf = nil
+	}
+}
+
+// RateConverter changes interleaved float32 audio's sample rate.
+type RateConverter struct {
+	ctx        unsafe.Pointer
+	channels   int
+	ratio      float64
+	buf        unsafe.Pointer
+	bufSamples int
+}
+
+// NewRateConverter converts channels of audio from inRate to outRate.
+func NewRateConverter(inRate, outRate, channels int) (*RateConverter, error) {
+	if err := Load(); err != nil {
+		return nil, err
+	}
+	r := &RateConverter{channels: channels, ratio: float64(outRate) / float64(inRate)}
+	var layout [sizeAVChannelLayout]byte
+	avChannelLayoutDefault(unsafe.Pointer(&layout[0]), int32(channels))
+	flt := avGetSampleFmt("flt")
+	l := unsafe.Pointer(&layout[0])
+	if err := check(swrAllocSetOpts2(&r.ctx, l, flt, int32(outRate), l, flt, int32(inRate), 0, nil)); err != nil {
+		return nil, err
+	}
+	if err := check(swrInit(r.ctx)); err != nil {
+		swrFree(&r.ctx)
+		return nil, fmt.Errorf("ffmpeg: resampler: %w", err)
+	}
+	return r, nil
+}
+
+// Convert converts in, interleaved, and returns what the converter gives
+// out, valid until the next call; nil in drains what it holds.
+func (r *RateConverter) Convert(in []float32) ([]float32, error) {
+	n := len(in) / r.channels
+	maxOut := int(float64(n)*r.ratio) + 256
+	if maxOut > r.bufSamples {
+		if r.buf != nil {
+			avFree(r.buf)
+		}
+		r.buf = avMalloc(uintptr(maxOut * r.channels * 4))
+		if r.buf == nil {
+			r.bufSamples = 0
+			return nil, errors.New("ffmpeg: out of memory")
+		}
+		r.bufSamples = maxOut
+	}
+	out := r.buf
+	var src *unsafe.Pointer
+	var plane unsafe.Pointer
+	if n > 0 {
+		plane = unsafe.Pointer(&in[0])
+		src = &plane
+	}
+	got := swrConvert(r.ctx, &out, int32(maxOut), src, int32(n))
+	keep(in)
+	if got < 0 {
+		return nil, Error(got)
+	}
+	return unsafe.Slice((*float32)(r.buf), int(got)*r.channels), nil
+}
+
+// Close frees the converter.
+func (r *RateConverter) Close() {
+	if r.ctx != nil {
+		swrFree(&r.ctx)
+	}
 	if r.buf != nil {
 		avFree(r.buf)
 		r.buf = nil

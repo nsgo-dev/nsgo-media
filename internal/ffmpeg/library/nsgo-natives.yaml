@@ -6,154 +6,154 @@ libraries:
   macos_arm64:
     - name: libavutil.61.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_arm64-libavutil.61.dylib
-      sha256: "66c221eaed7ba89707c55d9712a418908df98d42a223d99c78715bd989b4ed41"
+      sha256: "a37e72c1cb4cd963fd945287674c89fa994733139214e01aecb1356484769e85"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_arm64/NOTICE-BUILD.txt]
     - name: libswresample.7.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_arm64-libswresample.7.dylib
-      sha256: "e3da64e0daa2db9d52d8a320639c86725c31a88224d7512efa8d3a651bf9aff7"
+      sha256: "e6b8c93807fc97c0e25ee9e5c4a3f8681525ae7a135b2e30e9b2da7139b8c824"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_arm64/NOTICE-BUILD.txt]
     - name: libswscale.10.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_arm64-libswscale.10.dylib
-      sha256: "2ad6b98f28ce57e55a1eedccadb0da0f8ba863e098e6e673eb096fecd312aba1"
+      sha256: "9b4729b65903095990d78e2e5c059cd0f1c530d399082339d282440a21afdc3c"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_arm64/NOTICE-BUILD.txt]
     - name: libavcodec.63.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_arm64-libavcodec.63.dylib
-      sha256: "f93e48a8ee30520c51249c3ad82ddf293b97e5dfe6b68e04ead104d4a6af660f"
-      licenses: [notices/COPYING.LGPLv2.1, notices/macos_arm64/NOTICE-BUILD.txt]
+      sha256: "61d03765746c8578990e6897d02c1857ec098c577bfa69b829761160a0e9b26b"
+      licenses: [notices/COPYING.LGPLv2.1, notices/macos_arm64/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus]
     - name: libavformat.63.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_arm64-libavformat.63.dylib
-      sha256: "c0bd3415d32bb13100606c49af253ebb8dab94c0aa8a727fa6c96779c3bc9e2f"
+      sha256: "87c00ffac2d6bb0d737287e83d1145588e4e3607dad28f488eba24d604411859"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_arm64/NOTICE-BUILD.txt, notices/COPYING.libxml2, notices/NOTICE-ffmpeg.patch]
     - name: libavfilter.12.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_arm64-libavfilter.12.dylib
-      sha256: "8b1226947abd42fd21cd356548bec6412383c90b02c333562f0aa1efcf1bf5eb"
+      sha256: "a266d92b1c724f474a2ad783d6400ab14885cf8d94ab47d0b051f19d6d8c94ab"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_arm64/NOTICE-BUILD.txt]
   macos_x64:
     - name: libavutil.61.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_x64-libavutil.61.dylib
-      sha256: "0916b183a736d3dcd8dae0267e4d7967522bf8bf5d92821670a171574382c509"
+      sha256: "f0ca42c939bda4946b49253c1810119dce52f18bb22c495a24957ff8b72cc4fd"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_x64/NOTICE-BUILD.txt]
     - name: libswresample.7.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_x64-libswresample.7.dylib
-      sha256: "64fb7c94e0b55126d03be4fb0d6d97c396bf31106dd23420a5798695a532f5c6"
+      sha256: "ab9768a523e146612782cd4b3066c7a96d114858c2b5da2ec6c75a3265db3a3d"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_x64/NOTICE-BUILD.txt]
     - name: libswscale.10.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_x64-libswscale.10.dylib
-      sha256: "fc396c3dafb42cb48452f3695b5c26cfc0809e721628624e3377b3eecafb16cb"
+      sha256: "05483d1cb2535971d701a3d02e6bdcaf91254e398ca0a3cad344e357e0402740"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_x64/NOTICE-BUILD.txt]
     - name: libavcodec.63.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_x64-libavcodec.63.dylib
-      sha256: "e21521da349b3caf6a9aa7042b20a009604387166ff77571eb6fdb2737391ab7"
-      licenses: [notices/COPYING.LGPLv2.1, notices/macos_x64/NOTICE-BUILD.txt]
+      sha256: "a46f63a42e965c80ba887c32f9ec869bdc01ad0096d89bf0ca9d43aded36bada"
+      licenses: [notices/COPYING.LGPLv2.1, notices/macos_x64/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus]
     - name: libavformat.63.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_x64-libavformat.63.dylib
-      sha256: "750f081711293d5ffe98507631cf0f00d283d8cf42a2f8ec459d69127dc9ea80"
+      sha256: "9abf3999b50893d3a8cb092c467368d3454fbf344aab1c597ed8eddacff6feaf"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_x64/NOTICE-BUILD.txt, notices/COPYING.libxml2, notices/NOTICE-ffmpeg.patch]
     - name: libavfilter.12.dylib
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/macos_x64-libavfilter.12.dylib
-      sha256: "51fae403f4321620db9f7c40052f14fb6b0ee13fe53c3814841d2d7a7bf6d2c5"
+      sha256: "44acdca780877c548177da62161c33f2be9f235d22e9b4cd1f4b3d16ee7c76ee"
       licenses: [notices/COPYING.LGPLv2.1, notices/macos_x64/NOTICE-BUILD.txt]
   windows_arm64: []
   windows_x64:
     - name: avutil-61.dll
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/windows_x64-avutil-61.dll
-      sha256: "c087cadc30219eb99827e417eb78826753f1ecc143bcbe24ec9d4fedb1ec8a82"
+      sha256: "9669d74eddc294c308d2aa3d62bbe7606c5ffac00b733de8b09eeb3e86465aab"
       licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt]
     - name: swresample-7.dll
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/windows_x64-swresample-7.dll
-      sha256: "cd9c1d23f17d9606a42b4d73eb34be78272edc9a4d406e41e53afe40497c3e8a"
+      sha256: "888c4e13ccba51fa3d789a8c5105c44612c33937f8ba897acf859146b04900a0"
       licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt]
     - name: swscale-10.dll
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/windows_x64-swscale-10.dll
-      sha256: "76d2e918aa8b1f7402dd58ca1307c44c874bbb434ba7cabd1a3cc7375d4a5bd0"
+      sha256: "2cce0f4c263e26658f90614f1146101bc3def62d1d7cc679062322ab6c4d47a1"
       licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt]
     - name: avcodec-63.dll
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/windows_x64-avcodec-63.dll
-      sha256: "748ceb99edcdc19d89ebc2b30fbcb546bf00b1e49d3b03f938793a885ea8c4cf"
-      licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt, notices/COPYING.libvpl]
+      sha256: "2296ac269b922318262f328e9bed0795290c920d0523117642e2ecbffc4fda98"
+      licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus, notices/COPYING.libvpl]
     - name: avformat-63.dll
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/windows_x64-avformat-63.dll
-      sha256: "20f9c93a7ee1fd2bdf500553f41b452efde44992c942e6fb1329bb3c6c7fbd81"
+      sha256: "6efcf63213d193480c63654d3608aa9fbd94e3e45101c8b17cc15cfb78a7cfa8"
       licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt, notices/COPYING.libxml2, notices/NOTICE-ffmpeg.patch]
     - name: avfilter-12.dll
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/windows_x64-avfilter-12.dll
-      sha256: "84cd882431c96ff7c4d98a82f0d8a237b77f09b99e78c186a7ce44b1c3094a9a"
+      sha256: "1d813046b845fbf1d521d4a0f63a677bf1ce5e5951e9559507728caae9acdcd2"
       licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt]
   linux_arm64: []
   linux_x64:
     - name: libavutil.so.61
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/linux_x64-libavutil.so.61
-      sha256: "6467f5b83c51a1f1d3e779c004646d6c7333aa4e1d10c5dd38e46a90fcc5b657"
+      sha256: "665b5e71163a7fb9a07012bcf636a8e20df8ed76b687b252b8fddf4c95e4270d"
       licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt]
     - name: libswresample.so.7
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/linux_x64-libswresample.so.7
-      sha256: "18c2557bcba534a5cfee695931e684e51417a1bfec9d0e2c8c2240966fa30e59"
+      sha256: "d22abe7168057eb9e8cae236cef5c1828c8e35c32441c88be9a56be6eeae33eb"
       licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt]
     - name: libswscale.so.10
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/linux_x64-libswscale.so.10
-      sha256: "ffcffc279c9b3031ebc9bace5e8c1dba6d117030292f2b77155cab583f2fbdaa"
+      sha256: "81a17665960432ea886e3066bb3ec295a3431917f6366b3427447078aca4e6ca"
       licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt]
     - name: libavcodec.so.63
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/linux_x64-libavcodec.so.63
-      sha256: "13b0dee95483d0818fed215312b887d4c3e77eb240522c19fa936a0a635d6b70"
-      licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt, notices/COPYING.openh264]
+      sha256: "6cdf41fa18f7bea98b1fd8acbadb05e9d0d454468c9a0e0cf3bd9ed0b333b820"
+      licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus, notices/COPYING.openh264]
     - name: libavformat.so.63
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/linux_x64-libavformat.so.63
-      sha256: "177ec09abf04e0bdf029c81c8aba7f38af589a913289e8feaf79e63e74a82214"
+      sha256: "dddef7b6c967daa249f5e92d71f0c801fce18e81aaa882d9bf77a0d5e290c0cf"
       licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt, notices/COPYING.libxml2, notices/NOTICE-ffmpeg.patch]
     - name: libavfilter.so.12
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/linux_x64-libavfilter.so.12
-      sha256: "e4a747651d9bdc9972c989ea11cd7b0cd3afc0ff6314f7d3c7ea41515135885b"
+      sha256: "1ed4d4a69ab1643d93a735f2782ea44e8254a3daec0036e52d6f27a9e0324b24"
       licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt]
   ios:
     - name: libavutil.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios-libavutil
-      sha256: "185f909c6e98a756b25f734ab3929179a11b5e88b891be4fd94cfff6f46768f4"
+      sha256: "48f5706c3944ba373d334be9dc6aff392229076a138ff4e9451cf14c27c5fc62"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios/NOTICE-BUILD.txt]
     - name: libswresample.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios-libswresample
-      sha256: "c7a4fb6b08744b7eb871a5f41bb227b65656b5a7cd38967ef47a8b05025860d4"
+      sha256: "cddb94cfa28c89ea5430b5cb5fe54dbe97472e6b1535b9991181ddab6a1c1bba"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios/NOTICE-BUILD.txt]
     - name: libswscale.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios-libswscale
-      sha256: "5f230a5f8f01443b2b51018d537c4e074ce68758b10aa2afe0a3584c30114d5a"
+      sha256: "3347659f5c6573984017f21496b460ae84bc6c4de4621f0d2a314a16d8ec0aec"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios/NOTICE-BUILD.txt]
     - name: libavcodec.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios-libavcodec
-      sha256: "28b4ffb44a303267159aa892a2d3e031743ed0104823ecb21fac958678a8d476"
-      licenses: [notices/COPYING.LGPLv2.1, notices/ios/NOTICE-BUILD.txt]
+      sha256: "f31df5426b551d2177cfad392b36e94b70223c9d8175f39949057fb1084b2501"
+      licenses: [notices/COPYING.LGPLv2.1, notices/ios/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus]
     - name: libavformat.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios-libavformat
-      sha256: "e6583e05b2fb023cd22a62125db376433729e380dcf43b4b202f7ef505cb4988"
+      sha256: "d9b7d2a448cf24ea36065f98c4024056de33e60f9ea46c9a3dc9c82c1bc7476f"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios/NOTICE-BUILD.txt, notices/COPYING.libxml2, notices/NOTICE-ffmpeg.patch]
     - name: libavfilter.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios-libavfilter
-      sha256: "b947a3f627088d3b01414f61c189e99660fdf17ec6ea31ae600fce371cb1a3d0"
+      sha256: "f02f9cead3dec02fcb2b2a12847e129cb659571515c2dd56e69f5ab65afd61b9"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios/NOTICE-BUILD.txt]
   ios_simulator:
     - name: libavutil.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios_simulator-libavutil
-      sha256: "600bd468dc6dcc3d644067727a1a5b4432905d8c692e622bf02861b7cd62310f"
+      sha256: "cf9bcb08ca36b70e541b5c399f42892df106a0983ebe01d0f54b02422113453f"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt]
     - name: libswresample.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios_simulator-libswresample
-      sha256: "c37cfdaed5b1ca5aaa3fc84288f5320ea895ba4ff7c3988097344e95806f8f96"
+      sha256: "2f9c6422b22065cbd129b8037f293bafde37bad3962aed521287347704f17451"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt]
     - name: libswscale.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios_simulator-libswscale
-      sha256: "ad06aa607d2c4b4942c2998591ec33a4486ed8b0afe460ac9b6985c0c588f0d5"
+      sha256: "f8e917a0f182bb0d577083edc4296f328fb723889985a3f569ddcff606eb9202"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt]
     - name: libavcodec.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios_simulator-libavcodec
-      sha256: "73fba1d36112e0d5b26eed2bb64e2d49dc75063177c975370c624d762a108aa6"
-      licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt]
+      sha256: "740073d8b5e0345bffcc642f9f3e1d16ff12db9f826ba0fdce400853f5616c41"
+      licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus]
     - name: libavformat.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios_simulator-libavformat
-      sha256: "359af21c21e1faf15f4c35433bc0d0c253b1b7a78ffe4938c95c11246e885586"
+      sha256: "906fbce99c92ea38a71f21c0183ccb526bf171ba00e19cfc522d46baf5ce3d00"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt, notices/COPYING.libxml2, notices/NOTICE-ffmpeg.patch]
     - name: libavfilter.framework
       url: https://github.com/nsgo-dev/nsgo-media/releases/download/ffmpeg-9.0.2-3/ios_simulator-libavfilter
-      sha256: "fda7ae14852b6e0d6063d3fc06bb9b064b1bdc81cc5a8d3acaaafc5ef9df45cc"
+      sha256: "dcae3a6791f705552deccbaab5455364971e6947774cbb66d2cac90e0f4ae228"
       licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt]
   tvos: []
   tvos_simulator: []

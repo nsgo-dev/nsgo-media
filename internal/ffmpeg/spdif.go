@@ -59,7 +59,7 @@ func NewPacker(par *CodecParameters, dtsHDRate int) (*Packer, error) {
 		})
 	})
 	k := &Packer{}
-	if err := check(avformatAllocOutputCtx2(&k.ctx, nil, "spdif", nil)); err != nil {
+	if err := check(avformatAllocOutputCtx2(&k.ctx, nil, "spdif", "")); err != nil {
 		return nil, fmt.Errorf("ffmpeg: no spdif muxer: %w", err)
 	}
 	packMu.Lock()

@@ -20,6 +20,7 @@ const (
 	offAVCodecType                         = 16
 	offAVCodecId                           = 20
 	offAVCodecCapabilities                 = 24
+	offAVCodecContextCodec                 = 16
 	offAVCodecContextCodecType             = 12
 	offAVCodecContextCodecId               = 24
 	offAVCodecContextBitRate               = 56
@@ -47,11 +48,14 @@ const (
 	offAVCodecContextFlags                 = 64
 	offAVCodecContextFlags2                = 68
 	offAVCodecContextFramerate             = 100
+	offAVCodecContextFrameSize             = 376
+	offAVCodecContextGlobalQuality         = 420
 	offAVCodecHWConfigPixFmt               = 0
 	offAVCodecHWConfigMethods              = 4
 	offAVCodecHWConfigDeviceType           = 8
 	offAVCodecParametersCodecType          = 0
 	offAVCodecParametersCodecId            = 4
+	offAVCodecParametersCodecTag           = 8
 	offAVCodecParametersFormat             = 44
 	offAVCodecParametersBitRate            = 48
 	offAVCodecParametersProfile            = 64
@@ -71,6 +75,7 @@ const (
 	offAVDictionaryEntryKey                = 0
 	offAVDictionaryEntryValue              = 8
 	offAVFormatContextIformat              = 8
+	offAVFormatContextOformat              = 16
 	offAVFormatContextPb                   = 32
 	offAVFormatContextCtxFlags             = 40
 	offAVFormatContextNbStreams            = 44
@@ -124,6 +129,7 @@ const (
 	offAVInputFormatName                   = 0
 	offAVInputFormatLongName               = 8
 	offAVInputFormatFlags                  = 16
+	offAVOutputFormatFlags                 = 44
 	offAVPacketPts                         = 8
 	offAVPacketDts                         = 16
 	offAVPacketData                        = 24

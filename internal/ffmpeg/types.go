@@ -71,8 +71,10 @@ const (
 	PictTypeNone int32 = 0
 	PictTypeI    int32 = 1
 
-	codecFlagLowDelay = 1 << 19
-	threadTypeSlice   = 2
+	codecFlagLowDelay         = 1 << 19
+	codecFlagGlobalHeader     = 1 << 22
+	codecCapVariableFrameSize = 1 << 16
+	threadTypeSlice           = 2
 
 	ColorPrimariesBT709       = 1
 	ColorPrimariesUnspecified = 2
@@ -336,7 +338,10 @@ func (p *Packet) DurationTS() int64 {
 	return i64(p.ptr(), offAVPacketDuration)
 }
 func (p *Packet) Pos() int64 { return i64(p.ptr(), offAVPacketPos) }
-func (p *Packet) Key() bool  { return i32(p.ptr(), offAVPacketFlags)&pktFlagKey != 0 }
+
+// SetDuration sets the packet's duration in its time base.
+func (p *Packet) SetDuration(d int64) { *(*int64)(at(p.ptr(), offAVPacketDuration)) = d }
+func (p *Packet) Key() bool           { return i32(p.ptr(), offAVPacketFlags)&pktFlagKey != 0 }
 
 // Data is the packet's bytes, valid until it is unreferenced.
 func (p *Packet) Data() []byte {
@@ -406,6 +411,21 @@ func (f *Frame) Hardware() bool { return pp(f.p(), offAVFrameHwFramesCtx) != nil
 
 // SetPTS sets the frame's timestamp.
 func (f *Frame) SetPTS(ts int64) { *(*int64)(at(f.p(), offAVFramePts)) = ts }
+
+// SetDuration sets the frame's duration in its time base.
+func (f *Frame) SetDuration(d int64) { *(*int64)(at(f.p(), offAVFrameDuration)) = d }
+
+// AllocAudio allocates buffers for n samples of sampleFmt at rate with
+// channels in the default layout.
+func (f *Frame) AllocAudio(n int, sampleFmt int32, rate, channels int) error {
+	f.Unref()
+	p := f.p()
+	*(*int32)(at(p, offAVFrameFormat)) = sampleFmt
+	*(*int32)(at(p, offAVFrameSampleRate)) = int32(rate)
+	*(*int32)(at(p, offAVFrameNbSamples)) = int32(n)
+	avChannelLayoutDefault(f.layout(), int32(channels))
+	return check(avFrameGetBuffer(f, 0))
+}
 
 // SetPictType sets the frame's picture type (PictTypeNone or PictTypeI).
 func (f *Frame) SetPictType(t int32) { *(*int32)(at(f.p(), offAVFramePictType)) = t }

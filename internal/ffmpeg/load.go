@@ -163,6 +163,8 @@ var (
 	avGetPixFmt            func(name string) int32
 	avGetPixFmtName        func(f int32) string
 	avGetSampleFmt         func(name string) int32
+	avGetSampleFmtName     func(f int32) string
+	avSampleFmtIsPlanar    func(f int32) int32
 	avGetBytesPerSample    func(f int32) int32
 	avHwdeviceFindType     func(name string) int32
 	avHwdeviceCtxCreate    func(ref *ptr, typ int32, device ptr, opts ptr, flags int32) int32
@@ -214,6 +216,8 @@ var (
 	avPacketSideDataGet     func(sd ptr, nb int32, typ int32) ptr
 	avcodecDescriptorByID   func(id int32) ptr
 	avcodecParametersCopy   func(dst, src *CodecParameters) int32
+	avcodecParamsFromCtx    func(par *CodecParameters, c *CodecContext) int32
+	avcodecGetSupportedCfg  func(c *CodecContext, codec *Codec, config int32, flags uint32, out *ptr, n *int32) int32
 	avcodecParametersAlloc  func() *CodecParameters
 	avcodecParametersFree   func(p **CodecParameters)
 	avformatVersion         func() uint32
@@ -228,10 +232,14 @@ var (
 	avioContextFree         func(c *ptr)
 	avioFlush               func(pb ptr)
 	avGuessFormat           func(name string, filename, mime ptr) ptr
-	avformatAllocOutputCtx2 func(c **FormatContext, ofmt ptr, name string, filename ptr) int32
+	avformatAllocOutputCtx2 func(c **FormatContext, ofmt ptr, name, filename string) int32
 	avformatNewStream       func(c *FormatContext, codec ptr) *Stream
 	avformatWriteHeader     func(c *FormatContext, opts *ptr) int32
 	avWriteFrame            func(c *FormatContext, p *Packet) int32
+	avInterleavedWriteFrame func(c *FormatContext, p *Packet) int32
+	avWriteTrailer          func(c *FormatContext) int32
+	avioOpen                func(pb *ptr, url string, flags int32) int32
+	avioClosep              func(pb *ptr) int32
 	avformatFreeContext     func(c *FormatContext)
 	avfilterVersion         func() uint32
 	avfilterGraphAlloc      func() ptr
@@ -265,6 +273,8 @@ var symbols = []sym{
 	{"avutil", "av_get_pix_fmt", &avGetPixFmt},
 	{"avutil", "av_get_pix_fmt_name", &avGetPixFmtName},
 	{"avutil", "av_get_sample_fmt", &avGetSampleFmt},
+	{"avutil", "av_get_sample_fmt_name", &avGetSampleFmtName},
+	{"avutil", "av_sample_fmt_is_planar", &avSampleFmtIsPlanar},
 	{"avutil", "av_get_bytes_per_sample", &avGetBytesPerSample},
 	{"avutil", "av_hwdevice_find_type_by_name", &avHwdeviceFindType},
 	{"avutil", "av_hwdevice_ctx_create", &avHwdeviceCtxCreate},
@@ -316,6 +326,8 @@ var symbols = []sym{
 	{"avcodec", "av_packet_side_data_get", &avPacketSideDataGet},
 	{"avcodec", "avcodec_descriptor_get", &avcodecDescriptorByID},
 	{"avcodec", "avcodec_parameters_copy", &avcodecParametersCopy},
+	{"avcodec", "avcodec_parameters_from_context", &avcodecParamsFromCtx},
+	{"avcodec", "avcodec_get_supported_config", &avcodecGetSupportedCfg},
 	{"avcodec", "avcodec_parameters_alloc", &avcodecParametersAlloc},
 	{"avcodec", "avcodec_parameters_free", &avcodecParametersFree},
 
@@ -335,6 +347,10 @@ var symbols = []sym{
 	{"avformat", "avformat_new_stream", &avformatNewStream},
 	{"avformat", "avformat_write_header", &avformatWriteHeader},
 	{"avformat", "av_write_frame", &avWriteFrame},
+	{"avformat", "av_interleaved_write_frame", &avInterleavedWriteFrame},
+	{"avformat", "av_write_trailer", &avWriteTrailer},
+	{"avformat", "avio_open", &avioOpen},
+	{"avformat", "avio_closep", &avioClosep},
 	{"avformat", "avformat_free_context", &avformatFreeContext},
 
 	{"avfilter", "avfilter_version", &avfilterVersion},

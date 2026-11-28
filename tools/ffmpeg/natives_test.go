@@ -19,7 +19,8 @@ func TestWriteNatives(t *testing.T) {
 		}
 		zw := zip.NewWriter(f)
 		files := map[string]string{
-			"COPYING.LGPLv2.1": "lgpl", "COPYING.libxml2": "mit", patchName: "diff", "BUILD.txt": "build " + tg.name,
+			"COPYING.LGPLv2.1": "lgpl", "COPYING.libxml2": "mit", "COPYING.libvpx": "vpx-bsd", "COPYING.opus": "opus-bsd",
+			patchName: "diff", "BUILD.txt": "build " + tg.name,
 		}
 		switch tg.name {
 		case "windows_x64":
@@ -57,15 +58,18 @@ func TestWriteNatives(t *testing.T) {
 	}
 	sum := sha256.Sum256([]byte("avformat windows_x64"))
 	iosSum := sha256.Sum256([]byte("avcodec ios_simulator"))
+	avcodec := sha256.Sum256([]byte("avcodec linux_x64"))
 	for _, want := range []string{
 		"version: 2\n", "  windows_arm64: []\n", "  linux_arm64: []\n", "  tvos: []\n", "  tvos_simulator: []\n",
 		"    - name: libavcodec.framework\n      url: " + releaseURL + "ios_simulator-libavcodec\n      sha256: \"" + hex.EncodeToString(iosSum[:]) + "\"\n" +
-			"      licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt]\n",
+			"      licenses: [notices/COPYING.LGPLv2.1, notices/ios_simulator/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus]\n",
 		"\nlinux:\n  linux_arm64:\n", "      deb: [libva2, libva-drm2]\n",
 		"    - name: avformat-61.dll\n      url: " + releaseURL + "windows_x64-avformat-61.dll\n      sha256: \"" + hex.EncodeToString(sum[:]) + "\"\n" +
 			"      licenses: [notices/COPYING.LGPLv2.1, notices/windows_x64/NOTICE-BUILD.txt, notices/COPYING.libxml2, notices/NOTICE-ffmpeg.patch]\n",
 		"    - name: libavutil.61.dylib\n      url: " + releaseURL + "macos_x64-libavutil.61.dylib\n",
 		"licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt]\n",
+		"    - name: libavcodec.so.61\n      url: " + releaseURL + "linux_x64-libavcodec.so.61\n      sha256: \"" + hex.EncodeToString(avcodec[:]) + "\"\n" +
+			"      licenses: [notices/COPYING.LGPLv2.1, notices/linux_x64/NOTICE-BUILD.txt, notices/COPYING.libvpx, notices/COPYING.opus, notices/COPYING.openh264]\n",
 	} {
 		if !strings.Contains(string(manifest), want) {
 			t.Errorf("the manifest lacks %q:\n%s", want, manifest)
@@ -75,6 +79,8 @@ func TestWriteNatives(t *testing.T) {
 		"notices/COPYING.LGPLv2.1":             "lgpl",
 		"notices/COPYING.libvpl":               "vpl-mit",
 		"notices/COPYING.openh264":             "openh264-bsd",
+		"notices/COPYING.libvpx":               "vpx-bsd",
+		"notices/COPYING.opus":                 "opus-bsd",
 		"notices/NOTICE-ffmpeg.patch":          "diff",
 		"notices/macos_arm64/NOTICE-BUILD.txt": "build macos_arm64",
 		"notices/ios/NOTICE-BUILD.txt":         "build ios",

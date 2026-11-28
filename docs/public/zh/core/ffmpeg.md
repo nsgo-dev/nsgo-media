@@ -21,9 +21,9 @@ go run ./tools/ffmpeg -target linux_x64  # 只构建一个目标
 | `windows_x64` | D3D11VA、DXVA2 | Windows 10 |
 | `linux_x64` | VAAPI | glibc 2.34、`libva.so.2` 和 `libva-drm.so.2` |
 
-只配置 LGPL 2.1 的部分：所有解复用器、解析器和解码器，文件协议，变速用到的音频滤镜，以及直通用的 spdif 复用器。没有编码器、其他复用器、设备和网络协议；HTTP(S) 在 Go 中读取，所以不链接 TLS 库。libxml2（MIT）链接进 libavformat，用于 DASH。
+只配置 LGPL 2.1 的部分：所有解复用器、解析器和解码器，文件协议，变速用到的音频滤镜，直通用的 spdif 复用器，MOV、MP4 和 WebM 复用器，以及 `codec` 和 `mediafile` 用到的编码器：各平台的 H.264 和 HEVC 硬件编码器（Linux 上还有 OpenH264）、ProRes、AAC，以及通过 libvpx 和 libopus（BSD）链接进 libavcodec 的 VP9 和 Opus。没有 x264 这类 GPL 编码器、其他复用器、设备和网络协议；HTTP(S) 在 Go 中读取，所以不链接 TLS 库。libxml2（MIT）链接进 libavformat，用于 DASH。
 
-每个归档 `ffmpeg-<version>-<target>.zip` 包含六个库（iOS 是六个框架），以及许可证要求随库分发的声明：`COPYING.LGPLv2.1`、`COPYING.libxml2`、`ffmpeg.patch` 和 `BUILD.txt`。`dist/ffmpeg/source` 里是 FFmpeg 的发布源码包和补丁，即这些库的完整源码。
+每个归档 `ffmpeg-<version>-<target>.zip` 包含六个库（iOS 是六个框架），以及许可证要求随库分发的声明：`COPYING.LGPLv2.1`、`COPYING.libxml2`、`COPYING.libvpx`、`COPYING.opus`、Windows 和 Linux 编码器各自的许可证、`ffmpeg.patch` 和 `BUILD.txt`。`dist/ffmpeg/source` 里是 FFmpeg 的发布源码包和补丁，即这些库的完整源码。
 
 ## 加载位置
 
@@ -51,5 +51,6 @@ go run ./tools/ffmpeg -target linux_x64  # 只构建一个目标
 - 提供它们的源码：把 `dist/ffmpeg/source` 里的文件（Release 里也有：`ffmpeg-9.0.2.tar.xz` 和 `ffmpeg.patch`）放在应用下载旁、你控制的服务器上，在分发该构建期间一直提供，或随应用一起分发。只链接到本存储库的 Release 并不够。
 - 在关于窗口或文档中说明使用了 LGPL 2.1 下的 FFmpeg 项目的库，以及源码在哪里；关于窗口可以显示 `core.ThirdPartyNotices()`。
 - 在你的许可条款中允许修改这些库以及调试所需的逆向工程，并且不主张任何 FFmpeg 商标。
-- 自行处理编解码器专利；LGPL 不授予任何专利。
+- 保留链接进这些库的库的 BSD 和 MIT 声明，`nsgo build` 会随库一起分发它们。
+- 自行处理编解码器专利，H.264、HEVC 和 AAC 编码器和解码器一样；LGPL 不授予任何专利。
 - 在 iOS 上，以 `nsgo build` 放入的独立动态框架形式分发，绝不链接进可执行文件。App Store 应用的签名和条款是否允许用户替换它们，由应用自己判断；LGPL 不回答这个问题。
