@@ -52,6 +52,7 @@ On desktops, `nsgo build` of an app importing the core downloads the target's li
 
 - `nsgo dev`, and `nsgo test` with a desktop `-target`, put them in too; `nsgo test` without one, as `go run` and `go test`, puts none in. `NSGO_MEDIA_FFMPEG` still comes first, so a checkout runs with libraries it built by naming their directory, such as an unpacked archive of `dist/ffmpeg`.
 - A target NSGo's manifest does not cover packages nothing from it: iOS, Android and the web.
+- `nsgo-module.yaml` lists the targets of the table above, which a test keeps in step, and a short form of the duties below, so `nsgo add` shows them before writing anything and `nsgo check` warns of a target it lacks, such as `windows_arm64`, `linux_arm64` or Android.
 
 On iOS, `go tool nsgo-media bundle` puts the frameworks into the app `nsgo build` wrote, its `Frameworks`, with every notice of the archive in `FFmpeg/`. It refuses an archive without `COPYING.LGPLv2.1` or `BUILD.txt`, takes each package's target from the end of its name, and skips desktop packages.
 

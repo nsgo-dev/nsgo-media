@@ -1,0 +1,8 @@
+version: 1
+import: [player]
+targets: [macos, windows_x64, linux_x64, ios, ios_simulator]
+notes: |
+  FFmpeg's libraries are LGPL 2.1. nsgo build ships them as replaceable shared libraries with their notices; on iOS, go tool nsgo-media bundle puts them in after nsgo build.
+  An app that ships them offers their source beside its downloads, says in its about box or documentation that it uses them and where their source is, and allows replacing them.
+  The full list of duties: https://github.com/nsgo-dev/nsgo-media/blob/main/docs/ffmpeg.md#what-an-app-that-ships-them-owes
+  Background playback on iOS needs apple.info.UIBackgroundModes: [audio] in nsgo.yaml.
