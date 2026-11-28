@@ -259,8 +259,7 @@ func libraryFile(t target, lib string) *regexp.Regexp {
 
 // pack zips t's libraries with the licenses of what they hold, the diff of
 // FFmpeg's source and a note of how they were built, which the LGPL asks to
-// go with them. nsgo-media bundle copies every file but the libraries into
-// an app.
+// go with them. -natives publishes the libraries and declares the notices.
 func (b *builder) pack(t target, dir string, args []string) (string, error) {
 	name := filepath.Join(b.out, archiveFile(t.name))
 	f, err := os.Create(name)

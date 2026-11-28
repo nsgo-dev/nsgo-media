@@ -1,10 +1,9 @@
 // Command ffmpeg builds the FFmpeg shared libraries NSGo Media loads, with
 // LGPL components only, at the pinned version, for each desktop target and
 // as frameworks for iOS, into archives, and FFmpeg's source with its diff
-// into source/, which an app offers beside them. The desktop libraries are
-// published as a release of this repository, which the core's
-// nsgo-natives.yaml declares for nsgo build; nsgo-media bundle puts the
-// iOS frameworks into an app.
+// into source/, which an app offers beside them. The libraries and iOS
+// frameworks are published as a release of this repository, which the
+// core's nsgo-natives.yaml declares for nsgo build to put into an app.
 //
 // It runs on macOS with Xcode and Go: Xcode's clang builds the macOS and
 // iOS targets, and a pinned Zig, which it downloads, cross-compiles Windows and

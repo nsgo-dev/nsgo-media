@@ -8,23 +8,22 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strings"
 )
 
-// releaseTag is the tag of this repository's GitHub release the desktop
-// libraries are published under, which nsgo-natives.yaml downloads them
-// from. Its assets never change: libraries built again are published
-// under a new tag.
-const releaseTag = "ffmpeg-" + FFmpegVersion + "-2"
+// releaseTag is the tag of this repository's GitHub release the libraries
+// and iOS frameworks are published under, which nsgo-natives.yaml downloads
+// them from. Its assets never change: libraries built again, or published
+// for another target, go out under a new tag.
+const releaseTag = "ffmpeg-" + FFmpegVersion + "-3"
 
 const releaseURL = "https://github.com/nsgo-dev/nsgo-media/releases/download/" + releaseTag + "/"
 
-// nativeTargets are the targets of NSGo's native-library manifest, in its
-// order, and whether tools/ffmpeg builds libraries for them; NSGo packages
-// none for the others.
+// nativeTargets are the targets of NSGo's native-library manifest, version
+// 2, in its order, and whether tools/ffmpeg builds libraries for them; NSGo
+// packages none for the others.
 var nativeTargets = []struct {
 	name  string
 	built bool
@@ -32,7 +31,24 @@ var nativeTargets = []struct {
 	{"macos_arm64", true}, {"macos_x64", true},
 	{"windows_arm64", false}, {"windows_x64", true},
 	{"linux_arm64", false}, {"linux_x64", true},
+	{"ios", true}, {"ios_simulator", true},
+	{"tvos", false}, {"tvos_simulator", false},
 }
+
+// linuxPackages are the manifest's linux entries: the Debian and Arch
+// packages an app's Linux packages depend on. On linux_x64 the libraries
+// load libva for VAAPI; on linux_arm64, which bundles none, the binding
+// loads the system's FFmpeg 9, whose majors internal/ffmpeg names.
+const linuxPackages = `linux:
+  linux_arm64:
+    depends:
+      deb: [libavutil61, libswresample7, libswscale10, libavcodec63, libavformat63, libavfilter12]
+      arch: ["ffmpeg>=2:9"]
+  linux_x64:
+    depends:
+      deb: [libva2, libva-drm2]
+      arch: [libva]
+`
 
 // Notices the manifest lists, as package-relative paths. NSGo reads a
 // file named COPYING as a license, which must be one it recognizes, and
@@ -66,14 +82,16 @@ func archiveNotices(target string) map[string]string {
 	return m
 }
 
-// writeNatives takes the desktop archives and source in out, which a
-// build wrote, and writes:
+// writeNatives takes the archives and source in out, which a build wrote,
+// and writes:
 //
 //   - out/release: the files to publish under releaseTag, each desktop
-//     target's libraries as <target>-<file>, every archive, and FFmpeg's
-//     source with its diff;
-//   - pkg/nsgo-natives.yaml, declaring those libraries by their URLs and
-//     SHA-256, and their notices under pkg/notices.
+//     target's libraries as <target>-<file>, each iOS target's framework
+//     binaries as <target>-<name>, every archive, and FFmpeg's source with
+//     its diff;
+//   - pkg/nsgo-natives.yaml, declaring those libraries and frameworks by
+//     their URLs and SHA-256, and the Linux packages they need, with their
+//     notices under pkg/notices.
 func writeNatives(out, pkg string) error {
 	release := filepath.Join(out, "release")
 	if err := os.RemoveAll(release); err != nil {
@@ -87,7 +105,7 @@ func writeNatives(out, pkg string) error {
 	}
 	notices := map[string][]byte{}
 	var yaml strings.Builder
-	yaml.WriteString("# Written by go run ./tools/ffmpeg -natives: the FFmpeg libraries NSGo's tool\n# puts into a desktop app's packages, published as release " + releaseTag + ".\nversion: 1\nlibraries:\n")
+	yaml.WriteString("# Written by go run ./tools/ffmpeg -natives: the FFmpeg libraries and\n# frameworks NSGo's tool puts into an app, published as release " + releaseTag + ",\n# and the Linux packages they need.\nversion: 2\nlibraries:\n")
 	for _, nt := range nativeTargets {
 		if !nt.built {
 			fmt.Fprintf(&yaml, "  %s: []\n", nt.name)
@@ -110,6 +128,21 @@ func writeNatives(out, pkg string) error {
 		}
 		t, _ := targetByName(nt.name)
 		for _, lib := range libraries {
+			if t.ios() {
+				// A framework is published as its binary alone; NSGo writes
+				// its Info.plist.
+				name := "lib" + lib
+				data, ok := files[name+".framework/"+name]
+				if !ok {
+					return fmt.Errorf("%s holds no %s.framework", archiveFile(nt.name), name)
+				}
+				asset := nt.name + "-" + name
+				if err := os.WriteFile(filepath.Join(release, asset), data, 0o644); err != nil {
+					return err
+				}
+				writeLibrary(&yaml, name+".framework", asset, data, libraryNotices(nt.name, lib))
+				continue
+			}
 			re := libraryFile(t, lib)
 			names := slices.Sorted(func(yield func(string) bool) {
 				for name := range files {
@@ -126,24 +159,10 @@ func writeNatives(out, pkg string) error {
 			if err := os.WriteFile(filepath.Join(release, asset), data, 0o644); err != nil {
 				return err
 			}
-			sum := sha256.Sum256(data)
-			licenses := []string{lgplNotice, buildNotice(nt.name)}
-			if lib == "avformat" {
-				// Only libavformat links libxml2 and holds the change.
-				licenses = append(licenses, libxml2Notice, patchNotice)
-			}
-			if lib == "avcodec" {
-				switch nt.name {
-				case "windows_x64":
-					licenses = append(licenses, libvplNotice)
-				case "linux_x64":
-					licenses = append(licenses, openh264Notice)
-				}
-			}
-			fmt.Fprintf(&yaml, "    - name: %s\n      url: %s\n      sha256: %q\n      licenses: [%s]\n",
-				name, releaseURL+asset, hex.EncodeToString(sum[:]), strings.Join(licenses, ", "))
+			writeLibrary(&yaml, name, asset, data, libraryNotices(nt.name, lib))
 		}
 	}
+	yaml.WriteString(linuxPackages)
 	for _, t := range targets {
 		if err := copyFile(filepath.Join(out, archiveFile(t.name)), filepath.Join(release, archiveFile(t.name))); err != nil {
 			return err
@@ -170,9 +189,33 @@ func writeNatives(out, pkg string) error {
 	return nil
 }
 
+// libraryNotices are the notices of one of target's libraries.
+func libraryNotices(target, lib string) []string {
+	licenses := []string{lgplNotice, buildNotice(target)}
+	switch lib {
+	case "avformat":
+		// Only libavformat links libxml2 and holds the change.
+		licenses = append(licenses, libxml2Notice, patchNotice)
+	case "avcodec":
+		switch target {
+		case "windows_x64":
+			licenses = append(licenses, libvplNotice)
+		case "linux_x64":
+			licenses = append(licenses, openh264Notice)
+		}
+	}
+	return licenses
+}
+
+func writeLibrary(yaml *strings.Builder, name, asset string, data []byte, licenses []string) {
+	sum := sha256.Sum256(data)
+	fmt.Fprintf(yaml, "    - name: %s\n      url: %s\n      sha256: %q\n      licenses: [%s]\n",
+		name, releaseURL+asset, hex.EncodeToString(sum[:]), strings.Join(licenses, ", "))
+}
+
 func archiveFile(target string) string { return "ffmpeg-" + FFmpegVersion + "-" + target + ".zip" }
 
-// readArchive reads the files at the top of a zip archive.
+// readArchive reads the files of a zip archive by their paths in it.
 func readArchive(name string) (map[string][]byte, error) {
 	zr, err := zip.OpenReader(name)
 	if err != nil {
@@ -181,7 +224,7 @@ func readArchive(name string) (map[string][]byte, error) {
 	defer zr.Close()
 	files := map[string][]byte{}
 	for _, f := range zr.File {
-		if f.FileInfo().IsDir() || path.Dir(f.Name) != "." {
+		if f.FileInfo().IsDir() {
 			continue
 		}
 		rc, err := f.Open()

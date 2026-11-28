@@ -6,12 +6,10 @@
 //	go run ./examples/demo movie.mkv            # or open one at start
 //	go run ./examples/demo https://…/index.m3u8 # an HLS or DASH stream
 //
-// On the iOS simulator, from examples/demo, after go run ./tools/ffmpeg
-// -target ios_simulator in the repository's root:
+// On the iOS simulator, from examples/demo, with the FFmpeg frameworks
+// nsgo build puts in:
 //
-//	go tool nsgo build -target ios_simulator
-//	go tool nsgo-media bundle dist/*ios_simulator
-//	xcrun simctl install booted "dist/NSGo Media Demo-0.1.0-ios_simulator/NSGo Media Demo.app"
+//	go tool nsgo build -target ios_simulator -run
 package main
 
 import (
