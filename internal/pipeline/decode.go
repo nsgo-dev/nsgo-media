@@ -8,8 +8,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/oneo-me/nsgo-media/internal/audioout"
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/audioout"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // decodeVideo decodes the video queue, of track stream, into RGBA frames

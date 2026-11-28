@@ -29,8 +29,8 @@ import (
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
 
-	"github.com/oneo-me/nsgo-media/internal/stats"
-	"github.com/oneo-me/nsgo-media/player"
+	"github.com/nsgo-dev/nsgo-media/internal/stats"
+	"github.com/nsgo-dev/nsgo-media/player"
 )
 
 // startSource is the file or URL to open at start: the first argument, or

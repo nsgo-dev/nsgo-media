@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // Kind is a track's media.

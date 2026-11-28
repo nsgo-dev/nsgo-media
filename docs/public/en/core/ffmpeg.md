@@ -41,12 +41,12 @@ On iOS they load only from frameworks: in `NSGO_MEDIA_FFMPEG`, which simulator t
 The desktop libraries are published as a release of the repository, [`ffmpeg-9.0.2-1`](https://github.com/nsgo-dev/nsgo-media/releases/tag/ffmpeg-9.0.2-1), and the core declares them for NSGo's tool. On macOS, Windows and Linux, `nsgo build` downloads them, checks their SHA-256 and puts them into a macOS app's `Contents/Frameworks`, joining both architectures for `macos_universal`, or beside a Windows or Linux executable. It signs them with the app, so its disk image, installers and notarization hold them, and puts their notices into the app's `THIRD_PARTY_NOTICES.txt`, which `core.ThirdPartyNotices()` returns. There is no step after it.
 
 - `nsgo dev`, and `nsgo test` with a desktop `-target`, put them in too. To run with libraries you built, name their directory, such as an unpacked archive of `dist/ffmpeg`, with `NSGO_MEDIA_FFMPEG`, which comes first.
-- NSGo's license policy warns of their LGPL as copyleft. If your app sets `licenses.copyleft: error`, add `github.com/oneo-me/nsgo-media` to `licenses.allow`.
+- NSGo's license policy warns of their LGPL as copyleft. If your app sets `licenses.copyleft: error`, add `github.com/nsgo-dev/nsgo-media` to `licenses.allow`.
 
 On iOS, `go tool nsgo-media bundle` puts the frameworks `tools/ffmpeg` built into the app `nsgo build` wrote, its `Frameworks`, with every notice of the archive in `FFmpeg/`:
 
 ```sh
-go get -tool github.com/oneo-me/nsgo-media/cmd/nsgo-media
+go get -tool github.com/nsgo-dev/nsgo-media/cmd/nsgo-media
 go tool nsgo build -target ios
 go tool nsgo-media bundle dist/*   # -libs DIR to take the archives from elsewhere
 ```

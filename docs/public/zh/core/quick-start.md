@@ -7,25 +7,24 @@ description: 把 NSGo Media 加进 NSGo 应用，准备好 FFmpeg 库，打开�
 
 ## 添加模块
 
-目前还没有发布版本，所以使用本地检出。把存储库克隆到应用旁边，再让应用的 `go.mod` 指向它：
+在应用的目录里运行：
 
 ```sh
-git clone https://github.com/oneo-me/nsgo-media.git
+go get github.com/nsgo-dev/nsgo-media@v0.1.0
 ```
 
-```go title="go.mod"
-require github.com/oneo-me/nsgo-media v0.0.0
+它需要 NSGo v0.4.0 或更高版本，应用的 NSGo 较旧时会随之升级。
 
-replace github.com/oneo-me/nsgo-media => ../nsgo-media
-```
+v0.1.0 之前，模块路径是 `github.com/oneo-me/nsgo-media`。如果应用导入的是这个路径，把导入改成 `github.com/nsgo-dev/nsgo-media/...`，删掉 `go.mod` 里旧路径的 `require` 和 `replace` 两行，再运行上面的 `go get`。钉在旧路径某个版本上的应用仍能构建。
 
 ## 准备 FFmpeg 库
 
 内核在运行时加载 FFmpeg 9 的共享库。在 macOS、Windows 和 Linux 上，`nsgo dev` 和 `nsgo build` 会下载存储库发布的库，放进应用，不需要别的准备。
 
-要修改这些库，或者用于 iOS，就在检出目录里构建它们，只需要 macOS 上的 Xcode 和 Go：
+要修改这些库，或者用于 iOS，就克隆存储库来构建它们，只需要 macOS 上的 Xcode 和 Go：
 
 ```sh
+git clone https://github.com/nsgo-dev/nsgo-media.git
 cd nsgo-media
 go run ./tools/ffmpeg                     # 构建所有目标到 dist/ffmpeg
 go run ./tools/ffmpeg -target macos_arm64 # 或只构建一个目标
@@ -44,7 +43,7 @@ Homebrew 的库没有 libxml2，所以能播 HLS，但不能播 DASH。内核会
 在组件里创建播放器，打开媒体源，再放好它的视图。播放器属于创建它的作用域，作用域销毁时随之关闭。
 
 ```go
-import "github.com/oneo-me/nsgo-media/player"
+import "github.com/nsgo-dev/nsgo-media/player"
 
 func Root(cx *core.Scope) core.Node {
 	p := player.New(cx)

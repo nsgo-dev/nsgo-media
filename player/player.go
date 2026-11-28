@@ -24,8 +24,8 @@ import (
 	"github.com/nsgo-dev/nsgo/audio"
 	"github.com/nsgo-dev/nsgo/core"
 
-	"github.com/oneo-me/nsgo-media/internal/audioout"
-	"github.com/oneo-me/nsgo-media/internal/pipeline"
+	"github.com/nsgo-dev/nsgo-media/internal/audioout"
+	"github.com/nsgo-dev/nsgo-media/internal/pipeline"
 )
 
 // Player plays one source at a time.

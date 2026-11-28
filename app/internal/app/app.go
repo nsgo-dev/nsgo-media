@@ -19,12 +19,12 @@ import (
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
 
-	"github.com/oneo-me/nsgo-media/app/internal/playback"
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
-	"github.com/oneo-me/nsgo-media/app/internal/store"
-	"github.com/oneo-me/nsgo-media/app/locales"
-	"github.com/oneo-me/nsgo-media/app/plugins/local"
-	"github.com/oneo-me/nsgo-media/internal/stats"
+	"github.com/nsgo-dev/nsgo-media/app/internal/playback"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/locales"
+	"github.com/nsgo-dev/nsgo-media/app/plugins/local"
+	"github.com/nsgo-dev/nsgo-media/internal/stats"
 )
 
 // Version is the app's version, which plugins' minAppVersion is checked

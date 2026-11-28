@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // bitmapSubtitles are the subtitle codecs that decode to bitmaps.

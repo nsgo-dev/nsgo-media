@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/audioout"
+	"github.com/nsgo-dev/nsgo-media/internal/audioout"
 )
 
 func fixture(t *testing.T, name string) string {

@@ -19,7 +19,7 @@ import (
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/nsgotest"
 
-	"github.com/oneo-me/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
 )
 
 // TestMain gives the platform the main thread under nsgo test -target,
@@ -29,7 +29,7 @@ func TestMain(m *testing.M) { nsgotest.Main(m) }
 // clip is one of NSGo Media's test clips.
 func clip(t *testing.T, name string) string {
 	t.Helper()
-	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", "github.com/oneo-me/nsgo-media").Output()
+	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", "github.com/nsgo-dev/nsgo-media").Output()
 	if err != nil {
 		t.Skipf("no NSGo Media module: %v", err)
 	}

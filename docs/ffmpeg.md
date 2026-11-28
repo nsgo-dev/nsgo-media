@@ -48,7 +48,7 @@ A release's assets never change: libraries built again, for a new version, flag 
 
 ## Packaging an app
 
-On desktops, `nsgo build` of an app importing the core downloads the target's libraries the manifest declares, checks their SHA-256 and keeps them in the user cache's `nsgo/natives`. It puts them into a macOS app's `Contents/Frameworks`, joining both architectures with `lipo` for `macos_universal`, or beside a Windows or Linux executable, and signs them before the app, so its disk image, installers and notarization hold them. The notices go into the app's `THIRD_PARTY_NOTICES.txt` and `core.ThirdPartyNotices()`. NSGo's license policy warns of their LGPL as copyleft; an app with `licenses.copyleft: error` adds `github.com/oneo-me/nsgo-media` to `licenses.allow`.
+On desktops, `nsgo build` of an app importing the core downloads the target's libraries the manifest declares, checks their SHA-256 and keeps them in the user cache's `nsgo/natives`. It puts them into a macOS app's `Contents/Frameworks`, joining both architectures with `lipo` for `macos_universal`, or beside a Windows or Linux executable, and signs them before the app, so its disk image, installers and notarization hold them. The notices go into the app's `THIRD_PARTY_NOTICES.txt` and `core.ThirdPartyNotices()`. NSGo's license policy warns of their LGPL as copyleft; an app with `licenses.copyleft: error` adds `github.com/nsgo-dev/nsgo-media` to `licenses.allow`.
 
 - `nsgo dev`, and `nsgo test` with a desktop `-target`, put them in too; `nsgo test` without one, as `go run` and `go test`, puts none in. `NSGO_MEDIA_FFMPEG` still comes first, so a checkout runs with libraries it built by naming their directory, such as an unpacked archive of `dist/ffmpeg`.
 - A target NSGo's manifest does not cover packages nothing from it: iOS, Android and the web.
@@ -56,7 +56,7 @@ On desktops, `nsgo build` of an app importing the core downloads the target's li
 On iOS, `go tool nsgo-media bundle` puts the frameworks into the app `nsgo build` wrote, its `Frameworks`, with every notice of the archive in `FFmpeg/`. It refuses an archive without `COPYING.LGPLv2.1` or `BUILD.txt`, takes each package's target from the end of its name, and skips desktop packages.
 
 ```sh
-go get -tool github.com/oneo-me/nsgo-media/cmd/nsgo-media
+go get -tool github.com/nsgo-dev/nsgo-media/cmd/nsgo-media
 go tool nsgo build -target ios
 go tool nsgo-media bundle dist/*      # -libs DIR to take the archives from elsewhere
 ```

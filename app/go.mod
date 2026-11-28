@@ -1,21 +1,22 @@
-module github.com/oneo-me/nsgo-media/app
+module github.com/nsgo-dev/nsgo-media/app
 
 go 1.27.3
 
 tool (
+	github.com/nsgo-dev/nsgo-media/cmd/nsgo-media
 	github.com/nsgo-dev/nsgo/cmd/nsgo
-	github.com/oneo-me/nsgo-media/cmd/nsgo-media
 )
 
 require (
 	github.com/MoeForge/moejs v0.1.1
 	github.com/makiuchi-d/gozxing v0.1.1
-	github.com/nsgo-dev/nsgo v0.3.3-0.20261125111955-8d716d9b939c
-	github.com/oneo-me/nsgo-media v0.0.0-00010101000000-000000000000
+	github.com/nsgo-dev/nsgo v0.4.0
+	github.com/nsgo-dev/nsgo-media v0.0.0-00010101000000-000000000000
 	go.yaml.in/yaml/v3 v3.0.6
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/MoeForge/moego v0.1.0-alpha.3 // indirect
 	github.com/andybalholm/brotli v1.3.0 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
@@ -38,6 +39,7 @@ require (
 	github.com/yuin/goldmark v1.8.7 // indirect
 	golang.org/x/crypto v0.59.0 // indirect
 	golang.org/x/image v0.48.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
@@ -49,4 +51,4 @@ require (
 	rsc.io/qr v0.2.0 // indirect
 )
 
-replace github.com/oneo-me/nsgo-media => ../
+replace github.com/nsgo-dev/nsgo-media => ../

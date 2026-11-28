@@ -16,8 +16,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
-	"github.com/oneo-me/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
 )
 
 // fakeGitHub stands in for GitHub's REST API and its release downloads.

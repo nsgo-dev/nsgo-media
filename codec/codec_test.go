@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/codec"
+	"github.com/nsgo-dev/nsgo-media/codec"
 )
 
 func makeBGRAFrame(w, h, step int) codec.Frame {
@@ -16,10 +16,10 @@ func makeBGRAFrame(w, h, step int) codec.Frame {
 	for y := range h {
 		for x := range w {
 			off := y*stride + x*4
-			buf[off+0] = byte((x + step*7) & 0xff)         // B
-			buf[off+1] = byte((y + step*5) & 0xff)         // G
-			buf[off+2] = byte(((x ^ y) + step*11) & 0xff)  // R
-			buf[off+3] = 0xff                              // A
+			buf[off+0] = byte((x + step*7) & 0xff)        // B
+			buf[off+1] = byte((y + step*5) & 0xff)        // G
+			buf[off+2] = byte(((x ^ y) + step*11) & 0xff) // R
+			buf[off+3] = 0xff                             // A
 		}
 	}
 	return codec.Frame{Format: codec.BGRA, Width: w, Height: h, Data: buf, Stride: stride}

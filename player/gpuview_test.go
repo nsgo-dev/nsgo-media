@@ -9,7 +9,7 @@ import (
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/gpu"
 
-	"github.com/oneo-me/nsgo-media/internal/pipeline"
+	"github.com/nsgo-dev/nsgo-media/internal/pipeline"
 )
 
 func TestYUVShaderCompiles(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nsgo-dev/nsgo-media/player"
 	"github.com/nsgo-dev/nsgo/core"
-	"github.com/oneo-me/nsgo-media/player"
 )
 
 // Source is what the player page plays: a local file or a URL the viewer

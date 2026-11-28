@@ -9,7 +9,7 @@ import (
 
 	"github.com/nsgo-dev/nsgo/core"
 
-	"github.com/oneo-me/nsgo-media/internal/pipeline"
+	"github.com/nsgo-dev/nsgo-media/internal/pipeline"
 )
 
 // State is what a player is doing.

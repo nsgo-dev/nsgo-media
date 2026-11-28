@@ -7,7 +7,7 @@ import (
 
 	"github.com/nsgo-dev/nsgo/nsgotest"
 
-	"github.com/oneo-me/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
 )
 
 // pick chooses the item id, labelled label, of the menu opened by

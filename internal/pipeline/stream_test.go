@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // streamServer serves testdata over HTTP, as a CDN serves HLS and DASH.

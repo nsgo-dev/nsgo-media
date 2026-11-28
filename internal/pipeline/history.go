@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // Bounds of the decoded pictures kept for stepping backward.

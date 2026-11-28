@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nsgo-dev/nsgo-media/player"
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/desktop"
 	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
-	"github.com/oneo-me/nsgo-media/player"
 
-	"github.com/oneo-me/nsgo-media/app/internal/store"
-	"github.com/oneo-me/nsgo-media/app/locales"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/locales"
 )
 
 var rates = []float64{0.5, 0.75, 1, 1.25, 1.5, 2}

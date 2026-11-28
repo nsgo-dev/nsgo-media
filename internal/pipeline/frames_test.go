@@ -3,7 +3,7 @@ package pipeline
 import (
 	"testing"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 func TestHeldFrameParksUntilReleased(t *testing.T) {

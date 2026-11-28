@@ -41,12 +41,12 @@ go run ./tools/ffmpeg -target linux_x64  # 只构建一个目标
 桌面库作为存储库的 Release [`ffmpeg-9.0.2-1`](https://github.com/nsgo-dev/nsgo-media/releases/tag/ffmpeg-9.0.2-1) 发布，内核向 NSGo 的工具声明了它们。在 macOS、Windows 和 Linux 上，`nsgo build` 会下载它们、校验 SHA-256，放进 macOS 应用的 `Contents/Frameworks`（`macos_universal` 会合并两种架构），或 Windows、Linux 可执行文件旁边。它们和应用一起签名，所以磁盘映像、安装包和公证都包含它们；它们的声明会写进应用的 `THIRD_PARTY_NOTICES.txt`，`core.ThirdPartyNotices()` 返回的就是它。之后不需要别的步骤。
 
 - `nsgo dev` 以及带桌面 `-target` 的 `nsgo test` 也会放入它们。要用自己构建的库运行，用 `NSGO_MEDIA_FFMPEG` 指定它们的目录（比如解压后的 `dist/ffmpeg` 归档），它最优先。
-- NSGo 的许可证策略会把它们的 LGPL 当作 copyleft 给出警告。如果你的应用设了 `licenses.copyleft: error`，把 `github.com/oneo-me/nsgo-media` 加进 `licenses.allow`。
+- NSGo 的许可证策略会把它们的 LGPL 当作 copyleft 给出警告。如果你的应用设了 `licenses.copyleft: error`，把 `github.com/nsgo-dev/nsgo-media` 加进 `licenses.allow`。
 
 在 iOS 上，`go tool nsgo-media bundle` 把 `tools/ffmpeg` 构建的框架放进 `nsgo build` 生成的应用的 `Frameworks`，并把归档里的所有声明放进 `FFmpeg/`：
 
 ```sh
-go get -tool github.com/oneo-me/nsgo-media/cmd/nsgo-media
+go get -tool github.com/nsgo-dev/nsgo-media/cmd/nsgo-media
 go tool nsgo build -target ios
 go tool nsgo-media bundle dist/*   # 用 -libs DIR 从别处取归档
 ```

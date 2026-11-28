@@ -6,7 +6,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // Frame is a decoded picture in RGBA, premultiplied as it is opaque, or

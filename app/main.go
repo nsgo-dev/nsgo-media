@@ -4,7 +4,7 @@ package main
 import (
 	"github.com/nsgo-dev/nsgo"
 
-	"github.com/oneo-me/nsgo-media/app/internal/app"
+	"github.com/nsgo-dev/nsgo-media/app/internal/app"
 )
 
 func main() { nsgo.Run(app.Root, nsgo.WindowSize(1100, 700)) }

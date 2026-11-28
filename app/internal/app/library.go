@@ -15,8 +15,8 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/oneo-me/nsgo-media/app/internal/plugin"
-	"github.com/oneo-me/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/internal/plugin"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
 )
 
 // library loads, installs and removes plugins: the built-in ones from the

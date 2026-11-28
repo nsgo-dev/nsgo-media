@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/nsgo-dev/nsgo-media/player"
 	"github.com/nsgo-dev/nsgo/core"
-	"github.com/oneo-me/nsgo-media/player"
 
-	"github.com/oneo-me/nsgo-media/app/internal/store"
+	"github.com/nsgo-dev/nsgo-media/app/internal/store"
 )
 
 // Comment is a danmaku comment: its text shown over the picture from its

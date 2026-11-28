@@ -6,7 +6,7 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/oneo-me/nsgo-media/internal/ffmpeg"
+	"github.com/nsgo-dev/nsgo-media/internal/ffmpeg"
 )
 
 // Snapshot converts the frame showing again from its decoded picture: at
