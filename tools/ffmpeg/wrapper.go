@@ -1,6 +1,7 @@
 package main
 
 import (
+	"debug/elf"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +19,8 @@ func wrapper(mode string, args []string) int {
 		return execZig(append([]string{mode}, args...))
 	case "pkg-config":
 		return pkgConfig(os.Getenv("NSGO_MEDIA_PKG_ROOT"), args)
+	case "readelf":
+		return readelf(args)
 	}
 	fmt.Fprintln(os.Stderr, "unknown wrapper", mode)
 	return 2
@@ -117,6 +120,15 @@ func pkgConfig(root string, args []string) int {
 			flags = append(flags, strings.Fields(cflags+" "+libs)...)
 			version = "2.17.0"
 			continue
+		case "opus", "vpx":
+			name := strings.ToUpper(p)
+			cflags, libs := os.Getenv("NSGO_MEDIA_"+name+"_CFLAGS"), os.Getenv("NSGO_MEDIA_"+name+"_LIBS")
+			if libs == "" {
+				return 1
+			}
+			flags = append(flags, strings.Fields(cflags+" "+libs)...)
+			version = map[string]string{"opus": "1.5.2", "vpx": "1.17.0"}[p]
+			continue
 		case "openh264":
 			cflags, libs := os.Getenv("NSGO_MEDIA_OPENH264_CFLAGS"), os.Getenv("NSGO_MEDIA_OPENH264_LIBS")
 			if libs == "" {
@@ -145,6 +157,25 @@ func pkgConfig(root string, args []string) int {
 		fmt.Println(strings.Join(filter(flags, "-L", "-l"), " "))
 	case "--modversion":
 		fmt.Println(version)
+	}
+	return 0
+}
+
+// readelf answers libvpx's configure, which runs readelf -WS on an ELF
+// object nasm assembled to check its sections' alignment: a line per
+// section ending in its alignment.
+func readelf(args []string) int {
+	if len(args) == 0 {
+		return 2
+	}
+	f, err := elf.Open(args[len(args)-1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "readelf:", err)
+		return 1
+	}
+	defer f.Close()
+	for i, s := range f.Sections {
+		fmt.Printf("  [%2d] %s %s %d\n", i, s.Name, s.Type, s.Addralign)
 	}
 	return 0
 }

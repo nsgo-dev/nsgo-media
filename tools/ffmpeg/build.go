@@ -162,7 +162,12 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 			return nil, nil, fmt.Errorf("xcrun --sdk %s --show-sdk-path: %w; install Xcode", t.sdk, err)
 		}
 		sdk := strings.TrimSpace(string(sdkOut))
-		cc := clang + " -arch " + t.arch + " -target " + t.clangTarget() + " -isysroot " + sdk
+		clangxx, err := xcrunFind("clang++")
+		if err != nil {
+			return nil, nil, err
+		}
+		targetFlags := " -arch " + t.arch + " -target " + t.clangTarget() + " -isysroot " + sdk
+		cc := clang + targetFlags
 		// A macOS library finds its siblings beside it, an iOS framework's
 		// binary in the frameworks beside its own.
 		rpath := "@loader_path"
@@ -183,7 +188,12 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		return args, append(env, libxml2Env(t, xml)...), nil
+		env = append(env, libxml2Env(t, xml)...)
+		codecs, err := b.buildEncoderLibs(t, cc, clangxx+targetFlags, env)
+		if err != nil {
+			return nil, nil, err
+		}
+		return args, append(env, codecs...), nil
 	}
 	if err := b.ensureZig(); err != nil {
 		return nil, nil, err
@@ -202,6 +212,11 @@ func (b *builder) configureArgs(t target) ([]string, []string, error) {
 		return nil, nil, err
 	}
 	env = append(env, libxml2Env(t, xml)...)
+	codecs, err := b.buildEncoderLibs(t, b.zig+" cc -target "+t.zig, b.zig+" c++ -target "+t.zig, env)
+	if err != nil {
+		return nil, nil, err
+	}
+	env = append(env, codecs...)
 	extraCflags := []string{"-I" + filepath.Join(zlib, "include")}
 	extraLdflags := []string{"-L" + filepath.Join(zlib, "lib")}
 	switch t.os {
@@ -302,6 +317,16 @@ func (b *builder) pack(t target, dir string, args []string) (string, error) {
 		return "", err
 	}
 	var extraNotes strings.Builder
+	vpxSrc := filepath.Join(b.work, "src", strings.TrimSuffix(libvpxSource.name, ".tar.gz"))
+	if err := addFile(zw, "COPYING.libvpx", filepath.Join(vpxSrc, "LICENSE"), 0o644); err != nil {
+		return "", err
+	}
+	fmt.Fprintf(&extraNotes, "\nlibavcodec links libvpx's VP9 encoder statically, under the BSD 3-Clause license in COPYING.libvpx.\nSource: %s\nSHA-256: %s\n", libvpxSource.url, libvpxSource.sha256)
+	opusSrc := filepath.Join(b.work, "src", strings.TrimSuffix(opusSource.name, ".tar.gz"))
+	if err := addFile(zw, "COPYING.opus", filepath.Join(opusSrc, "COPYING"), 0o644); err != nil {
+		return "", err
+	}
+	fmt.Fprintf(&extraNotes, "\nlibavcodec links libopus statically, under the BSD 3-Clause license in COPYING.opus.\nSource: %s\nSHA-256: %s\n", opusSource.url, opusSource.sha256)
 	switch t.os {
 	case "windows":
 		vplSrc := filepath.Join(b.work, "src", strings.TrimSuffix(libvplSource.name, ".tar.gz"))
@@ -599,8 +624,7 @@ func (b *builder) buildLibxml2(t target, cc string, env []string) (string, error
 		return "", fmt.Errorf("libxml2 configure: %w", err)
 	}
 	if t.os == "windows" {
-		// libtool takes Zig's MinGW compiler for MSVC's and archives with lib.exe.
-		if err := replaceInFile(filepath.Join(dir, "libtool"), `old_archive_cmds="lib -OUT:\$oldlib\$oldobjs\$old_deplibs"`, `old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs~\$RANLIB \$tool_oldlib"`); err != nil {
+		if err := fixLibtool(dir); err != nil {
 			return "", err
 		}
 	}
@@ -616,6 +640,161 @@ func (b *builder) buildLibxml2(t target, cc string, env []string) (string, error
 		}
 	}
 	return dest, nil
+}
+
+// fixLibtool makes the libtool an autotools configure wrote in dir for
+// Windows archive with Zig's ar: it takes Zig's MinGW compiler for MSVC's
+// and archives with lib.exe.
+func fixLibtool(dir string) error {
+	return replaceInFile(filepath.Join(dir, "libtool"), `old_archive_cmds="lib -OUT:\$oldlib\$oldobjs\$old_deplibs"`, `old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs~\$RANLIB \$tool_oldlib"`)
+}
+
+// buildEncoderLibs builds the libraries of the encoders FFmpeg links
+// statically for t, with the C compiler cc and the C++ one cxx, and
+// returns what the pkg-config wrapper answers for them.
+func (b *builder) buildEncoderLibs(t target, cc, cxx string, env []string) ([]string, error) {
+	opus, err := b.buildOpus(t, cc, env)
+	if err != nil {
+		return nil, err
+	}
+	vpx, err := b.buildLibvpx(t, cc, cxx, env)
+	if err != nil {
+		return nil, err
+	}
+	return append(opusEnv(t, opus), libvpxEnv(t, vpx)...), nil
+}
+
+// buildOpus compiles libopus into a static library for t with cc.
+func (b *builder) buildOpus(t target, cc string, env []string) (string, error) {
+	src, err := b.unpack(opusSource, strings.TrimSuffix(opusSource.name, ".tar.gz"))
+	if err != nil {
+		return "", err
+	}
+	dest := filepath.Join(b.work, "deps", t.name, "opus")
+	if _, err := os.Stat(filepath.Join(dest, "lib", "libopus.a")); err == nil {
+		return dest, nil
+	}
+	dir := filepath.Join(b.work, "build", t.name+"-opus")
+	if err := os.RemoveAll(dir); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	ar, ranlib := "ar", "ranlib"
+	if t.zig != "" {
+		ar, ranlib = b.zig+" ar", b.zig+" ranlib"
+		env = append(slices.Clone(env), "ZIG_GLOBAL_CACHE_DIR="+filepath.Join(b.work, "zig-cache"))
+	}
+	if err := run(dir, env, filepath.Join(src, "configure"),
+		"--host="+libxml2Host(t), "--prefix="+dest,
+		"CC="+cc, "AR="+ar, "RANLIB="+ranlib, "CFLAGS=-O2 -fPIC",
+		"--enable-static", "--disable-shared", "--disable-doc", "--disable-extra-programs",
+	); err != nil {
+		return "", fmt.Errorf("opus configure: %w", err)
+	}
+	if t.os == "windows" {
+		if err := fixLibtool(dir); err != nil {
+			return "", err
+		}
+	}
+	if err := run(dir, env, "make", fmt.Sprintf("-j%d", b.jobs)); err != nil {
+		return "", fmt.Errorf("opus make: %w", err)
+	}
+	if err := run(dir, env, "make", "install"); err != nil {
+		return "", fmt.Errorf("opus install: %w", err)
+	}
+	if t.os == "windows" {
+		if err := os.Rename(filepath.Join(dest, "lib", "libopus.lib"), filepath.Join(dest, "lib", "libopus.a")); err != nil {
+			return "", err
+		}
+	}
+	return dest, nil
+}
+
+func opusEnv(t target, dir string) []string {
+	libs := "-L" + filepath.Join(dir, "lib") + " -lopus"
+	if t.os == "linux" {
+		libs += " -lm"
+	}
+	return []string{"NSGO_MEDIA_OPUS_CFLAGS=-I" + filepath.Join(dir, "include", "opus"), "NSGO_MEDIA_OPUS_LIBS=" + libs}
+}
+
+// libvpxTarget is the target libvpx's configure takes for t. Apple's arm64
+// targets take its generic arm64 one, which compiles with the compiler as
+// given: its Darwin ones choose their own compiler and SDK and know no
+// arm64 simulator. Its CPU detection follows the compiler's platform.
+func libvpxTarget(t target) string {
+	switch {
+	case t.os == "darwin" && t.arch == "arm64":
+		return "arm64-linux-gcc"
+	case t.os == "darwin":
+		return "x86_64-darwin20-gcc"
+	case t.os == "windows":
+		return "x86_64-win64-gcc"
+	}
+	return "x86_64-linux-gcc"
+}
+
+// buildLibvpx compiles libvpx's VP9 encoder into a static library for t
+// with cc and cxx, assembling x86 code with nasm. Its configure checks
+// nasm's section alignment with readelf, which the tool stands in for.
+func (b *builder) buildLibvpx(t target, cc, cxx string, env []string) (string, error) {
+	src, err := b.unpack(libvpxSource, strings.TrimSuffix(libvpxSource.name, ".tar.gz"))
+	if err != nil {
+		return "", err
+	}
+	dest := filepath.Join(b.work, "deps", t.name, "libvpx")
+	if _, err := os.Stat(filepath.Join(dest, "lib", "libvpx.a")); err == nil {
+		return dest, nil
+	}
+	if t.arch == "x86_64" {
+		if err := b.ensureNasm(); err != nil {
+			return "", err
+		}
+	}
+	bin := filepath.Join(b.work, "host", "bin")
+	if err := os.WriteFile(filepath.Join(bin, "readelf"), []byte("#!/bin/sh\nexec "+b.tool+" -as readelf \"$@\"\n"), 0o755); err != nil {
+		return "", err
+	}
+	dir := filepath.Join(b.work, "build", t.name+"-libvpx")
+	if err := os.RemoveAll(dir); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	ar := "ar"
+	if t.zig != "" {
+		ar = b.zig + " ar"
+	}
+	env = append(slices.Clone(env),
+		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"CC="+cc, "CXX="+cxx, "LD="+cxx, "AR="+ar,
+		"ZIG_GLOBAL_CACHE_DIR="+filepath.Join(b.work, "zig-cache"),
+	)
+	if err := run(dir, env, filepath.Join(src, "configure"),
+		"--target="+libvpxTarget(t), "--prefix="+dest, "--as=nasm",
+		"--disable-vp8", "--disable-vp9-decoder", "--enable-pic", "--enable-static", "--disable-shared",
+		"--disable-examples", "--disable-tools", "--disable-docs", "--disable-unit-tests", "--disable-install-bins",
+	); err != nil {
+		return "", fmt.Errorf("libvpx configure: %w", err)
+	}
+	if err := run(dir, env, "make", fmt.Sprintf("-j%d", b.jobs)); err != nil {
+		return "", fmt.Errorf("libvpx make: %w", err)
+	}
+	if err := run(dir, env, "make", "install"); err != nil {
+		return "", fmt.Errorf("libvpx install: %w", err)
+	}
+	return dest, nil
+}
+
+func libvpxEnv(t target, dir string) []string {
+	libs := "-L" + filepath.Join(dir, "lib") + " -lvpx"
+	if t.os == "linux" {
+		libs += " -lm -lpthread"
+	}
+	return []string{"NSGO_MEDIA_VPX_CFLAGS=-I" + filepath.Join(dir, "include"), "NSGO_MEDIA_VPX_LIBS=" + libs}
 }
 
 func libxml2Host(t target) string {

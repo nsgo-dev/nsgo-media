@@ -23,6 +23,7 @@ NSGo's `core.Video` hands a source to each platform's own player. Formats differ
 - **Streams**: HLS and DASH, on demand and live.
 - **Decoding**: VideoToolbox, D3D11VA and VAAPI, falling back to software.
 - **State**: playing, paused, buffering, ended and error states, position, buffered range and the chosen tracks, as NSGo signals.
+- **Video files**: the `mediafile` package writes MP4, MOV and WebM files from frames and PCM, with H.264, HEVC, ProRes, ProRes 4444 or VP9 and AAC or Opus, and decodes audio files into PCM, for apps that render video, such as motion graphics.
 
 Several players can play at once, each with its own view.
 
@@ -32,7 +33,7 @@ Several players can play at once, each with its own view.
 - Drawing subtitles. The core hands over their text and bitmaps.
 - Libraries, playlists, history and settings. The core persists nothing.
 
-Recording, transcoding, DRM, disc images and receivers such as DLNA or AirPlay are out of scope.
+Recording, transcoding in the player, DRM, disc images and receivers such as DLNA or AirPlay are out of scope.
 
 ## Platforms
 

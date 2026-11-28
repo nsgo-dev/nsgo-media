@@ -87,6 +87,20 @@ var (
 		url:    "https://github.com/cisco/openh264/archive/refs/tags/v2.7.0.tar.gz",
 		sha256: "5178775c8b440073e70920e97d195efff721c0e56d0a78cc82c919e95d54924d",
 	}
+	// libvpx (BSD 3-Clause) is linked statically into every target's
+	// libavcodec as the VP9 encoder.
+	libvpxSource = download{
+		name:   "libvpx-1.17.0.tar.gz",
+		url:    "https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz",
+		sha256: "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a",
+	}
+	// libopus (BSD 3-Clause) is linked statically into every target's
+	// libavcodec as the Opus encoder; FFmpeg's own is experimental.
+	opusSource = download{
+		name:   "opus-1.5.2.tar.gz",
+		url:    "https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz",
+		sha256: "65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1",
+	}
 )
 
 const zigVersion = "0.17.1"

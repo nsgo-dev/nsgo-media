@@ -23,15 +23,15 @@ var targets = []target{
 	{name: "ios_simulator", os: "darwin", arch: "arm64", sdk: "iphonesimulator", flags: macFlags},
 	{name: "windows_x64", os: "windows", arch: "x86_64", zig: "x86_64-windows-gnu", flags: []string{
 		"--target-os=mingw32", "--enable-w32threads", "--enable-d3d11va", "--enable-dxva2", "--enable-zlib",
-		"--enable-ffnvcodec", "--enable-nvenc", "--enable-encoder=h264_nvenc",
-		"--enable-libvpl", "--enable-encoder=h264_qsv",
-		"--enable-amf", "--enable-encoder=h264_amf",
-		"--enable-mediafoundation", "--enable-encoder=h264_mf",
+		"--enable-ffnvcodec", "--enable-nvenc", "--enable-encoder=h264_nvenc,hevc_nvenc",
+		"--enable-libvpl", "--enable-encoder=h264_qsv,hevc_qsv",
+		"--enable-amf", "--enable-encoder=h264_amf,hevc_amf",
+		"--enable-mediafoundation", "--enable-encoder=h264_mf,hevc_mf",
 	}},
 	// glibc 2.34 is Ubuntu 22.04's, Debian 12's and RHEL 9's floor.
 	{name: "linux_x64", os: "linux", arch: "x86_64", zig: "x86_64-linux-gnu.2.34", flags: []string{
 		"--target-os=linux", "--enable-pthreads", "--enable-vaapi", "--enable-zlib",
-		"--enable-encoder=h264_vaapi",
+		"--enable-encoder=h264_vaapi,hevc_vaapi",
 		"--enable-libopenh264", "--enable-encoder=libopenh264",
 	}},
 }
@@ -85,23 +85,27 @@ func (t target) platform() string {
 
 var macFlags = []string{
 	"--target-os=darwin", "--enable-pthreads", "--enable-videotoolbox", "--enable-zlib",
-	"--enable-encoder=h264_videotoolbox",
+	"--enable-encoder=h264_videotoolbox,hevc_videotoolbox",
 	"--install-name-dir=@rpath",
 }
 
-// commonFlags keep FFmpeg to its LGPL 2.1 parts and to what playback uses:
-// every demuxer, parser and decoder, the file protocol (HTTP is read in Go
-// through a custom AVIOContext, so no TLS library is linked), libxml2 for
-// the DASH demuxer, the filters audio rate changes use and the spdif
-// muxer, which wraps passthrough audio in IEC 61937 bursts. Nothing is
-// detected from the build host.
+// commonFlags keep FFmpeg to its LGPL 2.1 parts and to what playback and
+// writing video files use: every demuxer, parser and decoder, the file
+// protocol (HTTP is read in Go through a custom AVIOContext, so no TLS
+// library is linked), libxml2 for the DASH demuxer, the filters audio rate
+// changes use, the spdif muxer, which wraps passthrough audio in IEC 61937
+// bursts, the MOV, MP4 and WebM muxers, and the AAC, ProRes, VP9 (libvpx)
+// and Opus (libopus) encoders. libvpx's and libopus' decoders are left out
+// for FFmpeg's own. Nothing is detected from the build host.
 var commonFlags = []string{
 	"--enable-shared", "--disable-static",
 	"--disable-gpl", "--disable-nonfree", "--disable-version3",
 	"--disable-autodetect",
 	"--disable-programs", "--disable-doc", "--disable-debug",
 	"--disable-avdevice", "--disable-network", "--disable-iconv", "--enable-libxml2",
-	"--disable-encoders", "--disable-muxers", "--enable-muxer=spdif", "--disable-devices",
+	"--disable-encoders", "--enable-encoder=aac,prores_ks,libvpx_vp9,libopus",
+	"--enable-libvpx", "--enable-libopus", "--disable-decoder=libvpx_vp8,libvpx_vp9,libopus",
+	"--disable-muxers", "--enable-muxer=spdif,mov,mp4,webm", "--disable-devices",
 	"--disable-protocols", "--enable-protocol=file",
 	"--disable-filters", "--enable-filter=abuffer,abuffersink,atempo,aformat,aresample,anull",
 }
